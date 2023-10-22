@@ -1,0 +1,142 @@
+diff --git a/config.sub b/config.sub
+index 38f3d037a..44169ef44 100755
+--- a/config.sub
++++ b/config.sub
+@@ -1749,7 +1749,7 @@ case $os in
+ 	     | onefs* | tirtos* | phoenix* | fuchsia* | redox* | bme* \
+ 	     | midnightbsd* | amdhsa* | unleashed* | emscripten* | wasi* \
+ 	     | nsk* | powerunix* | genode* | zvmoe* | qnx* | emx* | zephyr* \
+-	     | fiwix* )
++	     | fiwix* | sb*)
+ 		;;
+ 	# This one is extra strict with allowed versions
+ 	sco3.2v2 | sco3.2v[4-9]* | sco5v6*)
+diff --git a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
+index df90720b7..fdd219967 100755
+--- a/fixincludes/mkfixinc.sh
++++ b/fixincludes/mkfixinc.sh
+@@ -11,6 +11,8 @@ target=fixinc.sh
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-sb* | \
++    *-*-sb* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 6fd159448..c4c05ce9e 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -690,6 +690,12 @@ x86_cpus="generic intel"
+ 
+ # Common parts for widely ported systems.
+ case ${target} in
++*-*-sb*)
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  use_gcc_stdint=provide
++  ;;
+ *-*-darwin*)
+   tmake_file="t-darwin "
+   tm_file="${tm_file} darwin.h"
+@@ -1126,6 +1132,9 @@ case ${target} in
+ esac
+ 
+ case ${target} in
++#i[34567]86-*-sb*) # UNSURE
++#    tm_file="${tm_file} i386/unix.h i386/att.h elfos.h glibc-stdint.h i386/i386elf.h sb.h"
++#    ;;
+ aarch64*-*-elf | aarch64*-*-fuchsia* | aarch64*-*-rtems*)
+ 	tm_file="${tm_file} elfos.h newlib-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-elf-raw.h"
+@@ -2327,6 +2336,10 @@ m68k-*-elf* | fido-*-elf*)
+ 		;;
+ 	esac
+ 	;;
++#AAAAAAAAAAAAAAAAAAA
++i[34567]86-*-sb*) # UNSURE
++    tm_file="${tm_file} i386/unix.h i386/att.h elfos.h glibc-stdint.h i386/i386elf.h sb.h"
++    ;;
+ m68k*-*-netbsdelf*)
+ 	default_m68k_cpu=68020
+ 	default_cf_cpu=5475
+diff --git a/gcc/config/sb.h b/gcc/config/sb.h
+new file mode 100644
+index 000000000..b721cb53f
+--- /dev/null
++++ b/gcc/config/sb.h
+@@ -0,0 +1,28 @@
++/* Useful if you wish to make target-specific GCC changes. */
++#undef TARGET_SB
++#define TARGET_SB 1
++
++/* Default arguments you want when running your
++   i686-myos-gcc/x86_64-myos-gcc toolchain */
++#undef LIB_SPEC
++#define LIB_SPEC "-lc" /* link against C standard library */
++
++/* Files that are linked before user code.
++   The %s tells GCC to look for these files in the library directory. */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++
++/* Files that are linked after user code. */
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++
++/* Additional predefined macros. */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()                                               \
++  do {                                                                         \
++    builtin_define("__sb__");                                                \
++    builtin_define("__unix__");                                                \
++    builtin_assert("system=sb");                                             \
++    builtin_assert("system=unix");                                             \
++    builtin_assert("system=posix");                                            \
++  } while (0);
+diff --git a/libgcc/config.host b/libgcc/config.host
+index b9975de90..da9323956 100644
+--- a/libgcc/config.host
++++ b/libgcc/config.host
+@@ -220,6 +220,10 @@ esac
+ 
+ # Common parts for widely ported systems.
+ case ${host} in
++#i[34567]86-*-sb*)
++#	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++#	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++#	;;
+ *-*-darwin*)
+   asm_hidden_op=.private_extern
+   tmake_file="$tmake_file t-darwin ${cpu_type}/t-darwin t-libgcc-pic"
+@@ -1503,6 +1507,10 @@ am33_2.0-*-linux*)
+ m32c-*-elf*)
+ 	tmake_file="$tmake_file m32c/t-m32c"
+  	;;
++i[34567]86-*-sb*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ nvptx-*)
+ 	tmake_file="$tmake_file nvptx/t-nvptx"
+ 	extra_parts="crt0.o"
+diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
+index b3269cb88..8c0bc1e6f 100644
+--- a/libstdc++-v3/crossconfig.m4
++++ b/libstdc++-v3/crossconfig.m4
+@@ -8,7 +8,12 @@ case "${host}" in
+   arm*-*-symbianelf*)
+     # This is a freestanding configuration; there is nothing to do here.
+     ;;
+-
++  *-sb*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
+   avr*-*-*)
+     AC_DEFINE(HAVE_ACOSF)
+     AC_DEFINE(HAVE_ASINF)
