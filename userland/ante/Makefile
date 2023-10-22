@@ -1,4 +1,4 @@
-CC="/home/anton/prj/osdev/sysroot/bin/i686-sb-gcc"
+CC="i686-sb-gcc"
 CFLAGS = -ggdb -O2 -Wall -Wextra -pedantic -static
 LIB=-L../libgui -lgui -lgcc
 INC=-I../libgui/

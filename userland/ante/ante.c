@@ -272,9 +272,11 @@ void run() {
       int rc;
       if (0 >= (rc = read(global_w->ws_socket, &e, sizeof(e))))
         continue;
-      if (0 == e.c)
+      if (e.ev.release)
         continue;
-      key_event(e.c);
+      if (0 == e.ev.c)
+        continue;
+      key_event(e.ev.c);
     }
   }
 }
