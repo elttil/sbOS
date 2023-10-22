@@ -23,13 +23,25 @@ void ext2_close(vfs_fd_t *fd) {
 int read_inode(int inode_num, unsigned char *data, uint64_t size,
                uint64_t offset, uint64_t *file_size);
 
+uint32_t old_block_num = -1;
+uint8_t old_block[1024]; // FIXME: Not always 1024
 void ext2_read_block(uint32_t block, void *address, size_t size,
                      size_t offset) {
+  // Very simple cache, it you are reading the same block then don't
+  // bother trying to read from the hard drive again, juse use the old
+  // data.
+  if (block == old_block_num) {
+    memcpy(address, old_block + offset, size);
+    return;
+  }
   read_lba(block * block_byte_size / 512, address, size, offset);
+  read_lba(block * block_byte_size / 512, old_block, 1024, 0);
+  old_block_num = block;
 }
 
 void ext2_write_block(uint32_t block, void *address, size_t size,
                       size_t offset) {
+  old_block_num = -1; // Invalidate the old block cache
   write_lba(block * block_byte_size / 512, address, size, offset);
 }
 
@@ -88,7 +100,16 @@ void ext2_block_containing_inode(uint32_t inode_index, uint32_t *block_index,
   *offset = full_offset & (block_byte_size - 1);
 }
 
+int ext2_last_read = -1;
+inode_t ext2_last_inode;
+
 void ext2_get_inode_header(int inode_index, inode_t *data) {
+  // Very simple cache. If the inode_index is a inode already read then
+  // just copy the old data.
+  if (ext2_last_read == inode_index) {
+    memcpy(data, &ext2_last_inode, sizeof(inode_t));
+    return;
+  }
   uint32_t block_index;
   uint32_t block_offset;
   ext2_block_containing_inode(inode_index, &block_index, &block_offset);
@@ -97,6 +118,8 @@ void ext2_get_inode_header(int inode_index, inode_t *data) {
   ext2_read_block(block_index, mem_block, inode_size, block_offset);
 
   memcpy(data, mem_block, inode_size);
+  memcpy(&ext2_last_inode, mem_block, sizeof(inode_t));
+  ext2_last_read = inode_index;
 }
 
 void ext2_write_inode(int inode_index, inode_t *data) {
