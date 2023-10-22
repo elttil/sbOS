@@ -100,13 +100,13 @@ void ext2_block_containing_inode(uint32_t inode_index, uint32_t *block_index,
   *offset = full_offset & (block_byte_size - 1);
 }
 
-int ext2_last_read = -1;
+int ext2_last_inode_read = -1;
 inode_t ext2_last_inode;
 
 void ext2_get_inode_header(int inode_index, inode_t *data) {
   // Very simple cache. If the inode_index is a inode already read then
   // just copy the old data.
-  if (ext2_last_read == inode_index) {
+  if (ext2_last_inode_read == inode_index) {
     memcpy(data, &ext2_last_inode, sizeof(inode_t));
     return;
   }
@@ -119,10 +119,12 @@ void ext2_get_inode_header(int inode_index, inode_t *data) {
 
   memcpy(data, mem_block, inode_size);
   memcpy(&ext2_last_inode, mem_block, sizeof(inode_t));
-  ext2_last_read = inode_index;
+  ext2_last_inode_read = inode_index;
 }
 
 void ext2_write_inode(int inode_index, inode_t *data) {
+  if (ext2_last_inode_read == inode_index)
+    ext2_last_inode_read = -1; // Invalidate the cache
   uint32_t block_index;
   uint32_t block_offset;
   ext2_block_containing_inode(inode_index, &block_index, &block_offset);
