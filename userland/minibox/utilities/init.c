@@ -67,6 +67,6 @@ int init_main(void) {
     for (;;)
       wait(NULL);
   char *a[] = {NULL};
-  execv("/term", a);
+  execv("/ws", a);
   return 1;
 }

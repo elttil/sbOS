@@ -147,12 +147,6 @@ void run() {
 int main(void) {
   open("/dev/serial", O_RDWR, 0);
   open("/dev/serial", O_RDWR, 0);
-  printf("running the terminal\n");
-  int pid = fork();
-  if (0 == pid) {
-    char *argv[] = {NULL};
-    execv("/ws", argv);
-  }
 
   global_w = GUI_CreateWindow(20, 20, 250 * 4, 150 * 4);
   assert(global_w);

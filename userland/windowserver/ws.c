@@ -214,8 +214,20 @@ void clamp_screen_position(int *x, int *y) {
 }
 
 int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
+  if (ev.release)
+    return 0;
   if (!(ev.mode & (1 << 1)))
     return 0;
+  if ('n' == ev.c) {
+    // Create a new terminal
+    int pid = fork();
+    if (0 == pid) {
+      // TODO: Close (almost) all file descriptors from parent
+      char *argv[] = {"/term", NULL};
+      execv("/term", argv);
+      assert(0);
+    }
+  }
   if (!active_client)
     return 0;
   int x = 0;
@@ -287,17 +299,16 @@ void parse_mouse_event(int fd) {
   if (mouse_y < 0)
     mouse_y = 0;
   if (middle_button) {
-    active_client->w->x += xc;
-    active_client->w->y -= yc;
-    clamp_screen_position(&active_client->w->x, &active_client->w->y);
+    if (active_client) {
+      active_client->w->x += xc;
+      active_client->w->y -= yc;
+      clamp_screen_position(&active_client->w->x, &active_client->w->y);
+    }
   }
   update_mouse();
 }
 
 void parse_keyboard_event(int fd) {
-  if (!active_client) {
-    return;
-  }
   struct KEY_EVENT ev[250];
   int redraw = 0;
   for (;;) {
@@ -307,6 +318,8 @@ void parse_keyboard_event(int fd) {
     int n = rc / sizeof(ev[0]);
     for (int i = 0; i < n; i++) {
       if (windowserver_key_events(ev[i], &redraw))
+        continue;
+      if (!active_client)
         continue;
       send_to_client(ev[i]);
     }
@@ -369,6 +382,15 @@ void run(void) {
 int main(void) {
   open("/dev/serial", O_WRITE, 0);
   open("/dev/serial", O_WRITE, 0);
+  // Start a terminal by default. This is just to make it easier for me
+  // to test the system.
+  int pid = fork();
+  if (0 == pid) {
+    // TODO: Close (almost) all file descriptors from parent
+    char *argv[] = {"/term", NULL};
+    execv("/term", argv);
+    assert(0);
+  }
   setup();
   run();
   return 0;
