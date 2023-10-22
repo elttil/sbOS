@@ -12,7 +12,7 @@ size_t write_fd(FILE *f, const unsigned char *s, size_t l) {
   return rc;
 }
 
-size_t read_fd(FILE *f, unsigned char *s, size_t l) {
+size_t non_cache_read_fd(FILE *f, unsigned char *s, size_t l) {
   int rc = pread(f->fd, s, l, f->offset_in_file);
   if (rc == 0)
     f->is_eof = 1;
@@ -20,11 +20,40 @@ size_t read_fd(FILE *f, unsigned char *s, size_t l) {
     f->has_error = 1;
     return 0;
   }
-  f->offset_in_file += rc;
   return rc;
 }
 
+size_t read_fd(FILE *f, unsigned char *s, size_t l) {
+  if (0 == l)
+    return 0;
+  if (!f->read_buffer) {
+    f->read_buffer = malloc(4096);
+    f->read_buffer_stored = 0;
+    f->read_buffer_has_read = 0;
+  }
+  if (f->read_buffer_stored > 0) {
+    size_t read_len = min(l, f->read_buffer_stored);
+    f->offset_in_file += read_len;
+    memcpy(s, f->read_buffer + f->read_buffer_has_read, read_len);
+    f->read_buffer_stored -= read_len;
+    f->read_buffer_has_read += read_len;
+    s += read_len;
+    l -= read_len;
+    return read_len + read_fd(f, s, l);
+  }
+  if (0 == f->read_buffer_stored) {
+    f->read_buffer_stored = non_cache_read_fd(f, f->read_buffer, 4096);
+    f->read_buffer_has_read = 0;
+    if (0 == f->read_buffer_stored) {
+      return 0;
+    }
+    return read_fd(f, s, l);
+  }
+  assert(0);
+}
+
 int seek_fd(FILE *stream, long offset, int whence) {
+  stream->read_buffer_stored = 0;
   switch (whence) {
   case SEEK_SET:
     stream->offset_in_file = offset;

@@ -1,7 +1,7 @@
 #include <fcntl.h>
-#include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 // FIXME: All modes not implemented
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/fopen.html
@@ -53,5 +53,7 @@ FILE *fopen(const char *pathname, const char *mode) {
   r->file_size = s.st_size;
   r->cookie = NULL;
   r->fd = fd;
+  r->read_buffer = NULL;
+  r->read_buffer_stored = 0;
   return r;
 }

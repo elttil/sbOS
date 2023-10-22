@@ -34,6 +34,9 @@ struct __IO_FILE {
   uint8_t is_eof;
   uint8_t has_error;
   uint64_t file_size;
+  uint8_t *read_buffer;
+  uint32_t read_buffer_stored;
+  uint32_t read_buffer_has_read;
   void *cookie;
 };
 
