@@ -1,8 +1,6 @@
-#CC="/home/anton/opt/cross/bin/i686-elf-gcc"
-#AR="/home/anton/opt/cross/bin/i686-elf-ar"
-CC="/home/anton/prj/osdev/sysroot/bin/i686-sb-gcc"
-AR="/home/anton/prj/osdev/sysroot/bin/i686-sb-ar"
-CFLAGS = -O0 -Wall -Wextra -pedantic -Wimplicit-fallthrough -static -Wno-undef
+CC="i686-sb-gcc"
+AR="i686-sb-ar"
+CFLAGS = -O2 -Wall -Wextra -pedantic -Wimplicit-fallthrough -static -Wno-undef
 BINS=libjson.a
 all: $(BINS)
 LIBS=-L./hashmap -lhashmap

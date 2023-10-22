@@ -12,15 +12,5 @@ toolchain/bin/
 toolchain/binutils-*/
 toolchain/gcc-*/
 toolchain/build-*
-userland/*
-userland/terminal/term
-!userland/libc/*
-!userland/minibox/*
-!userland/windowserver/*
-!userland/terminal/*
-!userland/libgui/*
-!userland/snake/*
-!userland/ante/*
-!userland/ante/*
 ext2.img
 mount

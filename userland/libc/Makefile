@@ -1,6 +1,6 @@
-CC="/home/anton/prj/osdev/sysroot/bin/i686-sb-gcc"
-AR="/home/anton/prj/osdev/sysroot/bin/i686-sb-ar"
-AS="/home/anton/prj/osdev/sysroot/bin/i686-sb-as"
+CC="i686-sb-gcc"
+AR="i686-sb-ar"
+AS="i686-sb-as"
 #CFLAGS = -ggdb -ffreestanding -O0 -Wall -Wextra -pedantic -mgeneral-regs-only -Wimplicit-fallthrough -I./include/ -static -fsanitize=shift,signed-integer-overflow,bounds
 CFLAGS = -ggdb -ffreestanding -O2 -Wall -pedantic -Wimplicit-fallthrough -I./include/ -static
 #BINS=c.a libc.o crt0.o malloc.o pty.o mmap.o
@@ -18,9 +18,9 @@ libc.a: $(OBJ)
 	$(AR) rcs libc.a $(OBJ)
 
 install:
-	cp crt0.o /home/anton/prj/osdev/sysroot/lib/
-	cp libc.a /home/anton/prj/osdev/sysroot/lib/
-	cp -r include /home/anton/prj/osdev/sysroot/usr/
+	cp crt0.o ../../sysroot/lib/
+	cp libc.a ../../sysroot/lib/
+	cp -r include ../../sysroot/usr/
 
 clean:
 	rm libc.a *.o */*.o */*/*.o
