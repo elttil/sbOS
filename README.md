@@ -24,10 +24,16 @@ as GRUB).
 
 and some other stuff.
 
+## Screenshot
+
+![sbOS running DOOM](doom.png "sbOS running DOOM")
+
+sbOS running DOOM, more specifically [doomgeneric](https://github.com/ozkl/doomgeneric) created by [ozkl](https://github.com/ozkl)
+
 ## How do I run it?
 
-You shouldn't, it is very incomplete and does not have much intreasting
-sutff in the userland yet. Setup is currently also sligthly painful if
+You shouldn't, it is very incomplete and does not have much interesting
+sutff in the userland yet. Setup is currently also slightly painful if
 you don't know what you are doing.
 
 ## Why?
