@@ -1,0 +1,3 @@
+[submodule "crypto/SHA1"]
+	path = crypto/SHA1
+	url = git@github.com:elttil/SHA1.git
