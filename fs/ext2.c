@@ -692,15 +692,12 @@ int ext2_create_file(const char *path, int mode) {
 }
 
 vfs_inode_t *ext2_mount(void) {
-  vfs_inode_t *root = kmalloc_eternal(sizeof(vfs_inode_t));
-  root->open = ext2_open;
-  root->read = ext2_read;
-  root->write = ext2_write;
-  root->close = ext2_close;
-  root->create_file = ext2_create_file;
-  root->create_directory = ext2_create_directory;
   parse_superblock();
-  return root;
+  return vfs_create_inode(0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/,
+                          0 /*can_write*/, 0 /*is_open*/,
+                          NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
+                          ext2_create_file, ext2_read, ext2_write, ext2_close,
+                          ext2_create_directory, NULL /*get_vm_object*/);
 }
 
 void parse_superblock(void) {
