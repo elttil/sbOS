@@ -136,4 +136,5 @@ size_t ext2_read_file_offset(const char *file, unsigned char *data,
                              uint64_t *file_size);
 size_t ext2_read_file(const char *file, unsigned char *data, size_t size,
                       uint64_t *file_size);
+int ext2_create_directory(const char *path, int mode);
 #endif

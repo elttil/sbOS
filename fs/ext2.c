@@ -529,96 +529,157 @@ uint64_t end_of_last_entry_position(int dir_inode, uint64_t *entry_offset,
   return pos;
 }
 
-int ext2_create_entry(const char *path, int mode, int *error) {
-  (void)mode;
-  *error = 0;
-  // Check if the file already exists
-  {
-    uint32_t inode_num = ext2_find_inode(path);
-    if (0 != inode_num) {
-      klog("ext2_create_file: File already exists", LOG_WARN);
-      *error = 1;
-      return inode_num;
-    }
-  }
+void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
+                       const char *name) {
+  uint64_t entry_offset = 0;
+  direntry_header_t meta;
+  end_of_last_entry_position(directory_inode, &entry_offset, &meta);
 
-  uint32_t parent_inode;
-  // Get the parent directory
-  char path_buffer[strlen(path) + 1];
-  strcpy(path_buffer, path);
-  char *e = path_buffer;
+  uint32_t padding_in_use = block_byte_size - entry_offset;
+
+  //  assert(padding_in_use == meta.size);
+  assert(padding_in_use >=
+         (sizeof(direntry_header_t) + entry_header.name_length));
+
+  // Modify the entry to have its real size
+  meta.size = sizeof(direntry_header_t) + meta.name_length;
+  meta.size += (4 - (meta.size % 4));
+  write_inode(directory_inode, (unsigned char *)&meta,
+              sizeof(direntry_header_t), entry_offset, NULL, 0);
+
+  // Create new entry
+  uint32_t new_entry_offset = entry_offset + meta.size;
+  entry_header.size = (sizeof(direntry_header_t) + entry_header.name_length);
+  entry_header.size += (4 - (entry_header.size % 4));
+
+  uint32_t length_till_next_block = 1024 - (new_entry_offset % 1024);
+  if (0 == length_till_next_block)
+    length_till_next_block = 1024;
+  assert(entry_header.size < length_till_next_block);
+  entry_header.size = length_till_next_block;
+
+  uint8_t buffer[entry_header.size];
+  memset(buffer, 0, entry_header.size);
+  memcpy(buffer, &entry_header, sizeof(entry_header));
+  memcpy(buffer + sizeof(entry_header), name, entry_header.name_length);
+  write_inode(directory_inode, (unsigned char *)buffer, entry_header.size,
+              new_entry_offset, NULL, 0);
+}
+
+int ext2_find_parent(char *path, uint32_t *parent_inode, char **filename) {
+  char *e = path;
   for (; *e; e++)
     ;
   for (; *e != '/'; e--)
     ;
   *e = '\0';
-  if (*path_buffer == '\0') {
-    parent_inode = EXT2_ROOT_INODE;
+  *filename = e + 1;
+  if (*path == '\0') {
+    *parent_inode = EXT2_ROOT_INODE;
+    return 1;
   } else {
-    parent_inode = ext2_find_inode(path_buffer);
+    int r = ext2_find_inode(path);
+    if (0 == r)
+      return 0;
+    *parent_inode = r;
+    return 1;
   }
-  if (0 == parent_inode) { // Parent does not exist
-    klog("ext2_create_file: Parent does not exist", LOG_WARN);
-    *error = 1;
-    return -1;
+  return 0;
+}
+
+int ext2_create_directory(const char *path, int mode) {
+  (void)mode;
+  // Check if the directory already exists
+  uint32_t inode_num = ext2_find_inode(path);
+  if (0 != inode_num) {
+    klog("ext2_create_directory: Directory already exists", LOG_WARN);
+    return inode_num;
   }
 
-  const char *filename = e + 1;
+  uint32_t parent_inode;
+  // Get the parent directory
+  char path_buffer[strlen(path) + 1];
+  char *filename;
+  strcpy(path_buffer, path);
+  if (!ext2_find_parent(path_buffer, &parent_inode, &filename)) {
+    klog("ext2_create_file: Parent does not exist", LOG_WARN);
+    return -1;
+  }
 
   int new_file_inode = get_free_inode(1);
   if (-1 == new_file_inode) {
     klog("ext2_create_file: Unable to find free inode", LOG_WARN);
-    *error = 1;
     return -1;
   }
   assert(0 != new_file_inode);
 
-  uint64_t entry_offset = 0;
-  direntry_header_t meta;
-  end_of_last_entry_position(parent_inode, &entry_offset, &meta);
+  direntry_header_t entry_header;
+  entry_header.inode = new_file_inode;
+  entry_header.name_length = strlen(filename);
+  entry_header.type_indicator = TYPE_INDICATOR_DIRECTORY;
+  entry_header.size = sizeof(entry_header) + entry_header.name_length;
 
-  uint32_t padding_in_use = block_byte_size - entry_offset;
+  ext2_create_entry(parent_inode, entry_header, filename);
+  // Create the inode header
+  uint8_t inode_buffer[inode_size];
+  inode_t *new_inode = (inode_t *)inode_buffer;
+  memset(inode_buffer, 0, inode_size);
+  new_inode->types_permissions = DIRECTORY;
+  new_inode->num_hard_links = 2; // 2 since the directory references
+                                 // itself with the "." entry
+  ext2_write_inode(new_file_inode, new_inode);
 
-  kprintf("meta.size: %x\n", meta.size);
-  kprintf("padding_in_use: %x\n", padding_in_use);
-  //  assert(padding_in_use == meta.size);
-  assert(padding_in_use >= (sizeof(direntry_header_t) + strlen(filename)));
-
-  // Modify the entry to have its real size
-  meta.size = sizeof(direntry_header_t) + meta.name_length;
-  meta.size += (4 - (meta.size % 4));
-  write_inode(parent_inode, (unsigned char *)&meta, sizeof(direntry_header_t),
-              entry_offset, NULL, 0);
-
-  // Create new entry
-  uint32_t new_entry_offset = entry_offset + meta.size;
-  direntry_header_t entry;
-  entry.inode = new_file_inode;
-  entry.type_indicator = TYPE_INDICATOR_REGULAR;
-  entry.name_length = strlen(filename);
-  entry.size = (sizeof(direntry_header_t) + entry.name_length);
-  entry.size += (4 - (entry.size % 4));
-
-  uint32_t length_till_next_block = 1024 - (new_entry_offset % 1024);
-  if (0 == length_till_next_block)
-    length_till_next_block = 1024;
-  assert(entry.size < length_till_next_block);
-  entry.size = length_till_next_block;
-
-  uint8_t buffer[entry.size];
-  memset(buffer, 0, entry.size);
-  memcpy(buffer, &entry, sizeof(entry));
-  memcpy(buffer + sizeof(entry), filename, entry.name_length);
-  write_inode(parent_inode, (unsigned char *)buffer, entry.size,
-              new_entry_offset, NULL, 0);
+  // Populate the new directory with "." and ".."
+  {
+    // "."
+    direntry_header_t child_entry_header;
+    child_entry_header.inode = new_file_inode;
+    child_entry_header.name_length = 1;
+    child_entry_header.type_indicator = TYPE_INDICATOR_DIRECTORY;
+    child_entry_header.size = sizeof(entry_header) + entry_header.name_length;
+    ext2_create_entry(new_file_inode, child_entry_header, ".");
+    // ".."
+    child_entry_header.inode = parent_inode;
+    child_entry_header.name_length = 2;
+    child_entry_header.type_indicator = TYPE_INDICATOR_DIRECTORY;
+    child_entry_header.size = sizeof(entry_header) + entry_header.name_length;
+    ext2_create_entry(new_file_inode, child_entry_header, "..");
+  }
   return new_file_inode;
 }
 
 int ext2_create_file(const char *path, int mode) {
-  int err;
-  int new_file_inode = ext2_create_entry(path, mode, &err);
-  if (err)
-    return 0;
+  // Check if the file already exists
+  uint32_t inode_num = ext2_find_inode(path);
+  if (0 != inode_num) {
+    klog("ext2_create_file: File already exists", LOG_WARN);
+    return inode_num;
+  }
+
+  uint32_t parent_inode;
+  // Get the parent directory
+  char path_buffer[strlen(path) + 1];
+  char *filename;
+  strcpy(path_buffer, path);
+  if (!ext2_find_parent(path_buffer, &parent_inode, &filename)) {
+    klog("ext2_create_file: Parent does not exist", LOG_WARN);
+    return -1;
+  }
+
+  int new_file_inode = get_free_inode(1);
+  if (-1 == new_file_inode) {
+    klog("ext2_create_file: Unable to find free inode", LOG_WARN);
+    return -1;
+  }
+  assert(0 != new_file_inode);
+
+  direntry_header_t entry_header;
+  entry_header.inode = new_file_inode;
+  entry_header.name_length = strlen(filename);
+  entry_header.type_indicator = TYPE_INDICATOR_REGULAR;
+  entry_header.size = sizeof(entry_header) + entry_header.name_length;
+
+  ext2_create_entry(parent_inode, entry_header, filename);
   // Create the inode header
   uint8_t inode_buffer[inode_size];
   inode_t *new_inode = (inode_t *)inode_buffer;
