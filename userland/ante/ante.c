@@ -260,25 +260,18 @@ int open_file(const char *file) {
   return 1;
 }
 
-void run() {
-  struct pollfd fds[1];
-  fds[0].fd = global_w->ws_socket;
-  fds[0].events = POLLIN;
-  fds[0].revents = 0;
-  for (;; fds[0].revents = 0) {
-    poll(fds, 1, 0);
-    if (fds[0].revents & POLLIN) {
-      WS_EVENT e;
-      int rc;
-      if (0 >= (rc = read(global_w->ws_socket, &e, sizeof(e))))
-        continue;
-      if (e.ev.release)
-        continue;
-      if (0 == e.ev.c)
-        continue;
-      key_event(e.ev.c);
-    }
-  }
+void event_handler(WS_EVENT e) {
+  if (WINDOWSERVER_EVENT_WINDOW_EXIT == e.type)
+    exit(0);
+
+  if (WINDOWSERVER_EVENT_KEYPRESS != e.type)
+    return;
+
+  if (e.ev.release)
+    return;
+  if (0 == e.ev.c)
+    return;
+  key_event(e.ev.c);
 }
 
 int main(int argc, char **argv) {
@@ -293,6 +286,6 @@ int main(int argc, char **argv) {
 
   assert(open_file(argv[1]));
   draw_file();
-  run();
+  GUI_EventLoop(global_w, event_handler);
   return 0;
 }
