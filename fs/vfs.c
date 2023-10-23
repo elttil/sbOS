@@ -30,6 +30,7 @@ vfs_inode_t *vfs_create_inode(
     int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
     int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
     void (*close)(vfs_fd_t *fd),
+    int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
                                       vfs_fd_t *fd)) {
   vfs_inode_t *r = kmalloc(sizeof(inode_t));
@@ -45,6 +46,7 @@ vfs_inode_t *vfs_create_inode(
   r->read = read;
   r->write = write;
   r->close = close;
+  r->create_directory = create_directory;
   r->get_vm_object = get_vm_object;
   return r;
 }
@@ -153,6 +155,33 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
   char *final = vfs_clean_path(r, resolved_path);
   //  kfree(r);
   return final;
+}
+
+int vfs_mkdir(const char *path, int mode) {
+  vfs_mounts_t *file_mount = 0;
+  int length = 0;
+  for (int i = 0; i < num_mounts; i++) {
+    int path_len = strlen(mounts[i].path);
+    if (path_len <= length)
+      continue;
+
+    if (isequal_n(mounts[i].path, path, path_len)) {
+      length = path_len;
+      file_mount = &mounts[i];
+    }
+  }
+  if (1 != length)
+    path += length;
+
+  if (!file_mount) {
+    kprintf("vfs_internal_open could not find mounted path for file : %s\n",
+            path);
+    return 0;
+  }
+  assert(file_mount->local_root->create_directory);
+  // TODO: Error checking, don't just assume it is fine
+  file_mount->local_root->create_directory(path, mode);
+  return 0;
 }
 
 int vfs_open(const char *file, int flags, int mode) {

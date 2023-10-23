@@ -504,7 +504,8 @@ vfs_inode_t *ext2_open(const char *path) {
   return vfs_create_inode(inode_num, type, 1 /*has_data*/, 1 /*can_write*/,
                           1 /*is_open*/, NULL /*internal_object*/, file_size,
                           ext2_open, ext2_create_file, ext2_read, ext2_write,
-                          ext2_close, NULL /*get_vm_object*/);
+                          ext2_close, ext2_create_directory,
+                          NULL /*get_vm_object*/);
 }
 
 uint64_t end_of_last_entry_position(int dir_inode, uint64_t *entry_offset,
@@ -697,6 +698,7 @@ vfs_inode_t *ext2_mount(void) {
   root->write = ext2_write;
   root->close = ext2_close;
   root->create_file = ext2_create_file;
+  root->create_directory = ext2_create_directory;
   parse_superblock();
   return root;
 }

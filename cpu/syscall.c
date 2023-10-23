@@ -16,6 +16,7 @@
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
+#include <scalls/mkdir.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -159,6 +160,7 @@ void (*syscall_functions[])() = {
     (void(*))syscall_socket,    (void(*))syscall_shm_open,
     (void(*))syscall_ftruncate, (void(*))syscall_stat,
     (void(*))syscall_msleep,    (void(*))syscall_uptime,
+    (void(*))syscall_mkdir,
 };
 
 void syscall_function_handler(uint32_t eax, uint32_t arg1, uint32_t arg2,

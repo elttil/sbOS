@@ -31,6 +31,7 @@
 #define SYS_STAT 23
 #define SYS_MSLEEP 24
 #define SYS_UPTIME 25
+#define SYS_MKDIR 26
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

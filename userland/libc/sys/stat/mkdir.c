@@ -1,9 +1,6 @@
 #include <sys/stat.h>
-#include <assert.h>
+#include <syscall.h>
 
 int mkdir(const char *path, mode_t mode) {
-	(void)path;
-	(void)mode;
-	assert(0); // TODO: Implement
-		   return 0;
+  return syscall(SYS_MKDIR, (void *)path, (void *)mode, 0, 0, 0);
 }

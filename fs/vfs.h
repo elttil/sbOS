@@ -47,8 +47,8 @@ struct vfs_fd {
   int flags;
   int mode;
   int reference_count; // Number of usages of this file descriptor,
-                           // once it reaches zero then the contents can
-                           // be freed.
+                       // once it reaches zero then the contents can
+                       // be freed.
   vfs_inode_t *inode;
 };
 
@@ -65,6 +65,7 @@ struct vfs_inode {
   int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd);
   int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd);
   void (*close)(vfs_fd_t *fd);
+  int (*create_directory)(const char *path, int mode);
   vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
                                     vfs_fd_t *fd);
 };
@@ -80,6 +81,7 @@ int vfs_pread(int fd, void *buf, uint64_t count, uint64_t offset);
 vfs_vm_object_t *vfs_get_vm_object(int fd, uint64_t length, uint64_t offset);
 int vfs_dup2(int org_fd, int new_fd);
 vfs_inode_t *vfs_internal_open(const char *file);
+int vfs_mkdir(const char *path, int mode);
 int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd);
 vfs_inode_t *vfs_create_inode(
     int inode_num, int type, uint8_t has_data, uint8_t can_write,
@@ -89,6 +91,7 @@ vfs_inode_t *vfs_create_inode(
     int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
     int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
     void (*close)(vfs_fd_t *fd),
+    int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
                                       vfs_fd_t *fd));
 #endif
