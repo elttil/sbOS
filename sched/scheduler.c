@@ -90,7 +90,7 @@ void __attribute__((optimize("O0"))) free_process(void) {
     if (!current_task->maps[i])
       continue;
     MemoryMap *m = current_task->maps[i];
-    mmu_remove_virtual_physical_address_mapping(m->u_address, 0x1000);
+    mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
   }
 
   // NOTE: Kernel stuff begins at 0x90000000
@@ -350,18 +350,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
     return (void *)-EINVAL;
   }
 
-  vfs_vm_object_t *vmobject = vfs_get_vm_object(fd, length, offset);
-  if (!vmobject) {
-    kprintf("ENODEV\n");
-    return (void *)-ENODEV;
-  }
-
-  if (vmobject->size < length) {
-    kprintf("EOVERFLOW\n");
-    return (void *)-EOVERFLOW; // TODO: Check if this is the correct
-                               // code.
-  }
-
   MemoryMap **ptr = get_free_map();
   if (!ptr) {
     klog("mmap(): No free memory map.", LOG_WARN);
@@ -378,11 +366,29 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
     }
     free_map->u_address = rc;
     free_map->k_address = NULL;
+    free_map->length = length;
     free_map->fd = -1;
     return rc;
   }
 
+  vfs_vm_object_t *vmobject = vfs_get_vm_object(fd, length, offset);
+  if (!vmobject) {
+    kprintf("ENODEV\n");
+    return (void *)-ENODEV;
+  }
+
+  if (vmobject->size < length) {
+    kprintf("EOVERFLOW\n");
+    return (void *)-EOVERFLOW; // TODO: Check if this is the correct
+                               // code.
+  }
+
   if (length > vmobject->size)
     length = vmobject->size;
-  return create_physical_mapping(vmobject->object, length);
+  void *rc = create_physical_mapping(vmobject->object, length);
+  free_map->u_address = rc;
+  free_map->k_address = NULL;
+  free_map->length = length;
+  free_map->fd = fd;
+  return rc;
 }
