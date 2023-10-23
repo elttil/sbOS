@@ -13,7 +13,7 @@
 int mx;
 int my;
 
-void update_display(DISPLAY *disp) {
+void update_display(const DISPLAY *disp) {
   for (int i = 0; i < 20; i++) {
     place_pixel(0xFFFFFFFF, mx + i, my + i);
     place_pixel(0xFFFFFFFF, mx, my + i / 2);
@@ -21,17 +21,19 @@ void update_display(DISPLAY *disp) {
   }
   uint32_t *dst = disp->true_buffer;
   uint32_t *src = disp->back_buffer;
-  for (int i = 0; i < disp->size / disp->bpp; i++) {
+  const uint32_t n = disp->size / disp->bpp;
+  for (int i = 0; i < n; i++) {
     *dst = *src;
     dst++;
     src++;
   }
 }
 
-void draw_wallpaper(DISPLAY *disp) {
+void draw_wallpaper(const DISPLAY *disp) {
   uint32_t *dst = disp->back_buffer;
   uint32_t *src = disp->wallpaper_buffer;
-  for (int i = 0; i < disp->size / disp->bpp; i++) {
+  const uint32_t n = disp->size / disp->bpp;
+  for (int i = 0; i < n; i++) {
     *dst = *src;
     dst++;
     src++;
