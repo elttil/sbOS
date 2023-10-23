@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define WINDOWSERVER_EVENT_KEYPRESS 0
+#define WINDOWSERVER_EVENT_WINDOW_EXIT 1
+
 typedef struct {
   int ws_socket;
   int bitmap_fd;
@@ -31,4 +34,5 @@ void GUI_UpdateWindow(GUI_Window *w);
 void GUI_OverwriteFont(GUI_Window *w, uint32_t px, uint32_t py,
                        const uint32_t color);
 void GUI_ClearScreen(GUI_Window *w, uint32_t color);
+void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev));
 #endif

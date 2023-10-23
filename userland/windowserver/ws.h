@@ -3,6 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define WINDOWSERVER_EVENT_KEYPRESS 0
+#define WINDOWSERVER_EVENT_WINDOW_EXIT 1
+
 typedef struct {
   int fd;
   int bitmap_fd;

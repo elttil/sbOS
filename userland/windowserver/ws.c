@@ -1,13 +1,12 @@
-#include <fcntl.h>
-#include <poll.h>
-#include <stddef.h>
-#include <stdint.h>
-//#include <sys/mman.h>
+#include "ws.h"
 #include "draw.h"
 #include "font.h"
-#include "ws.h"
 #include <assert.h>
+#include <fcntl.h>
+#include <poll.h>
 #include <socket.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -193,7 +192,7 @@ typedef struct {
   struct KEY_EVENT ev;
 } WS_EVENT;
 
-void send_to_window(struct KEY_EVENT ev) {
+void send_key_event_to_window(struct KEY_EVENT ev) {
   WS_EVENT e = {
       .type = 0,
       .ev = ev,
@@ -221,6 +220,13 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
     return 0;
   if (!(ev.mode & (1 << 1)))
     return 0;
+  if ('q' == ev.c) {
+    WS_EVENT e = {
+        .type = WINDOWSERVER_EVENT_WINDOW_EXIT,
+    };
+    write(main_display.active_window->fd, &e, sizeof(e));
+    return 1;
+  }
   if ('n' == ev.c) {
     // Create a new terminal
     int pid = fork();
@@ -230,6 +236,7 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
       execv("/term", argv);
       assert(0);
     }
+    return 1;
   }
   if (!main_display.active_window)
     return 0;
@@ -344,7 +351,7 @@ void parse_keyboard_event(int fd) {
         continue;
       if (!main_display.active_window)
         continue;
-      send_to_window(ev[i]);
+      send_key_event_to_window(ev[i]);
     }
   }
   if (redraw)

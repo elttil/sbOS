@@ -2,6 +2,7 @@
 #include "font.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -155,7 +156,6 @@ char *random_string(void) {
   }
   close(fd);
   r[9] = '\0';
-  printf("r: %s\n", r);
   return r;
 }
 
@@ -230,7 +230,30 @@ typedef struct {
 
 void GUI_ClearScreen(GUI_Window *w, uint32_t color) {
   for (int i = 0; i < w->sx * w->sy; i++)
-    w->bitmap_ptr[i] =color;
+    w->bitmap_ptr[i] = color;
+}
+
+void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev)) {
+  struct pollfd fds[1];
+  fds[0].fd = w->ws_socket;
+  fds[0].events = POLLIN;
+  fds[0].revents = 0;
+  for (;; fds[0].revents = 0) {
+    poll(fds, 1, 0);
+    if (!(fds[0].revents & POLLIN))
+      continue;
+
+    int rc;
+    WS_EVENT e;
+    if (0 >= (rc = read(w->ws_socket, &e, sizeof(e))))
+      continue;
+    if (event_handler) {
+      event_handler(e);
+      continue;
+    }
+    if (WINDOWSERVER_EVENT_WINDOW_EXIT == e.type)
+      exit(0);
+  }
 }
 
 GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
