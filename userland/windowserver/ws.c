@@ -278,10 +278,24 @@ void update_mouse(void) {
   return;
 }
 
+void focus_window(int x, int y) {
+  for (int i = 0; i < 100; i++) {
+    if (!clients[i])
+      continue;
+    WINDOW *w = clients[i]->w;
+    if (w->x < x && x < w->x + w->sx) {
+      if (w->y < y && y < w->y + w->sy) {
+        active_client = clients[i];
+      }
+    }
+  }
+}
+
 void parse_mouse_event(int fd) {
   int16_t xc = 0;
   int16_t yc = 0;
   int middle_button = 0;
+  int left_button = 0;
   for (;;) {
     struct mouse_event e[100];
     int rc = read(fd, e, sizeof(e));
@@ -293,6 +307,7 @@ void parse_mouse_event(int fd) {
       uint8_t xs = e[i].buttons & (1 << 4);
       uint8_t ys = e[i].buttons & (1 << 5);
       middle_button = e[i].buttons & (1 << 2);
+      left_button = e[i].buttons & (1 << 0);
       int16_t x = e[i].x;
       int16_t y = e[i].y;
       if (xs)
@@ -309,6 +324,9 @@ void parse_mouse_event(int fd) {
     mouse_x = 0;
   if (mouse_y < 0)
     mouse_y = 0;
+  if (left_button) {
+    focus_window(mouse_x, mouse_y);
+  }
   if (middle_button) {
     if (active_client) {
       active_client->w->x += xc;
