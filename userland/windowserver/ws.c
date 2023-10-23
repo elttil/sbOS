@@ -69,6 +69,17 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   disp->true_buffer = mmap(NULL, size, 0, 0, disp->vga_fd, 0);
   disp->back_buffer = malloc(size + 0x1000);
   disp->clients = clients;
+
+  disp->wallpaper_fd = shm_open("wallpaper", O_RDWR, 0);
+  assert(disp->wallpaper_fd >= 0);
+  ftruncate(disp->wallpaper_fd, size);
+  void *rc = mmap(NULL, size, 0, 0, disp->wallpaper_fd, 0);
+  assert(rc);
+  disp->wallpaper_buffer = rc;
+  for (int i = 0; i < disp->size / BPP; i++) {
+    uint32_t *p = disp->wallpaper_buffer + i * sizeof(uint32_t);
+    *p = 0xFFFFFF;
+  }
 }
 
 void setup(void) {

@@ -19,6 +19,8 @@ typedef struct {
 
 typedef struct {
   int vga_fd;
+  int wallpaper_fd;
+  uint8_t *wallpaper_buffer;
   uint8_t *back_buffer;
   uint8_t *true_buffer;
   size_t size;
