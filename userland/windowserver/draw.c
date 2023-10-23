@@ -16,13 +16,23 @@ void update_display(DISPLAY *disp) {
     place_pixel(0xFFFFFFFF, mx, my + i / 2);
     place_pixel(0xFFFFFFFF, mx + i / 2, my);
   }
-  for (int i = 0; i < disp->size; i++)
-    disp->true_buffer[i] = disp->back_buffer[i];
-  //  memcpy(disp->true_buffer, disp->back_buffer, disp->size);
+  uint32_t *dst = disp->true_buffer;
+  uint32_t *src = disp->back_buffer;
+  for (int i = 0; i < disp->size / BPP; i++) {
+    *dst = *src;
+    dst++;
+    src++;
+  }
 }
 
 void draw_wallpaper(DISPLAY *disp) {
-memcpy(disp->back_buffer, disp->wallpaper_buffer, disp->size);
+  uint32_t *dst = disp->back_buffer;
+  uint32_t *src = disp->wallpaper_buffer;
+  for (int i = 0; i < disp->size / BPP; i++) {
+    *dst = *src;
+    dst++;
+    src++;
+  }
 }
 
 void draw_mouse(DISPLAY *disp, int mouse_x, int mouse_y) {
