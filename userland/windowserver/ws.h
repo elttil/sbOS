@@ -22,7 +22,10 @@ typedef struct {
   uint8_t *wallpaper_buffer;
   uint8_t *back_buffer;
   uint8_t *true_buffer;
-  size_t size;
+  uint32_t size;
+  uint32_t width;
+  uint32_t height;
+  uint32_t bpp;
   uint8_t border_size;
   uint8_t border_color;
   uint8_t wallpaper_color;

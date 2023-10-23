@@ -69,13 +69,30 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   void *rc = mmap(NULL, size, 0, 0, disp->wallpaper_fd, 0);
   assert(rc);
   disp->wallpaper_buffer = rc;
-  for (int i = 0; i < disp->size / BPP; i++) {
+  for (int i = 0; i < disp->size / disp->bpp; i++) {
     uint32_t *p = disp->wallpaper_buffer + i * sizeof(uint32_t);
     *p = 0xFFFFFF;
   }
 }
 
+struct DISPLAY_INFO {
+  uint32_t width;
+  uint32_t height;
+  uint8_t bpp;
+};
+
 void setup(void) {
+  struct DISPLAY_INFO disp_info;
+  {
+    int info_fd = open("/dev/display_info", O_READ, 0);
+    assert(sizeof(disp_info) == read(info_fd, &disp_info, sizeof(disp_info)));
+    close(info_fd);
+  }
+
+  main_display.width = disp_info.width;
+  main_display.height = disp_info.height;
+  main_display.bpp = disp_info.bpp/8;
+
   setup_display(&main_display, "/dev/vbe", 0xBB8000);
   draw_wallpaper(&main_display);
   update_display(&main_display);
@@ -207,11 +224,11 @@ void clamp_screen_position(int *x, int *y) {
   if (0 > *y) {
     *y = 0;
   }
-  if (WIDTH < *x) {
-    *x = WIDTH;
+  if (main_display.width < *x) {
+    *x = main_display.width;
   }
-  if (HEIGHT < *y) {
-    *y = HEIGHT;
+  if (main_display.height < *y) {
+    *y = main_display.height;
   }
 }
 

@@ -2,10 +2,13 @@
 #include <string.h>
 
 #define place_pixel(_p, _w, _h)                                                \
-  { *(uint32_t *)(disp->back_buffer + BPP * (_w) + (WIDTH * BPP * (_h))) = _p; }
+  {                                                                            \
+    *(uint32_t *)(disp->back_buffer + disp->bpp * (_w) +                       \
+                  (disp->width * disp->bpp * (_h))) = _p;                      \
+  }
 
 #define place_pixel_pos(_p, _pos)                                              \
-  { *(uint32_t *)(disp->back_buffer + BPP * (_pos)) = _p; }
+  { *(uint32_t *)(disp->back_buffer + disp->bpp * (_pos)) = _p; }
 
 int mx;
 int my;
@@ -18,7 +21,7 @@ void update_display(DISPLAY *disp) {
   }
   uint32_t *dst = disp->true_buffer;
   uint32_t *src = disp->back_buffer;
-  for (int i = 0; i < disp->size / BPP; i++) {
+  for (int i = 0; i < disp->size / disp->bpp; i++) {
     *dst = *src;
     dst++;
     src++;
@@ -28,7 +31,7 @@ void update_display(DISPLAY *disp) {
 void draw_wallpaper(DISPLAY *disp) {
   uint32_t *dst = disp->back_buffer;
   uint32_t *src = disp->wallpaper_buffer;
-  for (int i = 0; i < disp->size / BPP; i++) {
+  for (int i = 0; i < disp->size / disp->bpp; i++) {
     *dst = *src;
     dst++;
     src++;
@@ -46,12 +49,13 @@ void draw_line(DISPLAY *disp, int sx, int sy, int dx, int dy, uint32_t color) {
   int y = sy;
   for (;;) {
     // Bounds checking
-    if (y * WIDTH + x > HEIGHT * WIDTH)
+    if (y * disp->width + x > disp->height * disp->width)
       break;
 
     if (x >= dx - 1 && y >= dy - 1)
       break;
-    uint32_t *ptr = disp->back_buffer + (BPP * y * WIDTH) + (x * BPP);
+    uint32_t *ptr =
+        disp->back_buffer + (disp->bpp * y * disp->width) + (x * disp->bpp);
     *ptr = color;
     if (x < dx - 1)
       x++;
@@ -82,10 +86,10 @@ void draw_window(DISPLAY *disp, const WINDOW *w) {
   }
 
   for (int i = 0; i < sy; i++) {
-    if ((i + py) * WIDTH + px > HEIGHT * WIDTH)
+    if ((i + py) * disp->width + px > disp->height * disp->width)
       break;
-    uint32_t *ptr = disp->back_buffer + BPP * ((i + py) * WIDTH) + px * BPP;
-    if (i * sx > HEIGHT * WIDTH)
+    uint32_t *ptr = disp->back_buffer + disp->bpp * ((i + py) * disp->width) + px * disp->bpp;
+    if (i * sx > disp->height * disp->width)
       break;
     uint32_t *bm = &w->bitmap_ptr[i * sx];
     for (int j = 0; j < sx; j++) {
