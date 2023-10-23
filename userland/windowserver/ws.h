@@ -23,6 +23,7 @@ typedef struct {
   uint8_t border_size;
   uint8_t border_color;
   uint8_t wallpaper_color;
+  WINDOW *active_window;
   WINDOW **windows;
 } DISPLAY;
 #endif

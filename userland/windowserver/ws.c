@@ -16,7 +16,6 @@
 #define WINDOW_SERVER_SOCKET "/windowserver"
 
 WINDOW *windows[100];
-WINDOW *active_window;
 
 int mouse_x = 0;
 int mouse_y = 0;
@@ -84,7 +83,7 @@ void setup(void) {
 
   main_display.border_size = 1;
   main_display.border_color = 0xF;
-  active_window = NULL;
+  main_display.active_window = NULL;
   for (int i = 0; i < 100; i++) {
     windows[i] = NULL;
   }
@@ -143,7 +142,7 @@ void add_window(int fd) {
   WINDOW *w = windows[i] = malloc(sizeof(WINDOW));
   w->fd = window_socket;
   w->bitmap_ptr = NULL;
-  active_window = w;
+  main_display.active_window = w;
 }
 
 #define CLIENT_EVENT_CREATESCREEN 0
@@ -199,7 +198,7 @@ void send_to_window(struct KEY_EVENT ev) {
       .type = 0,
       .ev = ev,
   };
-  write(active_window->fd, &e, sizeof(e));
+  write(main_display.active_window->fd, &e, sizeof(e));
 }
 
 void clamp_screen_position(int *x, int *y) {
@@ -232,7 +231,7 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
       assert(0);
     }
   }
-  if (!active_window)
+  if (!main_display.active_window)
     return 0;
   int x = 0;
   int y = 0;
@@ -251,9 +250,10 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
     break;
   }
   if (x || y) {
-    active_window->x += x;
-    active_window->y += y;
-    clamp_screen_position(&active_window->x, &active_window->y);
+    main_display.active_window->x += x;
+    main_display.active_window->y += y;
+    clamp_screen_position(&main_display.active_window->x,
+                          &main_display.active_window->y);
     *redraw = 1;
     return 1;
   }
@@ -278,7 +278,7 @@ void focus_window(int x, int y) {
     WINDOW *w = windows[i];
     if (w->x < x && x < w->x + w->sx) {
       if (w->y < y && y < w->y + w->sy) {
-        active_window = windows[i];
+        main_display.active_window = windows[i];
       }
     }
   }
@@ -321,10 +321,11 @@ void parse_mouse_event(int fd) {
     focus_window(mouse_x, mouse_y);
   }
   if (middle_button) {
-    if (active_window) {
-      active_window->x += xc;
-      active_window->y -= yc;
-      clamp_screen_position(&active_window->x, &active_window->y);
+    if (main_display.active_window) {
+      main_display.active_window->x += xc;
+      main_display.active_window->y -= yc;
+      clamp_screen_position(&main_display.active_window->x,
+                            &main_display.active_window->y);
     }
   }
   update_mouse();
@@ -341,7 +342,7 @@ void parse_keyboard_event(int fd) {
     for (int i = 0; i < n; i++) {
       if (windowserver_key_events(ev[i], &redraw))
         continue;
-      if (!active_window)
+      if (!main_display.active_window)
         continue;
       send_to_window(ev[i]);
     }
@@ -366,10 +367,10 @@ WINDOW *get_window(int fd, int *index) {
 void kill_window(int i) {
   windows[i] = NULL;
   update_full_display(&main_display, mouse_x, mouse_y);
-  active_window = NULL;
+  main_display.active_window = NULL;
   for (int i = 0; i < 100; i++) {
     if (windows[i]) {
-      active_window = windows[i];
+      main_display.active_window = windows[i];
       break;
     }
   }
