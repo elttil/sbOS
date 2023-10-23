@@ -66,11 +66,11 @@ void draw_window(DISPLAY *disp, const WINDOW *w) {
 
 void update_active_window(DISPLAY *disp) {
   for (int i = 0; i < 100; i++) {
-    if (!disp->clients[i])
+    if (!disp->windows[i])
       continue;
-    if (!disp->clients[i]->w)
+    if (!disp->windows[i]->bitmap_ptr)
       continue;
-    draw_window(disp, disp->clients[i]->w);
+    draw_window(disp, disp->windows[i]);
   }
 }
 

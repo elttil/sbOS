@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
+  int fd;
   int bitmap_fd;
   uint32_t *bitmap_ptr;
   int x;
@@ -11,11 +12,6 @@ typedef struct {
   int sx;
   int sy;
 } WINDOW;
-
-typedef struct {
-  int fd;
-  WINDOW *w;
-} CLIENT;
 
 typedef struct {
   int vga_fd;
@@ -27,6 +23,6 @@ typedef struct {
   uint8_t border_size;
   uint8_t border_color;
   uint8_t wallpaper_color;
-  CLIENT **clients;
+  WINDOW **windows;
 } DISPLAY;
 #endif

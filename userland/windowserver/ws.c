@@ -15,17 +15,12 @@
 
 #define WINDOW_SERVER_SOCKET "/windowserver"
 
-CLIENT *clients[100];
-CLIENT *active_client;
+WINDOW *windows[100];
+WINDOW *active_window;
 
 int mouse_x = 0;
 int mouse_y = 0;
 
-// void *true_display;
-//  void *buffer_display;
-//  uint64_t display_size;
-//  int border_size;
-//  uint8_t border_color;
 DISPLAY main_display;
 
 struct pollfd *fds;
@@ -68,7 +63,7 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   }
   disp->true_buffer = mmap(NULL, size, 0, 0, disp->vga_fd, 0);
   disp->back_buffer = malloc(size + 0x1000);
-  disp->clients = clients;
+  disp->windows = windows;
 
   disp->wallpaper_fd = shm_open("wallpaper", O_RDWR, 0);
   assert(disp->wallpaper_fd >= 0);
@@ -89,9 +84,9 @@ void setup(void) {
 
   main_display.border_size = 1;
   main_display.border_color = 0xF;
-  active_client = NULL;
+  active_window = NULL;
   for (int i = 0; i < 100; i++) {
-    clients[i] = NULL;
+    windows[i] = NULL;
   }
 
   num_fds = 100;
@@ -137,32 +132,30 @@ void add_fd(int fd) {
   fds[i].revents = 0;
 }
 
-void add_client(int fd) {
-  int client_socket = accept(fd, NULL, NULL);
-  add_fd(client_socket);
+void add_window(int fd) {
+  int window_socket = accept(fd, NULL, NULL);
+  add_fd(window_socket);
   int i;
   for (i = 0; i < 100; i++)
-    if (!clients[i])
+    if (!windows[i])
       break;
-  printf("adding client: %d\n", i);
-  CLIENT *c = clients[i] = malloc(sizeof(CLIENT));
-  c->fd = client_socket;
-  active_client = c;
-  printf("clients[0]: %x\n", clients[0]);
+  printf("adding window: %d\n", i);
+  WINDOW *w = windows[i] = malloc(sizeof(WINDOW));
+  w->fd = window_socket;
+  w->bitmap_ptr = NULL;
+  active_window = w;
 }
 
 #define CLIENT_EVENT_CREATESCREEN 0
 #define CLIENT_EVENT_UPDATESCREEN 1
 
-void add_window(CLIENT *c, int fd, int x, int y, int sx, int sy) {
-  WINDOW *w = malloc(sizeof(WINDOW));
+void create_window(WINDOW *w, int fd, int x, int y, int sx, int sy) {
   w->bitmap_fd = fd;
   w->bitmap_ptr = mmap(NULL, sx * sy * sizeof(uint32_t), 0, 0, fd, 0);
   w->x = x;
   w->y = y;
   w->sx = sx;
   w->sy = sy;
-  c->w = w;
 }
 
 typedef struct {
@@ -173,9 +166,9 @@ typedef struct {
   uint8_t name_len;
 } WS_EVENT_CREATE;
 
-void parse_client_event(CLIENT *c) {
+void parse_window_event(WINDOW *w) {
   uint8_t event_type;
-  if (0 == read(c->fd, &event_type, sizeof(uint8_t))) {
+  if (0 == read(w->fd, &event_type, sizeof(uint8_t))) {
     printf("empty\n");
     return;
   }
@@ -185,13 +178,13 @@ void parse_client_event(CLIENT *c) {
   }
   if (1 == event_type) {
     WS_EVENT_CREATE e;
-    for (; 0 == read(c->fd, &e, sizeof(e));)
+    for (; 0 == read(w->fd, &e, sizeof(e));)
       ;
     uint8_t bitmap_name[e.name_len + 1];
-    read(c->fd, bitmap_name, e.name_len);
+    read(w->fd, bitmap_name, e.name_len);
     bitmap_name[e.name_len] = '\0';
     int bitmap_fd = shm_open(bitmap_name, O_RDWR, O_CREAT);
-    add_window(c, bitmap_fd, e.px, e.py, e.sx, e.sy);
+    create_window(w, bitmap_fd, e.px, e.py, e.sx, e.sy);
     update_full_display(&main_display, mouse_x, mouse_y);
   }
 }
@@ -201,12 +194,12 @@ typedef struct {
   struct KEY_EVENT ev;
 } WS_EVENT;
 
-void send_to_client(struct KEY_EVENT ev) {
+void send_to_window(struct KEY_EVENT ev) {
   WS_EVENT e = {
       .type = 0,
       .ev = ev,
   };
-  write(active_client->fd, &e, sizeof(e));
+  write(active_window->fd, &e, sizeof(e));
 }
 
 void clamp_screen_position(int *x, int *y) {
@@ -239,7 +232,7 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
       assert(0);
     }
   }
-  if (!active_client)
+  if (!active_window)
     return 0;
   int x = 0;
   int y = 0;
@@ -258,9 +251,9 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
     break;
   }
   if (x || y) {
-    active_client->w->x += x;
-    active_client->w->y += y;
-    clamp_screen_position(&active_client->w->x, &active_client->w->y);
+    active_window->x += x;
+    active_window->y += y;
+    clamp_screen_position(&active_window->x, &active_window->y);
     *redraw = 1;
     return 1;
   }
@@ -280,12 +273,12 @@ void update_mouse(void) {
 
 void focus_window(int x, int y) {
   for (int i = 0; i < 100; i++) {
-    if (!clients[i])
+    if (!windows[i])
       continue;
-    WINDOW *w = clients[i]->w;
+    WINDOW *w = windows[i];
     if (w->x < x && x < w->x + w->sx) {
       if (w->y < y && y < w->y + w->sy) {
-        active_client = clients[i];
+        active_window = windows[i];
       }
     }
   }
@@ -328,10 +321,10 @@ void parse_mouse_event(int fd) {
     focus_window(mouse_x, mouse_y);
   }
   if (middle_button) {
-    if (active_client) {
-      active_client->w->x += xc;
-      active_client->w->y -= yc;
-      clamp_screen_position(&active_client->w->x, &active_client->w->y);
+    if (active_window) {
+      active_window->x += xc;
+      active_window->y -= yc;
+      clamp_screen_position(&active_window->x, &active_window->y);
     }
   }
   update_mouse();
@@ -348,29 +341,38 @@ void parse_keyboard_event(int fd) {
     for (int i = 0; i < n; i++) {
       if (windowserver_key_events(ev[i], &redraw))
         continue;
-      if (!active_client)
+      if (!active_window)
         continue;
-      send_to_client(ev[i]);
+      send_to_window(ev[i]);
     }
   }
   if (redraw)
     update_full_display(&main_display, mouse_x, mouse_y);
 }
 
-CLIENT *get_client(int fd) {
+WINDOW *get_window(int fd, int *index) {
   for (int i = 0; i < 100; i++) {
-    if (!clients[i])
+    if (!windows[i])
       continue;
-    if (clients[i]->fd == fd)
-      return clients[i];
+    if (windows[i]->fd == fd) {
+      if (index)
+        *index = i;
+      return windows[i];
+    }
   }
   return NULL;
 }
 
-void kill_client(CLIENT *c) {
-  c->w = NULL;
+void kill_window(int i) {
+  windows[i] = NULL;
   update_full_display(&main_display, mouse_x, mouse_y);
-  active_client = clients[0];
+  active_window = NULL;
+  for (int i = 0; i < 100; i++) {
+    if (windows[i]) {
+      active_window = windows[i];
+      break;
+    }
+  }
 }
 
 void parse_revents(struct pollfd *fds, size_t s) {
@@ -380,7 +382,7 @@ void parse_revents(struct pollfd *fds, size_t s) {
     if (-1 == fds[i].fd)
       continue;
     if (socket_fd_poll == i && fds[i].revents & POLLIN) {
-      add_client(fds[i].fd);
+      add_window(fds[i].fd);
       continue;
     } else if (keyboard_fd_poll == i) {
       parse_keyboard_event(fds[i].fd);
@@ -389,13 +391,14 @@ void parse_revents(struct pollfd *fds, size_t s) {
       parse_mouse_event(fds[i].fd);
       continue;
     }
-    CLIENT *c = get_client(fds[i].fd);
-    assert(c);
+    int index;
+    WINDOW *w = get_window(fds[i].fd, &index);
+    assert(w);
     if (fds[i].revents & POLLHUP) {
-      kill_client(c);
+      kill_window(index);
       fds[i].fd = -1;
     } else {
-      parse_client_event(c);
+      parse_window_event(w);
     }
   }
 }
