@@ -108,6 +108,7 @@ __attribute__((interrupt)) void general_protection_fault(registers_t *regs) {
 __attribute__((interrupt)) void double_fault(registers_t *regs) {
   (void)regs;
   klog("DOUBLE FAULT, THIS IS REALLY BAD", LOG_ERROR);
+  asm("cli");
   asm("hlt");
   for (;;)
     ;
@@ -258,6 +259,7 @@ void idt_init(void) {
   //  IRQ_set_mask(0xc);
   IRQ_set_mask(0xe);
   IRQ_clear_mask(2);
+  IRQ_set_mask(0xB);
 
   idtr.interrupt_table = (struct IDT_Descriptor **)&IDT_Entry;
   idtr.size = (sizeof(struct IDT_Descriptor) * IDT_MAX_ENTRY) - 1;
