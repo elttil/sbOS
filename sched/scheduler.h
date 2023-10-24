@@ -23,6 +23,7 @@ int msync(void *addr, size_t length, int flags);
 typedef struct {
   void *u_address;
   void *k_address;
+  uint32_t length;
   int fd;
 } MemoryMap;
 
