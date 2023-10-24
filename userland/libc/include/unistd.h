@@ -10,7 +10,7 @@ extern int opterr, optind, optopt;
 extern char *optarg;
 
 int close(int fildes);
-int ftruncate(int fildes, uint64_t length);
+int ftruncate(int fildes, size_t length);
 int execv(char *path, char **argv);
 int pipe(int fd[2]);
 int dup2(int org_fd, int new_fd);

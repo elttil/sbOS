@@ -505,7 +505,7 @@ vfs_inode_t *ext2_open(const char *path) {
                           1 /*is_open*/, NULL /*internal_object*/, file_size,
                           ext2_open, ext2_create_file, ext2_read, ext2_write,
                           ext2_close, ext2_create_directory,
-                          NULL /*get_vm_object*/);
+                          NULL /*get_vm_object*/, NULL/*truncate*/);
 }
 
 uint64_t end_of_last_entry_position(int dir_inode, uint64_t *entry_offset,
@@ -697,7 +697,7 @@ vfs_inode_t *ext2_mount(void) {
                           0 /*can_write*/, 0 /*is_open*/,
                           NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
                           ext2_create_file, ext2_read, ext2_write, ext2_close,
-                          ext2_create_directory, NULL /*get_vm_object*/);
+                          ext2_create_directory, NULL /*get_vm_object*/, NULL/*truncate*/);
 }
 
 void parse_superblock(void) {

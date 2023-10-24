@@ -10,11 +10,5 @@ typedef struct SYS_SHM_OPEN_PARAMS {
   mode_t mode;
 } __attribute__((packed)) SYS_SHM_OPEN_PARAMS;
 
-typedef struct SYS_FTRUNCATE_PARAMS {
-  int fildes;
-  uint64_t length;
-} __attribute__((packed)) SYS_FTRUNCATE_PARAMS;
-
 int syscall_shm_open(SYS_SHM_OPEN_PARAMS *args);
-int syscall_ftruncate(SYS_FTRUNCATE_PARAMS *args);
 #endif

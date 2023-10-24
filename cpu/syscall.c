@@ -13,6 +13,7 @@
 #include <scalls/msleep.h>
 #include <scalls/ppoll.h>
 #include <scalls/shm.h>
+#include <scalls/ftruncate.h>
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>

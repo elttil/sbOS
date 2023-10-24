@@ -128,7 +128,7 @@ int socket(int domain, int type, int protocol) {
       0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
       1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
       NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
-      socket_close, NULL/*create_directory*/, NULL /*get_vm_object*/);
+      socket_close, NULL/*create_directory*/, NULL /*get_vm_object*/, NULL/*truncate*/);
 
   vfs_fd_t *fd;
   int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);

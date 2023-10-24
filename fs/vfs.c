@@ -32,7 +32,8 @@ vfs_inode_t *vfs_create_inode(
     void (*close)(vfs_fd_t *fd),
     int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
-                                      vfs_fd_t *fd)) {
+                                      vfs_fd_t *fd),
+    int (*truncate)(vfs_fd_t *fd, size_t length)) {
   vfs_inode_t *r = kmalloc(sizeof(inode_t));
   r->inode_num = inode_num;
   r->type = type;
@@ -48,6 +49,7 @@ vfs_inode_t *vfs_create_inode(
   r->close = close;
   r->create_directory = create_directory;
   r->get_vm_object = get_vm_object;
+  r->truncate = truncate;
   return r;
 }
 
@@ -289,6 +291,21 @@ int vfs_dup2(int org_fd, int new_fd) {
       get_current_task()->file_descriptors[org_fd];
   get_current_task()->file_descriptors[new_fd]->reference_count++;
   return 1;
+}
+
+int vfs_ftruncate(int fd, size_t length) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  if (!fd_ptr)
+    return -EBADF;
+  if (!(fd_ptr->flags & O_READ))
+    return -EINVAL;
+  vfs_inode_t *inode = fd_ptr->inode;
+  if (!inode)
+    return -EINVAL;
+  if (!inode->truncate)
+    return -EINVAL;
+
+  return inode->truncate(fd_ptr, length);
 }
 
 void vfs_mount(char *path, vfs_inode_t *local_root) {

@@ -68,6 +68,7 @@ struct vfs_inode {
   int (*create_directory)(const char *path, int mode);
   vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
                                     vfs_fd_t *fd);
+  int (*truncate)(vfs_fd_t *fd, size_t length);
 };
 
 int vfs_close(int fd);
@@ -83,6 +84,7 @@ int vfs_dup2(int org_fd, int new_fd);
 vfs_inode_t *vfs_internal_open(const char *file);
 int vfs_mkdir(const char *path, int mode);
 int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd);
+int vfs_ftruncate(int fd, size_t length);
 vfs_inode_t *vfs_create_inode(
     int inode_num, int type, uint8_t has_data, uint8_t can_write,
     uint8_t is_open, void *internal_object, uint64_t file_size,
@@ -93,5 +95,6 @@ vfs_inode_t *vfs_create_inode(
     void (*close)(vfs_fd_t *fd),
     int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
-                                      vfs_fd_t *fd));
+                                      vfs_fd_t *fd),
+    int (*truncate)(vfs_fd_t *fd, size_t length));
 #endif

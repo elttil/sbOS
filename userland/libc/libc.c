@@ -315,8 +315,3 @@ int shm_open(const char *name, int oflag, mode_t mode) {
   };
   RC_ERRNO(syscall(SYS_SHM_OPEN, &args, 0, 0, 0, 0));
 }
-
-int ftruncate(int fildes, uint64_t length) {
-  SYS_FTRUNCATE_PARAMS args = {.fildes = fildes, .length = length};
-  RC_ERRNO(syscall(SYS_FTRUNCATE, &args, 0, 0, 0, 0));
-}
