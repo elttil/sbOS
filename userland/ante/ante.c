@@ -220,6 +220,7 @@ void draw_file(void) {
 
 void write_file(void) {
   assert(file_buffer);
+  assert(0 == ftruncate(file_fd, file_size));
   pwrite(file_fd, file_buffer, file_size, 0);
 }
 
