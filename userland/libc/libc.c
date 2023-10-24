@@ -96,6 +96,41 @@ char *errno_strings[] = {
 
 #define TAB_SIZE 8
 
+FILE *__stdin_FILE;
+FILE *__stdout_FILE;
+FILE *__stderr_FILE;
+#define stdin __stdin_FILE
+#define stdout __stdout_FILE
+#define stderr __stderr_FILE
+
+void _libc_setup(void) {
+  __stdin_FILE = malloc(sizeof(FILE));
+  __stdin_FILE->write = write_fd;
+  __stdin_FILE->read = read_fd;
+  __stdin_FILE->seek = NULL;
+  __stdin_FILE->is_eof = 0;
+  __stdin_FILE->has_error = 0;
+  __stdin_FILE->cookie = NULL;
+  __stdin_FILE->fd = 0;
+
+  __stdout_FILE = malloc(sizeof(FILE));
+  __stdout_FILE->write = write_fd;
+  __stdout_FILE->read = read_fd;
+  __stdout_FILE->is_eof = 0;
+  __stdout_FILE->has_error = 0;
+  __stdout_FILE->seek = NULL;
+  __stdout_FILE->cookie = NULL;
+  __stdout_FILE->fd = 1;
+
+  __stderr_FILE = malloc(sizeof(FILE));
+  __stderr_FILE->write = write_fd;
+  __stderr_FILE->read = read_fd;
+  __stderr_FILE->is_eof = 0;
+  __stderr_FILE->has_error = 0;
+  __stderr_FILE->cookie = NULL;
+  __stderr_FILE->fd = 2;
+}
+
 // Functions preserve the registers ebx, esi, edi, ebp, and esp; while
 // eax, ecx, edx are scratch registers.
 
@@ -176,12 +211,12 @@ int s_syscall(int sys) {
 }
 
 int write(int fd, const char *buf, size_t count) {
-	/*
-  struct SYS_WRITE_PARAMS args = {
-      .fd = fd,
-      .buf = buf,
-      .count = count,
-  };*/
+  /*
+struct SYS_WRITE_PARAMS args = {
+.fd = fd,
+.buf = buf,
+.count = count,
+};*/
   return syscall(SYS_WRITE, fd, buf, count, 0, 0);
 }
 

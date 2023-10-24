@@ -48,14 +48,13 @@ typedef struct {
   int fd;
 } FILE_FD_COOKIE;
 
-extern FILE __stdin_FILE;
-extern FILE __stdout_FILE;
-extern FILE __stderr_FILE;
+extern FILE *__stdin_FILE;
+extern FILE *__stdout_FILE;
+extern FILE *__stderr_FILE;
 
-#define stdin (&__stdin_FILE)
-#define stdout (&__stdout_FILE)
-//#define stderr (&__stderr_FILE)
-#define stderr (&__stdout_FILE)
+#define stdin __stdin_FILE
+#define stdout __stdout_FILE
+#define stderr __stderr_FILE
 
 typedef int mode_t;
 

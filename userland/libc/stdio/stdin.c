@@ -71,13 +71,3 @@ int seek_fd(FILE *stream, long offset, int whence) {
   // FIXME: Error checking
   return 0;
 }
-
-FILE __stdin_FILE = {
-    .write = write_fd,
-    .read = read_fd,
-    .seek = NULL,
-    .is_eof = 0,
-    .has_error = 0,
-    .cookie = NULL,
-    .fd = 0,
-};
