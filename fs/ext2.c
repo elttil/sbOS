@@ -478,6 +478,21 @@ int ext2_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return rc;
 }
 
+int ext2_truncate(vfs_fd_t *fd, size_t length) {
+  // TODO: Blocks that are no longer used should be freed.
+  char inode_buffer[inode_size];
+  inode_t *ext2_inode = (inode_t *)inode_buffer;
+
+  ext2_get_inode_header(fd->inode->inode_num, ext2_inode);
+
+  // FIXME: ftruncate should support 64 bit lengths
+  ext2_inode->_upper_32size = 0;
+  ext2_inode->low_32size = length;
+
+  ext2_write_inode(fd->inode->inode_num, ext2_inode);
+  return 0;
+}
+
 vfs_inode_t *ext2_open(const char *path) {
   uint32_t inode_num = ext2_find_inode(path);
   if (0 == inode_num)
@@ -505,7 +520,7 @@ vfs_inode_t *ext2_open(const char *path) {
                           1 /*is_open*/, NULL /*internal_object*/, file_size,
                           ext2_open, ext2_create_file, ext2_read, ext2_write,
                           ext2_close, ext2_create_directory,
-                          NULL /*get_vm_object*/, NULL/*truncate*/);
+                          NULL /*get_vm_object*/, ext2_truncate /*truncate*/);
 }
 
 uint64_t end_of_last_entry_position(int dir_inode, uint64_t *entry_offset,
@@ -697,7 +712,8 @@ vfs_inode_t *ext2_mount(void) {
                           0 /*can_write*/, 0 /*is_open*/,
                           NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
                           ext2_create_file, ext2_read, ext2_write, ext2_close,
-                          ext2_create_directory, NULL /*get_vm_object*/, NULL/*truncate*/);
+                          ext2_create_directory, NULL /*get_vm_object*/,
+                          ext2_truncate /*truncate*/);
 }
 
 void parse_superblock(void) {
