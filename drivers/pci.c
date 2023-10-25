@@ -5,6 +5,22 @@
 #define CONFIG_ADDRESS 0xCF8
 #define CONFIG_DATA 0xCFC
 
+void pci_config_write32(const struct PCI_DEVICE *device, uint8_t func,
+                        uint8_t offset, uint32_t data) {
+  uint32_t address;
+  uint32_t lbus = (uint32_t)device->bus;
+  uint32_t lslot = (uint32_t)device->slot;
+  uint32_t lfunc = (uint32_t)func;
+
+  // Create configuration address as per Figure 1
+  address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) |
+                       (offset & 0xFC) | ((uint32_t)0x80000000));
+
+  // Write out the address
+  outl(CONFIG_ADDRESS, address);
+  outl(CONFIG_DATA, data);
+}
+
 uint32_t pci_config_read32(const struct PCI_DEVICE *device, uint8_t func,
                            uint8_t offset) {
   uint32_t address;

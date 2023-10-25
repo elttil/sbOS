@@ -60,6 +60,7 @@ kernel_general_protection_fault(kernel_registers_t *regs) {
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
   dump_backtrace(12);
+  asm("hlt");
   for (;;)
     ;
   EOI(0xD - 8);
@@ -257,9 +258,15 @@ void idt_init(void) {
 
   PIC_remap(0x20);
   //  IRQ_set_mask(0xc);
-  IRQ_set_mask(0xe);
-  IRQ_clear_mask(2);
-  IRQ_set_mask(0xB);
+    IRQ_clear_mask(0x5);
+    IRQ_clear_mask(0xB);
+  /*
+    IRQ_set_mask(0xe);
+    IRQ_set_mask(2);
+    IRQ_set_mask(1);
+    IRQ_set_mask(0);
+    IRQ_clear_mask(0x5);
+    IRQ_clear_mask(0xB);*/
 
   idtr.interrupt_table = (struct IDT_Descriptor **)&IDT_Entry;
   idtr.size = (sizeof(struct IDT_Descriptor) * IDT_MAX_ENTRY) - 1;

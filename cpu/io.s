@@ -4,6 +4,7 @@
 .global outw
 .global outl
 .global inb
+.global inw
 .global inl
 .global rep_outsw
 .global rep_insw
@@ -36,14 +37,19 @@ outb:
 	ret
 
 outw:
-	mov eax, [esp + 8]
+	mov ax, [esp + 8]
 	mov dx, [esp + 4]
-	out dx, eax
+	out dx, ax
 	ret
 
 inl:
 	mov dx, [esp + 4]
 	in  eax, dx
+	ret
+
+inw:
+	mov dx, [esp + 4]
+	in  ax, dx
 	ret
 
 inb:
