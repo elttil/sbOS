@@ -20,10 +20,10 @@ debug:
 	gdb -x .gdbinit
 
 nk:
-	qemu-system-i386 -netdev tap,ifname=tap0,id=network0,script=no,downscript=no -device rtl8139,netdev=network0 -d int -no-reboot -no-shutdown -serial file:./serial.log -hda ext2.img -m 1G -cdrom myos.iso -s
+	qemu-system-i386 -d int -no-reboot -no-shutdown -serial file:./serial.log -hda ext2.img -m 1G -cdrom myos.iso -s
 
 run:
-	qemu-system-i386 -enable-kvm -netdev tap,ifname=tap0,id=network0,script=no,downscript=no -device rtl8139,netdev=network0 -d int -no-reboot -no-shutdown -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 -hda ext2.img -m 1G -cdrom myos.iso -s
+	qemu-system-i386 -enable-kvm -d int -no-reboot -no-shutdown -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 -hda ext2.img -m 1G -cdrom myos.iso -s
 
 myos.iso: myos.bin
 	cp myos.bin isodir/boot
