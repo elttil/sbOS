@@ -14,56 +14,44 @@
 
 struct PCI_DEVICE rtl8139;
 uint8_t device_buffer[8192 + 16];
+uint32_t g_base_address;
 
-__attribute__((interrupt)) void test_handler(void *regs) {
-  kprintf("RUNNING TEST HANDLER :D\n");
-  for (;;)
-    ;
+uint8_t *send_buffers[4];
+
+#define ROK (1 << 0)
+#define TOK (1 << 2)
+
+__attribute__((interrupt)) void rtl8139_handler(void *regs) {
+  (void)regs;
+  uint16_t status = inw(rtl8139.gen.base_mem_io + 0x3e);
+
+  if (status & TOK) {
+    kprintf("Packet sent\n");
+  }
+  if (status & ROK) {
+    kprintf("Received packet\n");
+  }
+
+  outw(rtl8139.gen.base_mem_io + 0x3E, 0x5);
+  EOI(0xB);
 }
 
-uint8_t pci_get_interrupt_line(const struct PCI_DEVICE *device) {
-  return pci_config_read32(device, 0, 0x3C) & 0xFF;
-}
-
-void pci_set_interrupt_line(const struct PCI_DEVICE *device, uint8_t line) {
-  uint32_t reg = pci_config_read32(device, 0, 0x3C);
-  reg &= ~(0xFF);
-  reg |= line;
-  pci_config_write32(device, 0, 0x3C, reg);
-}
-
-void rtl8139_send_transmit_size(
-    uint32_t base_address /*specify device instead of base_address*/,
-    uint32_t size) {
-  // Sets the OWN flag to '1'
-  uint32_t status_register = inl(base_address + 0x10);
-  status_register &= ~(1 << 13);
-  outl(base_address + 0x10, status_register);
-}
-
-void rtl8139_send_transmit_buffer(uint32_t base_address, uint16_t buffer_size) {
-  uint32_t status_register = inl(base_address + 0x10);
-  // The size of this packet
-  status_register &= ~(0x1fff);
-  status_register |= buffer_size;
-
-  // the early transmit threshol
-  status_register |= 1 << 16;
-
-  // Sets the OWN flag to '0'
-  status_register &= ~(1 << 13);
-  outl(base_address + 0x10, status_register);
-  // Check if the OWN flag is '1'
-  for (; !((inl(base_address + 0x10) >> 13) & 1);)
-    ;
-  // Check if the TOK flag is '1'
-  for (; !((inl(base_address + 0x10) >> 15) & 1);)
-    ;
-  kprintf("TOK(IMR): %x\n", (inw(base_address + 0x3C) >> 2) & 0x1);
-  kprintf("TER(IMR): %x\n", (inw(base_address + 0x3C) >> 3) & 0x1);
-
-  kprintf("TOK(ISR): %x\n", (inw(base_address + 0x3E) >> 2) & 0x1);
-  kprintf("TER(ISR): %x\n", (inw(base_address + 0x3E) >> 3) & 0x1);
+int rtl8139_send_data(const struct PCI_DEVICE *device, uint8_t *data,
+                      uint16_t data_size) {
+  // FIXME: It should block or fail if there is too little space for the
+  // buffer
+  if (data_size > 0x1000)
+    return 0;
+  static int loop = 0;
+  if (loop > 3) {
+    loop = 0;
+  }
+  memcpy(send_buffers[loop], data, data_size);
+  outl(device->gen.base_mem_io + 0x20 + loop * 4,
+       (uint32_t)virtual_to_physical(send_buffers[loop], NULL));
+  outl(device->gen.base_mem_io + 0x10 + loop * 4, data_size);
+  loop += 1;
+  return 1;
 }
 
 uint8_t rtl8139_get_transmit_status(uint32_t base_address) {
@@ -85,18 +73,17 @@ void rtl8139_init(void) {
   uint8_t header_type = (pci_config_read32(&rtl8139, 0, 0xC) >> 16) & 0xFF;
   assert(0 == header_type);
 
-  uint32_t base_address = pci_config_read32(&rtl8139, 0, 0x10) & (~0x3);
+  uint32_t base_address = rtl8139.gen.base_mem_io;
   uint8_t interrupt_line = pci_get_interrupt_line(&rtl8139);
-  kprintf("base_address: %x\n", base_address);
-  kprintf("interrupt_line: %x\n", interrupt_line);
 
   // Read the MAC address
-  kprintf("MAC: %x\n", inl(base_address));
-
-  // Enable bus mastering
-  //  uint32_t register1 = pci_config_read32(&rtl8139, 0, 0x4);
-  //  register1 |= (1 << 2);
-  //  pci_config_write32(&rtl8139, 0, 0x4, register1);
+  uint64_t mac_address;
+  {
+    uint32_t low_mac = inl(base_address);
+    uint16_t high_mac = inw(base_address + 0x4);
+    mac_address = ((uint64_t)high_mac << 32) | low_mac;
+  }
+  kprintf("mac_address: %x\n", mac_address);
 
   // Turning on the device
   outb(base_address + 0x52, 0x0);
@@ -113,34 +100,24 @@ void rtl8139_init(void) {
   // Set IMR + ISR
   outw(base_address + IMR, (1 << 2) | (1 << 3));
 
-  // Enable recieve and transmitter
-  outb(base_address + 0x37,
-       (1 << 2) | (1 << 3)); // Sets the RE and TE bits high
+  outb(base_address + 0x37, (1 << 2) | (1 << 3));
 
   // Configure the recieve buffer
   outl(base_address + 0x44,
        0xf | (1 << 7)); // (1 << 7) is the WRAP bit, 0xf is AB+AM+APM+AAP
 
-  uint8_t *send_buffer = ksbrk(0x1000);
-  install_handler(test_handler, INT_32_INTERRUPT_GATE(0x0),
+  install_handler(rtl8139_handler, INT_32_INTERRUPT_GATE(0x0),
                   0x20 + interrupt_line);
-  asm("sti");
-  kprintf("virt: %x\n", (uint32_t)virtual_to_physical(send_buffer, NULL));
-  outl(base_address + 0x20, (uint32_t)virtual_to_physical(send_buffer, NULL));
-  for (int i = 0; i < 10; i++) {
-    uint8_t status = rtl8139_get_transmit_status(base_address);
-    kprintf("status: %x\n", status);
-    rtl8139_send_transmit_buffer(base_address, 70);
-    status = rtl8139_get_transmit_status(base_address);
-    kprintf("status: %x\n", status);
 
-    // Clear TOK(ISR)
-    uint32_t tmp = inw(base_address + 0x3E);
-    tmp &= ~(1 << 2);
-    outw(base_address + 0x3E, tmp);
+  // ksbrk() seems to have the magical ability of disabling interrupts?
+  // I have no fucking clue why that happens and it was a pain to debug.
+  for (int i = 0; i < 4; i++)
+    send_buffers[i] = ksbrk(0x1000);
+  asm("sti");
+  for (int i = 0; i < 10; i++) {
+    char buffer[512];
+    rtl8139_send_data(&rtl8139, (uint8_t *)buffer, 512);
   }
   for (;;)
     asm("sti");
-
-  //  uint32_t physical_start_address = inl(base_address + 0x20);
 }

@@ -257,9 +257,10 @@ void idt_init(void) {
   install_handler(kernel_general_protection_fault, INT_32_TRAP_GATE(0x0), 0xD);
 
   PIC_remap(0x20);
-  //  IRQ_set_mask(0xc);
-    IRQ_clear_mask(0x5);
-    IRQ_clear_mask(0xB);
+  IRQ_clear_mask(0xb);
+  IRQ_set_mask(0xe);
+  IRQ_set_mask(0xf);
+  IRQ_clear_mask(2);
   /*
     IRQ_set_mask(0xe);
     IRQ_set_mask(2);

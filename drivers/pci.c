@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <cpu/io.h>
 #include <drivers/pci.h>
 #include <stdio.h>
@@ -54,8 +55,15 @@ int pci_populate_device_struct(uint16_t vendor, uint16_t device,
         continue;
       pci_device->bus = bus;
       pci_device->slot = slot;
+      uint32_t bar0 = pci_config_read32(pci_device, 0, 0x10);
+      assert(bar0 & 0x1 && "Only support memory IO");
+      pci_device->gen.base_mem_io = bar0 & (~0x3);
       return 1;
     }
   }
   return 0;
+}
+
+uint8_t pci_get_interrupt_line(const struct PCI_DEVICE *device) {
+  return pci_config_read32(device, 0, 0x3C) & 0xFF;
 }
