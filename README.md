@@ -19,8 +19,15 @@ as GRUB).
 * libc
 * Window Manager
 * Terminal Emulator
+* Simple Text Editor(ante)
 * Very basic shell
 * Shell utilities(cat, yes, echo etc)
+
+### WIP
+
+* PCI (somewhat functional for current use)
+* rtl8139 Network Card (approaching somewhat complete)
+* ARP/Ethernet/IPv4 very much not complete
 
 and some other stuff.
 
