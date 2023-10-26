@@ -43,7 +43,7 @@ void print_ip(const char *str, uint8_t *ip) {
   kprintf("\n");
 }
 
-void handle_arp(uint8_t *payload) {
+void handle_arp(const uint8_t *payload) {
   struct ARP_DATA *data = (struct ARP_DATA *)payload;
 
   // Assert that communication is over ethernet
@@ -79,5 +79,6 @@ void handle_arp(uint8_t *payload) {
   memcpy(response.dsthw, data->srchw, sizeof(uint8_t[6]));
   memcpy(response.dstpr, data->srcpr, sizeof(uint8_t[4]));
 
-  send_ethernet_packet(data->srchw, 0x0806, (uint8_t*)&response, sizeof(response));
+  send_ethernet_packet(data->srchw, 0x0806, (uint8_t *)&response,
+                       sizeof(response));
 }

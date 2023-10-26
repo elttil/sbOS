@@ -4,6 +4,7 @@
 #include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ethernet.h>
+#include <network/ipv4.h>
 #include <stdio.h>
 
 struct ETHERNET_HEADER {
@@ -44,10 +45,10 @@ uint32_t crc32(const char *buf, size_t len) {
   return ~crc;
 }
 
-void handle_ethernet(uint8_t *packet, uint64_t packet_length) {
+void handle_ethernet(const uint8_t *packet, uint64_t packet_length) {
   struct ETHERNET_HEADER *eth_header = (struct ETHERNET_HEADER *)packet;
   packet += sizeof(struct ETHERNET_HEADER);
-  uint8_t *payload = packet;
+  const uint8_t *payload = packet;
   packet += packet_length - sizeof(struct ETHERNET_HEADER);
   uint32_t crc = *((uint32_t *)packet - 1);
   kprintf("PACKET crc: %x\n", crc);
@@ -70,7 +71,7 @@ void handle_ethernet(uint8_t *packet, uint64_t packet_length) {
     handle_arp(payload);
     break;
   case 0x0800:
-    kprintf("IPV4 message\n");
+    handle_ipv4(payload, packet_length - sizeof(struct ETHERNET_HEADER) - 4);
     break;
   default:
     kprintf("Can't handle ethernet type\n");
@@ -97,5 +98,6 @@ void send_ethernet_packet(uint8_t mac_dst[6], uint16_t type, uint8_t *payload,
       htonl(crc32((const char *)buffer_start, buffer_size - 4));
 
   assert(rtl8139_send_data(buffer_start, buffer_size));
+  kfree(buffer_start);
   kprintf("sent data\n");
 }

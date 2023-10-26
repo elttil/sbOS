@@ -1,17 +1,18 @@
+typedef struct S_FIFO_FILE FIFO_FILE;
 #ifndef FIFO_H
 #define FIFO_H
 #include "vfs.h"
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct {
+struct S_FIFO_FILE {
   char *buffer;
   uint64_t buffer_len;
   uint64_t write_len;
   uint8_t is_blocking;
   uint8_t has_data;
   uint8_t can_write;
-} FIFO_FILE;
+};
 
 int create_fifo(void);
 FIFO_FILE *create_fifo_object(void);

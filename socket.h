@@ -1,34 +1,23 @@
 #ifndef SOCKET_H
 #define SOCKET_H
-#include "fs/vfs.h"
+#include <fs/fifo.h>
+#include <fs/vfs.h>
 #include <stddef.h>
 #include <stdint.h>
 
-/*
-// Create a directory with the proper permissions
-mkdir(path, 0700);
-// Append the name of the socket
-strcat(path, "/socket_name");
-
-// Create the socket normally
-sockaddr_un address;
-address.sun_family = AF_UNIX;
-strcpy(address.sun_path, path);
-int fd = socket(AF_UNIX, SOCK_STREAM, 0);
-bind(fd, (sockaddr*)(&address), sizeof(address));
-listen(fd, 100);
-*/
-
 #define AF_UNIX 0
+#define AF_INET 1
 #define AF_LOCAL AF_UNIX
+
+#define SOCK_DGRAM 0
 
 #define INADDR_ANY 0
 
-typedef struct {
-  int fifo_fd;
-  vfs_fd_t *ptr_fifo_fd;
+#define MSG_WAITALL 1
 
+typedef struct {
   vfs_fd_t *ptr_socket_fd;
+  FIFO_FILE *fifo_file;
 
   int domain;
   int type;
@@ -44,14 +33,28 @@ typedef struct {
   SOCKET *s;
 } OPEN_UNIX_SOCKET;
 
+typedef struct {
+  uint32_t address;
+  uint16_t port;
+  SOCKET *s;
+} OPEN_INET_SOCKET;
+
 typedef uint32_t in_addr_t;
 typedef uint16_t in_port_t;
 typedef unsigned int sa_family_t;
-typedef uint32_t socklen_t;
+typedef int socklen_t;
 
 struct sockaddr {
   sa_family_t sa_family; /* Address family */
   char *sa_data;         /* Socket address */
+};
+
+struct sockaddr_in {
+  sa_family_t sin_family;
+  union {
+    uint32_t s_addr;
+  } sin_addr;
+  uint16_t sin_port;
 };
 
 struct sockaddr_un {
@@ -59,6 +62,7 @@ struct sockaddr_un {
   char *sun_path;         /* Socket pathname */
 };
 
+OPEN_INET_SOCKET *find_open_udp_port(uint16_t port);
 int uds_open(const char *path);
 int socket(int domain, int type, int protocol);
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);

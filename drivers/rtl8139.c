@@ -178,7 +178,4 @@ void rtl8139_init(void) {
   // I have no fucking clue why that happens and it was a pain to debug.
   for (int i = 0; i < 4; i++)
     send_buffers[i] = ksbrk(0x1000);
-  asm("sti");
-  for (;;)
-    asm("sti");
 }

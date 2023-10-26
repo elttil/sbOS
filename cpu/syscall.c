@@ -9,15 +9,16 @@
 #include <kmalloc.h>
 #include <scalls/accept.h>
 #include <scalls/bind.h>
+#include <scalls/ftruncate.h>
+#include <scalls/mkdir.h>
 #include <scalls/mmap.h>
 #include <scalls/msleep.h>
 #include <scalls/ppoll.h>
+#include <scalls/recvfrom.h>
 #include <scalls/shm.h>
-#include <scalls/ftruncate.h>
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
-#include <scalls/mkdir.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -162,6 +163,7 @@ void (*syscall_functions[])() = {
     (void(*))syscall_ftruncate, (void(*))syscall_stat,
     (void(*))syscall_msleep,    (void(*))syscall_uptime,
     (void(*))syscall_mkdir,
+    (void(*))syscall_recvfrom,
 };
 
 void syscall_function_handler(uint32_t eax, uint32_t arg1, uint32_t arg2,
