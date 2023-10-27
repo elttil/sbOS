@@ -2,6 +2,7 @@
 #include <network/bytes.h>
 #include <network/ipv4.h>
 #include <network/udp.h>
+#include <string.h>
 
 void handle_ipv4(const uint8_t *payload, uint32_t packet_length) {
   assert(packet_length > 4);
@@ -15,10 +16,13 @@ void handle_ipv4(const uint8_t *payload, uint32_t packet_length) {
   // Make sure the ipv4 header is not trying to get uninitalized memory
   assert(ipv4_total_length <= packet_length);
 
+  uint8_t src_ip[4];
+  memcpy(src_ip, payload + 12, sizeof(uint8_t[4]));
+
   uint8_t protocol = *(payload + 9);
   switch (protocol) {
   case 0x11:
-    handle_udp(payload + 20, ipv4_total_length - 20);
+    handle_udp(src_ip, payload + 20, ipv4_total_length - 20);
     break;
   default:
     kprintf("Protocol given in IPv4 header not handeld: %x\n", protocol);

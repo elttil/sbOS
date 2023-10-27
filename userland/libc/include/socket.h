@@ -40,6 +40,7 @@ struct sockaddr_in {
   sa_family_t sin_family;
   union {
     uint32_t s_addr;
+    uint8_t a[4];
   } sin_addr;
   uint16_t sin_port;
 };
