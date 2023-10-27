@@ -1,7 +1,23 @@
 #include <assert.h>
 #include <network/bytes.h>
+#include <network/ipv4.h>
 #include <network/udp.h>
 #include <socket.h>
+
+void send_udp_packet(struct sockaddr_in *src, const struct sockaddr_in *dst,
+                     const uint8_t *payload, uint16_t payload_length) {
+  uint16_t header[4] = {0};
+  header[0] = src->sin_port;
+  header[1] = dst->sin_port;
+  header[2] = htons(payload_length + 8);
+
+  uint16_t packet_length = sizeof(header) + payload_length;
+  uint8_t *packet = kmalloc(packet_length);
+  memcpy(packet, header, sizeof(header));
+  memcpy(packet + sizeof(header), payload, payload_length);
+  send_ipv4_packet(dst->sin_addr.s_addr, 0x11, packet, packet_length);
+  kfree(packet);
+}
 
 void handle_udp(uint8_t src_ip[4], const uint8_t *payload,
                 uint32_t packet_length) {
@@ -10,11 +26,10 @@ void handle_udp(uint8_t src_ip[4], const uint8_t *payload,
   // h_.* means host format((probably) little endian)
   uint16_t n_source_port = *(uint16_t *)payload;
   uint16_t h_source_port = ntohs(n_source_port);
+  (void)h_source_port;
   uint16_t h_dst_port = ntohs(*(uint16_t *)(payload + 2));
   uint16_t h_length = ntohs(*(uint16_t *)(payload + 4));
   assert(h_length == packet_length);
-  kprintf("source_port: %d\n", h_source_port);
-  kprintf("dst_port: %d\n", h_dst_port);
   uint16_t data_length = h_length - 8;
   const uint8_t *data = payload + 8;
 

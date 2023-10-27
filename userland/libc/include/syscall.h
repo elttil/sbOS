@@ -33,6 +33,7 @@
 #define SYS_UPTIME 25
 #define SYS_MKDIR 26
 #define SYS_RECVFROM 27
+#define SYS_SENDTO 28
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

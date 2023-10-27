@@ -55,17 +55,7 @@ void handle_ethernet(const uint8_t *packet, uint64_t packet_length) {
   kprintf("OUR OWN CALCULATED crc: %x\n",
           crc32((const char *)eth_header, (packet_length - 4)));
 
-  kprintf("mac dst: ");
-  for (int i = 0; i < 6; i++)
-    kprintf("%x", eth_header->mac_dst[i]);
-  kprintf("\n");
-  kprintf("mac src: ");
-  for (int i = 0; i < 6; i++)
-    kprintf("%x", eth_header->mac_src[i]);
-  kprintf("\n");
-
   uint16_t type = ntohs(eth_header->type);
-  kprintf("Etheretype: %x\n", type);
   switch (type) {
   case 0x0806:
     handle_arp(payload);

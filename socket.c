@@ -111,6 +111,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
     us->path = s->path;
     us->s = s;
+    s->child = us;
     devfs_add_file(us->path, NULL, NULL, NULL, 1, 1, FS_TYPE_UNIX_SOCKET);
     return 0;
   }
@@ -127,6 +128,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     inet->address = in->sin_addr.s_addr;
     inet->port = in->sin_port;
     inet->s = s;
+    s->child = inet;
     return 0;
   }
   return 0;

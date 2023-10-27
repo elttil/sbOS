@@ -4,6 +4,7 @@
 #include <drivers/pci.h>
 #include <drivers/rtl8139.h>
 #include <mmu.h>
+#include <network/arp.h>
 #include <network/ethernet.h>
 
 #define RBSTART 0x30
