@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <kmalloc.h>
 #include <ksbrk.h>
+#include <math.h>
 #define NEW_ALLOC_SIZE 0x30000
 
 #define IS_FREE (1 << 0)
@@ -12,10 +13,6 @@ typedef struct MallocHeader {
   uint8_t flags;
   struct MallocHeader *n;
 } MallocHeader;
-
-size_t max(size_t a, size_t b) { return (a > b) ? a : b; }
-
-size_t min(size_t a, size_t b) { return (a < b) ? a : b; }
 
 uint64_t delta_page(uint64_t a) { return 0x1000 - (a % 0x1000); }
 
