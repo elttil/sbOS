@@ -26,6 +26,14 @@ size_t non_cache_read_fd(FILE *f, unsigned char *s, size_t l) {
 size_t read_fd(FILE *f, unsigned char *s, size_t l) {
   if (0 == l)
     return 0;
+
+  // Skip using cache if the length being requested if longer than or
+  // equal to the cache block size. This avoids doing a bunch of extra
+  // syscalls
+  if (l >= 4096) {
+    return non_cache_read_fd(f, s, l);
+  }
+
   if (!f->read_buffer) {
     f->read_buffer = malloc(4096);
     f->read_buffer_stored = 0;
