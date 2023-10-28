@@ -23,25 +23,54 @@ void ext2_close(vfs_fd_t *fd) {
 int read_inode(int inode_num, unsigned char *data, uint64_t size,
                uint64_t offset, uint64_t *file_size);
 
-uint32_t old_block_num = -1;
-uint8_t old_block[1024]; // FIXME: Not always 1024
+struct BLOCK_CACHE {
+  uint32_t block_num;
+  uint8_t block[1024];
+};
+
+#define NUM_BLOCK_CACHE 30
+struct BLOCK_CACHE cache[NUM_BLOCK_CACHE] = {0};
+uint8_t last_taken_cache = 0;
+
+void cached_read_block(uint32_t block, void *address, size_t size,
+                       size_t offset) {
+  int free_found = -1;
+  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    if (cache[i].block_num == block) {
+      memcpy(address, cache[i].block + offset, size);
+      return;
+    }
+    if (0 == cache[i].block_num)
+      free_found = i;
+  }
+
+  if (-1 == free_found) {
+    free_found = last_taken_cache;
+    last_taken_cache++;
+    if (last_taken_cache >= NUM_BLOCK_CACHE)
+      last_taken_cache = 0;
+  }
+
+  struct BLOCK_CACHE *c = &cache[free_found];
+  c->block_num = block;
+  read_lba(block * block_byte_size / 512, c->block, 1024, 0);
+  return cached_read_block(block, address, size, offset);
+}
+
 void ext2_read_block(uint32_t block, void *address, size_t size,
                      size_t offset) {
-  // Very simple cache, it you are reading the same block then don't
-  // bother trying to read from the hard drive again, juse use the old
-  // data.
-  if (block == old_block_num) {
-    memcpy(address, old_block + offset, size);
-    return;
-  }
-  read_lba(block * block_byte_size / 512, address, size, offset);
-  read_lba(block * block_byte_size / 512, old_block, 1024, 0);
-  old_block_num = block;
+  cached_read_block(block, address, size, offset);
 }
 
 void ext2_write_block(uint32_t block, void *address, size_t size,
                       size_t offset) {
-  old_block_num = -1; // Invalidate the old block cache
+	// Invalidate a old cache
+  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    if (cache[i].block_num == block) {
+      cache[i].block_num = 0;
+      break;
+    }
+  }
   write_lba(block * block_byte_size / 512, address, size, offset);
 }
 
