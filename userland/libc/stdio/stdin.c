@@ -31,7 +31,12 @@ size_t read_fd(FILE *f, unsigned char *s, size_t l) {
   // equal to the cache block size. This avoids doing a bunch of extra
   // syscalls
   if (l >= 4096) {
-    return non_cache_read_fd(f, s, l);
+    // Invalidate the cache
+f->read_buffer_stored = 0;
+
+    size_t rc = non_cache_read_fd(f, s, l);
+    f->offset_in_file += rc;
+    return rc;
   }
 
   if (!f->read_buffer) {
