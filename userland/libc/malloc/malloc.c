@@ -220,9 +220,12 @@ void free(void *p) {
   // Is this a assumption that can be made?
   MallocHeader *h = (MallocHeader *)((uint32_t)p - sizeof(MallocHeader));
   if (MALLOC_HEADER_MAGIC != h->magic) {
+#ifdef LIBC_DEBUG
+    printf("LibC Malloc: free() is attempted at the incorrect location or at a corrupted header.\n");
     printf("h->magic: %x\n", h->magic);
     printf("&h->magic: %x\n", &(h->magic));
-    assert(0);
+#endif
+    return;
   }
   if (h->flags & IS_FREE)
     return;
