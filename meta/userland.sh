@@ -1,9 +1,12 @@
 #!/bin/sh
 scriptdir="$(dirname "$0")"
 cd "$scriptdir"
+export PATH="$PATH:$(pwd)/../toolchain/bin/bin"
 cd ..
 make -C ./userland/libgui
 make -C ./userland/libc
+mkdir -p ./sysroot/lib
+make install -C ./userland/libc
 make -C ./userland/sh
 make -C ./userland/terminal
 make -C ./userland/snake

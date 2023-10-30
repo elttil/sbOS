@@ -18,9 +18,6 @@ install:
 	cp crt0.o ../../sysroot/lib/
 	cp libc.a ../../sysroot/lib/
 	cp -r include ../../sysroot/usr/
-	cp crt0.o ~/prj/osdev/sysroot/lib/
-	cp libc.a ~/prj/osdev/sysroot/lib/
-	cp -r include ~/prj/osdev/sysroot/usr/
 
 clean:
 	rm libc.a *.o */*.o */*/*.o
