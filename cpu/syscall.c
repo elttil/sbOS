@@ -10,6 +10,7 @@
 #include <scalls/accept.h>
 #include <scalls/bind.h>
 #include <scalls/ftruncate.h>
+#include <scalls/kill.h>
 #include <scalls/mkdir.h>
 #include <scalls/mmap.h>
 #include <scalls/msleep.h>
@@ -20,6 +21,7 @@
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
+#include <scalls/sigaction.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -124,7 +126,7 @@ void *align_page(void *a);
 
 int syscall_brk(void *addr) {
   void *end = get_current_task()->data_segment_end;
-  if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW))
+  if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW, NULL))
     return -ENOMEM;
   get_current_task()->data_segment_end = align_page(addr);
   return 0;
@@ -164,7 +166,8 @@ void (*syscall_functions[])() = {
     (void(*))syscall_ftruncate, (void(*))syscall_stat,
     (void(*))syscall_msleep,    (void(*))syscall_uptime,
     (void(*))syscall_mkdir,     (void(*))syscall_recvfrom,
-    (void(*))syscall_sendto,
+    (void(*))syscall_sendto,    (void(*))syscall_kill,
+    (void(*))syscall_sigaction,
 };
 
 void syscall_function_handler(uint32_t eax, uint32_t arg1, uint32_t arg2,

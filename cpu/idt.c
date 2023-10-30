@@ -53,9 +53,7 @@ __attribute__((no_caller_saved_registers)) void EOI(uint8_t irq) {
   outb(MASTER_PIC_COMMAND_PORT, 0x20);
 }
 
-__attribute__((interrupt)) void
-kernel_general_protection_fault(kernel_registers_t *regs) {
-  asm("cli");
+__attribute__((interrupt)) void general_protection_fault(registers_t *regs) {
   klog("General Protetion Fault", 0x1);
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
@@ -66,119 +64,48 @@ kernel_general_protection_fault(kernel_registers_t *regs) {
   EOI(0xD - 8);
 }
 
-__attribute__((interrupt)) void general_protection_fault(registers_t *regs) {
-  kprintf("\n");
-  klog("KERNEL General Protetion Fault", 0x1);
-  kprintf(" Error Code: %x\n", regs->error_code);
-#define EXTERNAL_TO_PROCESSOR (1 << 0)
-
-#define WAS(_b) if (regs->error_code & (_b))
-  if (0 == regs->error_code) {
-    kprintf("This exception is not segment related.");
-  } else {
-    WAS(EXTERNAL_TO_PROCESSOR) {
-      kprintf("Exception originated externally to the processor.");
-    }
-    kprintf("Index references: ");
-    switch ((regs->error_code >> 1) & 0x3) {
-    case 0:
-      kprintf("GDT");
-      break;
-    case 3:
-    case 1:
-      kprintf("IDT");
-      break;
-    case 2:
-      kprintf("LDT");
-      break;
-    }
-    kprintf("\n");
-    kprintf("Segmenet index: %x\n", regs->error_code >> 15);
-  }
-  /*	kprintf(" Page protection violation: %x\n", regs->error_code & 0x1);
-          kprintf(" Write access: %x\n", (regs->error_code & (0x1<<1)) >> 1);
-          kprintf(" No privilege violation: %x\n", (regs->error_code & (0x1<<2))
-     >> 2); kprintf(" Instruction fetch: %x\n", (regs->error_code & (0x1<<4)) >>
-     4); kprintf(" Shadow stack access: %x\n", (regs->error_code & (0x1<<6)) >>
-     6);*/
-  kprintf("Instruction Pointer: %x\n", regs->eip);
-  asm("hlt");
-  EOI(0xD - 8);
-}
-
 __attribute__((interrupt)) void double_fault(registers_t *regs) {
   (void)regs;
-  klog("DOUBLE FAULT, THIS IS REALLY BAD", LOG_ERROR);
-  asm("cli");
+  klog("DOUBLE FAULT", LOG_ERROR);
   asm("hlt");
   for (;;)
     ;
 }
 __attribute__((interrupt)) void page_fault(registers_t *regs) {
-  asm("cli");
+  if (0xFFFFDEAD == regs->eip) {
+    asm("sti");
+    for (;;)
+      switch_task();
+  }
   klog("Page Fault", LOG_ERROR);
   if (get_current_task()) {
-    kprintf(" PID: %x\n", get_current_task()->pid);
-    kprintf(" Name: %s\n", get_current_task()->program_name);
+    kprintf("PID: %x\n", get_current_task()->pid);
+    kprintf("Name: %s\n", get_current_task()->program_name);
   }
-  kprintf(" Error Code: %x\n", regs->error_code);
-  kprintf(" Interrupt Number: %x\n", regs->interrupt_number);
-  kprintf(" Instruction Pointer: %x\n", regs->eip);
-  dump_backtrace(14);
+  kprintf("Error Code: %x\n", regs->error_code);
+  kprintf("Instruction Pointer: %x\n", regs->eip);
+
+  if (regs->error_code & (1 << 0))
+    kprintf("page-protection violation\n");
+  else
+    kprintf("non-present page\n");
+
+  if (regs->error_code & (1 << 1))
+    kprintf("write access\n");
+  else
+    kprintf("read access\n");
+
+  if (regs->error_code & (1 << 2))
+    kprintf("CPL = 3\n");
+
+  if (regs->error_code & (1 << 4))
+    kprintf("Attempted instruction fetch\n");
+
+  dump_backtrace(5);
   asm("hlt");
   for (;;)
     ;
 }
-
-/*
-__attribute__((interrupt)) void page_fault(registers_t *regs) {
-  asm("cli");
-  klog("Page Fault", LOG_ERROR);
-  if (get_current_task()) {
-    kprintf(" PID: %x\n", get_current_task()->pid);
-    kprintf(" Name: %s\n", get_current_task()->program_name);
-  }
-  kprintf(" Error Code: %x\n", regs->error_code);
-  kprintf(" Interrupt Number: %x\n", regs->interrupt_number);
-#define PAGE_PRESENT (1 << 0)
-#define WRITE_ATTEMPT (1 << 1)
-#define USER_LEVEL (1 << 2)
-#define RESERVED_WRITE (1 << 3)
-#define INSTRUCTION_FETCH (1 << 4)
-#define PROTECTION_KEY_VIOLATION (1 << 5)
-#define SHADOW_STACK_ACCESS (1 << 6)
-
-#define WAS(_b) if (regs->error_code & (_b))
-
-  WAS(PAGE_PRESENT) { kprintf(" Page was present.\n"); }
-  else {
-    kprintf(" Page is not present.\n");
-  }
-
-  WAS(WRITE_ATTEMPT) { kprintf(" Write attempt.\n"); }
-  else {
-    kprintf(" Read attempt.\n");
-  }
-
-  WAS(USER_LEVEL) {
-    get_current_task()->dead = 1;
-    kprintf(" Page fault in ring 3.\n");
-  }
-  else {
-    kprintf(" Page fault in ring 0-2.\n");
-  }
-
-  WAS(INSTRUCTION_FETCH) { kprintf(" Attempted instruction fetch.\n"); }
-
-  WAS(SHADOW_STACK_ACCESS) { kprintf(" Attempted shadow stack access.\n"); }
-
-  kprintf(" Instruction Pointer: %x\n", regs->eip);
-  dump_backtrace(12);
-  asm("hlt");
-  for (;;)
-    ;
-  EOI(0xE - 8);
-}*/
 
 static inline void io_wait(void) { outb(0x80, 0); }
 
@@ -252,22 +179,15 @@ void IRQ_clear_mask(unsigned char IRQline) {
 }
 
 void idt_init(void) {
-  install_handler(page_fault, INT_32_TRAP_GATE(0x3), 0xE);
-  install_handler(double_fault, INT_32_TRAP_GATE(0x0), 0x8);
-  install_handler(kernel_general_protection_fault, INT_32_TRAP_GATE(0x0), 0xD);
+  install_handler(page_fault, INT_32_INTERRUPT_GATE(0x0), 0xE);
+  install_handler(double_fault, INT_32_INTERRUPT_GATE(0x0), 0x8);
+  install_handler(general_protection_fault, INT_32_INTERRUPT_GATE(0x0), 0xD);
 
   PIC_remap(0x20);
   IRQ_clear_mask(0xb);
   IRQ_set_mask(0xe);
   IRQ_set_mask(0xf);
   IRQ_clear_mask(2);
-  /*
-    IRQ_set_mask(0xe);
-    IRQ_set_mask(2);
-    IRQ_set_mask(1);
-    IRQ_set_mask(0);
-    IRQ_clear_mask(0x5);
-    IRQ_clear_mask(0xB);*/
 
   idtr.interrupt_table = (struct IDT_Descriptor **)&IDT_Entry;
   idtr.size = (sizeof(struct IDT_Descriptor) * IDT_MAX_ENTRY) - 1;

@@ -6,14 +6,8 @@
 #define SIGWINCH 2
 #define SIGQUIT 3
 #define SIG_IGN 4
-#define SIGSEGV 5
-#define SIGILL 6
-#define SIGABRT 7
-#define SIGBUS 8
-#define SIGKILL 9
-#define SIGFPE 10
-
 typedef int pid_t;
+typedef int uid_t;
 typedef int sigset_t;
 
 union sigval {
@@ -22,16 +16,16 @@ union sigval {
 };
 
 struct siginfo {
-  int si_signo;          // Signal number.
-  int si_code;           // Signal code.
-  int si_errno;          // If non-zero, an errno value associated with
+  int si_signo;          //  Signal number.
+  int si_code;           //   Signal code.
+  int si_errno;          //  If non-zero, an errno value associated with
                          // this signal, as described in <errno.h>.
-  pid_t si_pid;          // Sending process ID.
-  uid_t si_uid;          // Real user ID of sending process.
-  void *si_addr;         // Address of faulting instruction.
+  pid_t si_pid;          //    Sending process ID.
+  uid_t si_uid;          //    Real user ID of sending process.
+  void *si_addr;         //   Address of faulting instruction.
   int si_status;         // Exit value or signal.
-  long si_band;          // Band event for SIGPOL9
-  union sigval si_value; // Signal value.
+  long si_band;          //   Band event for SIGPOLL.
+  union sigval si_value; //  Signal value.
 };
 
 typedef struct siginfo siginfo_t;

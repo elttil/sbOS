@@ -19,6 +19,14 @@ extern uint32_t read_eip(void);
 
 process_t *get_current_task(void) { return current_task; }
 
+void set_signal_handler(int sig, void (*handler)(int)) {
+  if (sig >= 20 || sig < 0)
+    return;
+  if (9 == sig)
+    return;
+  current_task->signal_handlers[sig] = handler;
+}
+
 process_t *create_process(process_t *p) {
   process_t *r;
   r = ksbrk(sizeof(process_t));
@@ -37,9 +45,15 @@ process_t *create_process(process_t *p) {
   r->cr3 = (p) ? clone_directory(get_active_pagedirectory())
                : get_active_pagedirectory();
   r->next = 0;
+  r->incoming_signal = 0;
   r->parent = p;
   r->child = NULL;
   r->halt_list = NULL;
+
+  mmu_allocate_region((void *)(0x80000000 - 0x1000), 0x1000, MMU_FLAG_RW,
+                      r->cr3);
+  r->signal_handler_stack = 0x80000000;
+
   strcpy(r->current_working_directory, "/");
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
   memset((void *)r->halts, 0, 2 * sizeof(uint32_t));
@@ -50,6 +64,8 @@ process_t *create_process(process_t *p) {
         r->file_descriptors[i]->reference_count++;
       }
     }
+    if (i < 20)
+      r->signal_handlers[i] = NULL;
     r->read_halt_inode[i] = NULL;
     r->write_halt_inode[i] = NULL;
     r->disconnect_halt_inode[i] = NULL;
@@ -132,7 +148,8 @@ void exit(int status) {
 }
 
 uint32_t setup_stack(uint32_t stack_pointer, int argc, char **argv) {
-  mmu_allocate_region(STACK_LOCATION - STACK_SIZE, STACK_SIZE, MMU_FLAG_RW);
+  mmu_allocate_region(STACK_LOCATION - STACK_SIZE, STACK_SIZE, MMU_FLAG_RW,
+                      NULL);
   flush_tlb();
 
   uint32_t ptr = stack_pointer;
@@ -244,6 +261,8 @@ process_t *next_task(process_t *c) {
     c = c->next;
     if (!c)
       c = ready_queue;
+    if (c->incoming_signal)
+      break;
     if (c->sleep_until > pit_num_ms())
       continue;
     if (is_halted(c) || c->dead)
@@ -271,6 +290,25 @@ int task_save_state(void) {
   return 1;
 }
 
+int kill(pid_t pid, int sig) {
+  process_t *p = current_task;
+  p = p->next;
+  if (!p)
+    p = ready_queue;
+  for (; p->pid != pid;) {
+    if (p == current_task)
+      break;
+    p = p->next;
+    if (!p)
+      p = ready_queue;
+  }
+  if (p->pid != pid)
+    return -ESRCH;
+  p->incoming_signal = sig;
+  return 0;
+}
+
+void jump_signal_handler(void *func, uint32_t esp);
 void switch_task() {
   if (!current_task)
     return;
@@ -283,15 +321,32 @@ void switch_task() {
 
   active_directory = current_task->cr3;
 
-  asm("			\
+  if (current_task->incoming_signal) {
+    uint8_t sig = current_task->incoming_signal;
+    current_task->incoming_signal = 0;
+    asm("mov %0, %%cr3" ::"r"(current_task->cr3->physical_address));
+
+    void *handler = current_task->signal_handlers[sig];
+    if (9 == sig) {
+      klog("Task recieved SIGKILL", LOG_NOTE);
+      exit(0);
+    }
+    if (!handler) {
+      klog("Task recieved unhandeled signal. Killing process.", LOG_WARN);
+      exit(1);
+    }
+    jump_signal_handler(handler, current_task->signal_handler_stack);
+  } else {
+    asm("			\
         mov %0, %%esp;		\
         mov %1, %%ebp;		\
         mov %2, %%ecx;		\
         mov %3, %%cr3;		\
         mov $0x1, %%eax;	\
         jmp *%%ecx" ::"r"(current_task->esp),
-      "r"(current_task->ebp), "r"(current_task->eip),
-      "r"(current_task->cr3->physical_address));
+        "r"(current_task->ebp), "r"(current_task->eip),
+        "r"(current_task->cr3->physical_address));
+  }
 }
 
 MemoryMap **get_free_map(void) {
@@ -318,7 +373,7 @@ void *allocate_virtual_user_memory(size_t length, int prot, int flags) {
   if ((void *)-1 == rc)
     return (void *)-1;
 
-  mmu_allocate_region(rc, length, MMU_FLAG_RW);
+  mmu_allocate_region(rc, length, MMU_FLAG_RW, NULL);
   return rc;
 }
 
