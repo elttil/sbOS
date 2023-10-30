@@ -1,8 +1,8 @@
 CC="i686-sb-gcc"
-CFLAGS = -ggdb -ffreestanding -O2 -Wall -Wextra -pedantic -mgeneral-regs-only -Wimplicit-fallthrough -fsanitize=shift,signed-integer-overflow,bounds
+CFLAGS = -ggdb -ffreestanding -O2 -Wall -Wextra -pedantic -mgeneral-regs-only -Wimplicit-fallthrough
 BIN=ws
-LIB=-L../json -ljson -L../json/hashmap -lhashmap -L../libc -lc -lgcc
-INC=-I../json/ -I../libgui/
+LIB=-lgcc
+INC=-I../libgui/
 all: $(BIN)
 OBJ=ws.o draw.o
 
@@ -13,4 +13,4 @@ clean:
 	rm $(OBJ) ws
 
 $(BIN): $(OBJ)
-	$(CC) -o $(BIN) -ffreestanding -nostdlib $(CFLAGS) $(OBJ) $(LIB)
+	$(CC) -o $(BIN) $(CFLAGS) $(OBJ) $(LIB)

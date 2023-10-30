@@ -1,12 +1,10 @@
 CC="i686-sb-gcc"
 CFLAGS = -O2 -Wall -Wextra -pedantic -Wimplicit-fallthrough -static
-LIB=-L../json -L../json/hashmap -ljson -lhashmap
-INC=-I../json/
 BINS=test
 all: $(BINS)
 
 test.o: test.c
-	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ -c $<
+	$(CC) $(CFLAGS) -o $@ -c $<
 
 test: test.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LIB)
