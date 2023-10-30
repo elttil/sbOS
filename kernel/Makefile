@@ -15,16 +15,6 @@ all: myos.iso
 myos.bin: $(OBJ)
 	$(CC) $(INCLUDE) -shared -T linker.ld -o myos.bin -ffreestanding -nostdlib $(CFLAGS) $^ -lgcc
 
-debug:
-	qemu-system-i386 -no-reboot -no-shutdown -serial file:./serial.log -hda ext2.img -m 1G -cdrom myos.iso -s -S &
-	gdb -x .gdbinit
-
-nk:
-	qemu-system-i386 -d int -netdev user,id=n0,hostfwd=udp:127.0.0.1:6001-:6000 -device rtl8139,netdev=n0 -no-reboot -no-shutdown -serial file:./serial.log -hda ext2.img -m 1G -cdrom myos.iso -s
-
-run:
-	qemu-system-i386 -enable-kvm -netdev user,id=n0,hostfwd=udp:127.0.0.1:6001-:6000 -device rtl8139,netdev=n0 -object filter-dump,id=id,netdev=n0,file=netout -d int -no-reboot -no-shutdown -chardev stdio,id=char0,logfile=serial.log,signal=off -serial chardev:char0 -hda ext2.img -m 1G -cdrom myos.iso -s
-
 myos.iso: myos.bin
 	cp myos.bin isodir/boot
 	grub-mkrescue -o myos.iso isodir

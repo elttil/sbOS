@@ -8,6 +8,8 @@
 *.tar.xz
 *.tar.xz.sig
 .cache/
+logs/
+sysroot/*
 toolchain/bin/
 toolchain/binutils-*/
 toolchain/gcc-*/
