@@ -130,7 +130,6 @@ void flush_tlb(void) {
 }
 
 uint32_t first_free_frame(void) {
-  asm("cli");
   for (uint32_t i = 1; i < INDEX_FROM_BIT(num_of_frames); i++) {
     if (frames[i] == 0xFFFFFFFF)
       continue;
@@ -315,11 +314,12 @@ void *mmu_find_unallocated_virtual_range(void *addr, size_t length) {
   return addr;
 }
 
-int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags) {
+int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
+                        PageDirectory *pd) {
+  pd = (pd) ? pd : get_active_pagedirectory();
   size_t num_pages = n / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
-    Page *p = get_page((void *)(ptr + i * 0x1000), get_active_pagedirectory(),
-                       PAGE_ALLOCATE, 1);
+    Page *p = get_page((void *)(ptr + i * 0x1000), pd, PAGE_ALLOCATE, 1);
     assert(p);
     int rw = (flags & MMU_FLAG_RW);
     int kernel = (flags & MMU_FLAG_KERNEL);
@@ -433,7 +433,7 @@ extern uint32_t inital_esp;
 void __attribute__((optimize("O0")))
 move_stack(uint32_t new_stack_address, uint32_t size) {
   mmu_allocate_region((void *)(new_stack_address - size), size,
-                      MMU_FLAG_KERNEL);
+                      MMU_FLAG_KERNEL, NULL);
 
   uint32_t old_stack_pointer, old_base_pointer;
 

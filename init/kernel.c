@@ -8,6 +8,7 @@
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
 #include <drivers/pit.h>
+#include <drivers/rtl8139.h>
 #include <drivers/serial.h>
 #include <drivers/vbe.h>
 #include <fs/devfs.h>
@@ -86,6 +87,7 @@ void kernel_main(uint32_t kernel_end, unsigned long magic, unsigned long addr,
 
   add_keyboard();
   add_mouse();
+  rtl8139_init();
 
   display_driver_init(mb);
   add_vbe_device();

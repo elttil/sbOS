@@ -54,19 +54,13 @@ typedef struct registers registers_t;
 
 struct interrupt_frame;
 
-struct kernel_registers {
-  //	uint32_t ds;
-  //	uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-  //	uint32_t interrupt_number, error_code;
-  uint32_t error_code;
-  uint32_t eip, cs, eflags;
-};
-
 struct registers {
-  uint32_t ds;
-  uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-  uint32_t interrupt_number, error_code;
-  uint32_t eip, cs, eflags, useresp, ss;
+  uint32_t error_code;
+  uint32_t eip;
+  uint32_t cs;
+  uint32_t eflags;
+  uint32_t esp;
+  uint32_t ss;
 };
 
 void idt_init(void);

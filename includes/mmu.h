@@ -31,7 +31,7 @@ typedef struct PageDirectory {
   uint32_t physical_address;
 } PageDirectory;
 
-int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags);
+int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags, PageDirectory *pd);
 void mmu_allocate_shared_kernel_region(void *rc, size_t n);
 void *mmu_find_unallocated_virtual_range(void *addr, size_t length);
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);

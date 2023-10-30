@@ -64,7 +64,7 @@ void ext2_read_block(uint32_t block, void *address, size_t size,
 
 void ext2_write_block(uint32_t block, void *address, size_t size,
                       size_t offset) {
-	// Invalidate a old cache
+  // Invalidate a old cache
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
       cache[i].block_num = 0;

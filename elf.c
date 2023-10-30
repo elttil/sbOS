@@ -51,7 +51,7 @@ void *load_elf_file(const char *f, uint32_t *ds) {
     pages_to_allocate /= 0x1000;
 
     mmu_allocate_region((void *)p_vaddr, pages_to_allocate * 0x1000,
-                        MMU_FLAG_RW);
+                        MMU_FLAG_RW, NULL);
 
     flush_tlb();
 
