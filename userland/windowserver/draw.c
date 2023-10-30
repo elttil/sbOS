@@ -15,9 +15,17 @@ int my;
 
 void update_display(const DISPLAY *disp) {
   for (int i = 0; i < 20; i++) {
-    place_pixel(0xFFFFFFFF, mx + i, my + i);
-    place_pixel(0xFFFFFFFF, mx, my + i / 2);
-    place_pixel(0xFFFFFFFF, mx + i / 2, my);
+    uint32_t color = 0xFFFFFFFF;
+    // Make every other pixel black to make the mouse more visible on all
+    // backgrounds.
+    if (i & 1) {
+      color = 0x0;
+    }
+    place_pixel(color, mx + i, my + i);
+    if (i <= 10) {
+      place_pixel(color, mx, my + i);
+      place_pixel(color, mx + i, my);
+    }
   }
   uint32_t *dst = disp->true_buffer;
   uint32_t *src = disp->back_buffer;
@@ -90,7 +98,8 @@ void draw_window(DISPLAY *disp, const WINDOW *w) {
   for (int i = 0; i < sy; i++) {
     if ((i + py) * disp->width + px > disp->height * disp->width)
       break;
-    uint32_t *ptr = disp->back_buffer + disp->bpp * ((i + py) * disp->width) + px * disp->bpp;
+    uint32_t *ptr = disp->back_buffer + disp->bpp * ((i + py) * disp->width) +
+                    px * disp->bpp;
     if (i * sx > disp->height * disp->width)
       break;
     uint32_t *bm = &w->bitmap_ptr[i * sx];
