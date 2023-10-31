@@ -475,10 +475,14 @@ move_stack(uint32_t new_stack_address, uint32_t size) {
 void *is_valid_user_c_string(const char *ptr, size_t *size) {
   void *r = (void *)ptr;
   size_t s = 0;
-  for (;;) {
+  for (; ((uint32_t)ptr - (uint32_t)r) < 0x1000;) {
     void *page = (void *)((uintptr_t)ptr & (uintptr_t)(~(PAGE_SIZE - 1)));
     if (!is_valid_userpointer(page, PAGE_SIZE))
       return NULL;
+    if (!((uintptr_t)ptr & (PAGE_SIZE - 1))) {
+      ptr++;
+      s++;
+    }
     for (; (uintptr_t)ptr & (PAGE_SIZE - 1); ptr++, s++)
       if (!*ptr) {
         if (size)
@@ -486,6 +490,9 @@ void *is_valid_user_c_string(const char *ptr, size_t *size) {
         return r;
       }
   }
+  // String is too long, something has probably gone wrong.
+  assert(0);
+  return NULL;
 }
 
 void *is_valid_userpointer(const void *ptr, size_t s) {
