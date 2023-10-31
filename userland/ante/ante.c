@@ -83,7 +83,8 @@ void delete_char(int pos, int *deleted_newline) {
   file_size--;
 }
 
-uint64_t cursor_to_real(int x, int y, int *is_valid) {
+uint64_t cursor_to_real(int *px, int y, int *is_valid) {
+  int x = *px;
   *is_valid = 0;
   if (clamp(&x, &y))
     return file_real_position;
@@ -98,11 +99,17 @@ uint64_t cursor_to_real(int x, int y, int *is_valid) {
   int cx = 0;
   int cy = 0;
   for (; p < file_size; p++) {
-    if (cx == x && cy == y) {
+    if (cy == y) {
       *is_valid = 1;
-      break;
+      *px = cx;
+      if (cx == x) {
+        break;
+      }
     }
     if ('\n' == file_buffer[p]) {
+      if (cy == y) {
+        break;
+      }
       cx = 0;
       cy++;
       continue;
@@ -187,15 +194,15 @@ void key_event(char c) {
   }
 
   int is_valid_position = 0;
+  cursor_pos_x += x;
   file_real_position =
-      cursor_to_real(cursor_pos_x + x, cursor_pos_y + y, &is_valid_position);
+      cursor_to_real(&cursor_pos_x, cursor_pos_y + y, &is_valid_position);
   if (!is_valid_position) {
     return;
   }
   GUI_OverwriteFont(global_w, cursor_pos_x * 8, cursor_pos_y * 8,
                     BACKGROUND_COLOR);
   draw_file();
-  cursor_pos_x += x;
   cursor_pos_y += y;
   GUI_OverwriteFont(global_w, cursor_pos_x * 8, cursor_pos_y * 8, 0xFFFFFF);
 
