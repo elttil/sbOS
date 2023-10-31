@@ -105,7 +105,7 @@ int poll_status(void) {
 }
 
 // Instructions from: https://wiki.osdev.org/ATA_PIO_Mode#28_bit_PIO
-void __attribute__((optimize("O0")))
+void
 setup_drive_for_command(uint32_t lba, uint32_t sector_count) {
   // 1. Send 0xE0 for the "master" or 0xF0 for
   //    the "slave", ORed with the highest 4 bits
@@ -139,9 +139,8 @@ void delayed_rep_outsw(size_t n, uint16_t port, volatile uint8_t *buffer) {
   }
 }
 
-void __attribute__((optimize("O0")))
-ata_write_lba28(uint32_t lba, uint32_t sector_count,
-                volatile const uint8_t *buffer) {
+void ata_write_lba28(uint32_t lba, uint32_t sector_count,
+                     volatile const uint8_t *buffer) {
   setup_drive_for_command(lba, sector_count);
 
   outb(io_base + COMMAND_PORT, WRITE_SECTORS);
@@ -169,8 +168,8 @@ ata_write_lba28(uint32_t lba, uint32_t sector_count,
 }
 
 // Instructions from: https://wiki.osdev.org/ATA_PIO_Mode#28_bit_PIO
-void __attribute__((optimize("O0")))
-ata_read_lba28(uint32_t lba, uint32_t sector_count, volatile void *address) {
+void ata_read_lba28(uint32_t lba, uint32_t sector_count,
+                    volatile void *address) {
   // Step 1-6 is done in this function.
   setup_drive_for_command(lba, sector_count);
 
@@ -211,12 +210,10 @@ void ata_init(void) {
   select_drive(1);
 }
 
-void __attribute__((optimize("O0")))
-read_lba(uint32_t lba, void *address, size_t size, size_t offset) {
+void read_lba(uint32_t lba, void *address, size_t size, size_t offset) {
   uintptr_t ptr = (uintptr_t)address;
   lba += offset / SECTOR_SIZE;
   offset = offset % SECTOR_SIZE;
-  asm("cli");
   size_t total_read = 0;
   for (int i = 0; size > 0; i++) {
     uint32_t read_len =

@@ -93,7 +93,7 @@ int get_free_fd(process_t *p, int allocate) {
 void tasking_init(void) { current_task = ready_queue = create_process(NULL); }
 
 int i = 0;
-void __attribute__((optimize("O0"))) free_process(void) {
+void free_process(void) {
   kprintf("Exiting process: %s\n", get_current_task()->program_name);
   // free_process() will purge all contents such as allocated frames
   // out of the current process. This will be called by exit() and
@@ -212,7 +212,7 @@ int exec(const char *filename, char **argv) {
   return 0;
 }
 
-int __attribute__((optimize("O0"))) fork(void) {
+int fork(void) {
   process_t *parent_task = (process_t *)current_task;
 
   process_t *new_task = create_process(parent_task);

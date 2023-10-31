@@ -430,18 +430,15 @@ void *virtual_to_physical(void *address, PageDirectory *directory) {
 }
 
 extern uint32_t inital_esp;
-void __attribute__((optimize("O0")))
+void
 move_stack(uint32_t new_stack_address, uint32_t size) {
-  mmu_allocate_region((void *)(new_stack_address - size), size,
-                      MMU_FLAG_KERNEL, NULL);
+  mmu_allocate_region((void *)(new_stack_address - size), size, MMU_FLAG_KERNEL,
+                      NULL);
 
   uint32_t old_stack_pointer, old_base_pointer;
 
-  register uint32_t eax asm("eax");
-  asm volatile("mov %esp, %eax");
-  old_stack_pointer = eax;
-  asm volatile("mov %ebp, %eax");
-  old_base_pointer = eax;
+  asm volatile("mov %%esp, %0" : "=r"(old_stack_pointer));
+  asm volatile("mov %%ebp, %0" : "=r"(old_base_pointer));
 
   uint32_t new_stack_pointer =
       old_stack_pointer + ((uint32_t)new_stack_address - inital_esp);
@@ -463,10 +460,8 @@ move_stack(uint32_t new_stack_address, uint32_t size) {
 
   inital_esp = new_stack_pointer;
   // Actually change the stack
-  eax = new_stack_pointer;
-  asm volatile("mov %eax, %esp");
-  eax = new_base_pointer;
-  asm volatile("mov %eax, %ebp");
+  asm volatile("mov %0, %%esp" ::"irm"(new_stack_pointer));
+  asm volatile("mov %0, %%ebp" ::"irm"(new_base_pointer));
 }
 
 // C strings have a unknown length so it does not makes sense to check
