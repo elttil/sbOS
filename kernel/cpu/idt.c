@@ -84,6 +84,10 @@ __attribute__((interrupt)) void page_fault(registers_t *regs) {
   kprintf("Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
 
+  volatile uint32_t cr2;
+  asm volatile("mov %%cr2, %0" : "=r"(cr2));
+  kprintf("CR2: %x\n", cr2);
+
   if (regs->error_code & (1 << 0))
     kprintf("page-protection violation\n");
   else
