@@ -13,8 +13,6 @@ const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
       assert(0);                                                               \
     *(int *)(_r) += _rc;                                                       \
   }
-//    if ((size_t)0 == _rc)                                                      \
-//      assert(0);                                                               \
 
 int fprint_num(FILE *f, int n, int base, char *char_set, int prefix,
                int zero_padding, int right_padding) {
@@ -25,9 +23,21 @@ int fprint_num(FILE *f, int n, int base, char *char_set, int prefix,
   }
   char str[32];
   int i = 0;
+
+  int is_signed = 0;
+
+  if (n < 0) {
+    is_signed = 1;
+    n *= -1;
+  }
+
   for (; n != 0 && i < 32; i++, n /= base)
-    //    str[i] = (n % base) + '0';
     str[i] = char_set[(n % base)];
+
+  if (is_signed) {
+    str[i] = '-';
+    i++;
+  }
 
   char t = (zero_padding) ? '0' : ' ';
   int orig_i = i;
@@ -175,10 +185,10 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       break;
     case 'i':
     case 'd':
-      if(-1 != precision) {
-      zero_padding = 1;
-      prefix = precision;
-      right_padding = 0;
+      if (-1 != precision) {
+        zero_padding = 1;
+        prefix = precision;
+        right_padding = 0;
       }
       rc += fprint_int(f, va_arg(ap, int), prefix, zero_padding, right_padding);
       cont = 0;

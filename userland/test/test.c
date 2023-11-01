@@ -545,6 +545,12 @@ void printf_test(void) {
     buf_n = sprintf(buf, "int: %00d", 1);
     EXP("int: 1");
 
+    buf_n = sprintf(buf, "int: %d", -1337);
+    EXP("int: -1337");
+
+    buf_n = sprintf(buf, "int: %u", 1337);
+    EXP("int: 1337");
+
     buf_n = sprintf(buf, "hex: %02x", 1);
     EXP("hex: 01");
     buf_n = sprintf(buf, "hex: %2x", 1);
