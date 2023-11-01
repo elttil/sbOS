@@ -91,7 +91,6 @@ int get_mac_from_ip(const uint8_t ip[4], uint8_t mac[6]) {
     return 1;
   }
   klog("ARP cache miss", LOG_NOTE);
-  asm("sti");
   send_arp_request(ip);
   // TODO: Maybe wait a bit?
   for (int i = 0; i < 10; i++) {
@@ -100,7 +99,6 @@ int get_mac_from_ip(const uint8_t ip[4], uint8_t mac[6]) {
     memcpy(mac, arp_table[i].mac, sizeof(uint8_t[6]));
     return 1;
   }
-  assert(0);
   return 0;
 }
 

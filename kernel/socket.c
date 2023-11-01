@@ -2,6 +2,8 @@
 #include <errno.h>
 #include <fs/devfs.h>
 #include <fs/tmpfs.h>
+#include <network/bytes.h>
+#include <network/tcp.h>
 #include <poll.h>
 #include <sched/scheduler.h>
 #include <socket.h>
@@ -10,12 +12,126 @@
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
 OPEN_INET_SOCKET *inet_sockets[100] = {0};
 
+struct INCOMING_TCP_CONNECTION tcp_connections[100] = {0};
+
+int tcp_socket_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+                     vfs_fd_t *fd) {
+  struct INCOMING_TCP_CONNECTION *s =
+      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
+  if (s->connection_closed)
+    return -EBADF;
+  send_tcp_packet(s, buffer, len);
+  return len;
+}
+
+int tcp_socket_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+                    vfs_fd_t *fd) {
+  struct INCOMING_TCP_CONNECTION *s =
+      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
+  if (s->connection_closed)
+    return -EBADF;
+
+  return fifo_object_read(buffer, offset, len, s->data_file);
+}
+
+void tcp_socket_close(vfs_fd_t *fd) {
+  kprintf("TCP SOCKET CLOSE\n");
+  struct INCOMING_TCP_CONNECTION *s =
+      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
+  if (s->connection_closed) {
+    s->is_used = 0;
+    return;
+  }
+  s->requesting_connection_close = 1;
+  tcp_close_connection(s);
+  s->is_used = 0;
+}
+
+struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(uint8_t ip[4],
+                                                            uint16_t n_port) {
+  for (int i = 0; i < 100; i++) {
+    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(uint8_t[4])))
+      continue;
+    if (n_port != tcp_connections[i].n_port)
+      continue;
+    return &tcp_connections[i];
+  }
+  return NULL;
+}
+
+struct INCOMING_TCP_CONNECTION *
+handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
+                               uint16_t dst_port) {
+  OPEN_INET_SOCKET *in = find_open_tcp_port(htons(dst_port));
+  if (!in) {
+    kprintf("TCP SYN to unopened port: %d\n", dst_port);
+    return NULL;
+  }
+
+  int i;
+  for (i = 0; i < 100; i++) {
+    if (!tcp_connections[i].is_used)
+      break;
+  }
+
+  tcp_connections[i].is_used = 1;
+  memcpy(tcp_connections[i].ip, ip, sizeof(uint8_t[4]));
+  tcp_connections[i].n_port = n_port;
+  tcp_connections[i].dst_port = dst_port;
+  tcp_connections[i].data_file = create_fifo_object();
+
+  SOCKET *s = in->s;
+
+  vfs_inode_t *inode = vfs_create_inode(
+      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
+      1 /*is_open*/, &tcp_connections[i], 0 /*file_size*/, NULL /*open*/,
+      NULL /*create_file*/, tcp_socket_read, tcp_socket_write, tcp_socket_close,
+      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/);
+
+  vfs_fd_t *fd;
+  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);
+
+  fd->reference_count++;
+  s->incoming_fd = fd;
+
+  // Shitty way of telling the accepting socket we have a incoming
+  // connection.
+  char c = 'i';
+  fifo_object_write((uint8_t *)&c, 1, 0, s->fifo_file);
+  s->ptr_socket_fd->inode->has_data = 1;
+
+  vfs_close(n); // Closes the file descriptor in the current process.
+                // But it does not get freed since the reference count
+                // is still over zero.
+  fd->reference_count--;
+  kprintf("connection sent to server\n");
+  return &tcp_connections[i];
+}
+
+OPEN_INET_SOCKET *find_open_tcp_port(uint16_t port) {
+  for (int i = 0; i < 100; i++) {
+    if (!inet_sockets[i])
+      continue;
+    kprintf("socket type: %d\n", inet_sockets[i]->s->type);
+    kprintf("socket port: %d\n", inet_sockets[i]->port);
+    if (inet_sockets[i]->port != port)
+      continue;
+    if (inet_sockets[i]->s->type != SOCK_STREAM)
+      continue;
+    return inet_sockets[i];
+  }
+  return NULL;
+}
+
 OPEN_INET_SOCKET *find_open_udp_port(uint16_t port) {
   for (int i = 0; i < 100; i++) {
     if (!inet_sockets[i])
       continue;
-    if (inet_sockets[i]->port == port)
-      return inet_sockets[i];
+    if (inet_sockets[i]->port != port)
+      continue;
+    if (inet_sockets[i]->s->type != SOCK_DGRAM)
+      continue;
+    return inet_sockets[i];
   }
   return NULL;
 }

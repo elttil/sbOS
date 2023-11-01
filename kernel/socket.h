@@ -10,6 +10,7 @@
 #define AF_LOCAL AF_UNIX
 
 #define SOCK_DGRAM 0
+#define SOCK_STREAM 1
 
 #define INADDR_ANY 0
 
@@ -40,6 +41,18 @@ typedef struct {
   SOCKET *s;
 } OPEN_INET_SOCKET;
 
+struct INCOMING_TCP_CONNECTION {
+  uint8_t ip[4];
+  uint16_t n_port;
+  uint16_t dst_port;
+  FIFO_FILE *data_file;
+  uint8_t is_used;
+  uint32_t ack_num;
+  uint32_t seq_num;
+  uint8_t connection_closed;
+  uint8_t requesting_connection_close;
+};
+
 typedef uint32_t in_addr_t;
 typedef uint16_t in_port_t;
 typedef unsigned int sa_family_t;
@@ -65,8 +78,15 @@ struct sockaddr_un {
 };
 
 OPEN_INET_SOCKET *find_open_udp_port(uint16_t port);
+OPEN_INET_SOCKET *find_open_tcp_port(uint16_t port);
+
 int uds_open(const char *path);
 int socket(int domain, int type, int protocol);
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+struct INCOMING_TCP_CONNECTION *
+handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
+                               uint16_t dst_port);
+struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(uint8_t ip[4],
+                                                            uint16_t n_port);
 #endif

@@ -22,12 +22,10 @@ as GRUB).
 * Simple Text Editor(ante)
 * Very basic shell
 * Shell utilities(cat, yes, echo etc)
-
-### WIP
-
-* PCI (somewhat functional for current use)
-* rtl8139 Network Card (approaching somewhat complete)
-* ARP/Ethernet/IPv4 very much not complete
+* PCI (it works for what it is currently used for)
+* rtl8139 Network Card (works ish)
+* ARP/Ethernet/IPv4/UDP
+* A very simple TCP implementation
 
 and some other stuff.
 
@@ -39,9 +37,20 @@ sbOS running DOOM, more specifically [doomgeneric](https://github.com/ozkl/doomg
 
 ## How do I run it?
 
-You shouldn't, it is very incomplete and does not have much interesting
-sutff in the userland yet. Setup is currently also slightly painful if
-you don't know what you are doing.
+I don't know why you would, it is not well supported and it does not
+have anything intreasting to look at. But if you really want to then you
+can build the toolchain by running.
+`meta/toolchain.sh`
+and build the full system using
+`meta/build.sh`
+
+You need the packages listed by the
+[osdev](https://wiki.osdev.org/GCC_Cross-Compiler#Installing_Dependencies)
+wiki and some other packages for setting up grub that I forgot what they
+are.
+
+I have only tested this a few times when distro hopping so no clue if it
+still works.
 
 ## Why?
 

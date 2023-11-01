@@ -8,6 +8,7 @@
 #define AF_LOCAL AF_UNIX
 
 #define SOCK_DGRAM 0
+#define SOCK_STREAM 1
 
 #define INADDR_ANY 0
 

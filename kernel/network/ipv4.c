@@ -1,9 +1,11 @@
 #include <assert.h>
+#include <drivers/pit.h>
 #include <kmalloc.h>
 #include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ethernet.h>
 #include <network/ipv4.h>
+#include <network/tcp.h>
 #include <network/udp.h>
 #include <string.h>
 
@@ -59,8 +61,11 @@ void send_ipv4_packet(uint32_t ip, uint8_t protocol, const uint8_t *payload,
   uint8_t mac[6];
   uint8_t ip_copy[4]; // TODO: Do I need to do this?
   memcpy(ip_copy, &ip, sizeof(uint8_t[4]));
-  get_mac_from_ip(ip_copy, mac);
+  for (; !get_mac_from_ip(ip_copy, mac);)
+    ;
+  kprintf("pre send_ethernet: %x\n", pit_num_ms());
   send_ethernet_packet(mac, 0x0800, packet, packet_length);
+  kprintf("after send_ethernet: %x\n", pit_num_ms());
   kfree(packet);
 }
 
@@ -88,6 +93,9 @@ void handle_ipv4(const uint8_t *payload, uint32_t packet_length) {
 
   uint8_t protocol = *(payload + 9);
   switch (protocol) {
+  case 0x6:
+    handle_tcp(src_ip, payload + 20, ipv4_total_length - 20);
+    break;
   case 0x11:
     handle_udp(src_ip, payload + 20, ipv4_total_length - 20);
     break;
