@@ -120,7 +120,12 @@ void handle_arp(const u8 *payload) {
     print_mac("dsthw: ", data->dsthw);
     print_ip("dstpr: ", data->dstpr);
 
-    assert(0 == memcmp(data->dstpr, ip_address, sizeof(u8[4])));
+    struct ARP_TABLE_ENTRY *entry = find_arp_entry_to_use();
+    entry->is_used = 1;
+    memcpy(entry->mac, data->srchw, sizeof(uint8_t[6]));
+    memcpy(entry->ip, data->srcpr, sizeof(uint8_t[4]));
+
+    assert(0 == memcmp(data->dstpr, ip_address, sizeof(uint8_t[4])));
 
     // Now we have to construct a ARP response
     struct ARP_DATA response;
