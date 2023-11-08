@@ -549,12 +549,13 @@ void paging_init(void) {
   }
 
   switch_page_directory(kernel_directory);
+  get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
   kernel_directory = clone_directory(kernel_directory);
 
   // Make null dereferences crash.
   switch_page_directory(kernel_directory);
-  get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
   switch_page_directory(clone_directory(kernel_directory));
+  /*
   // FIXME: Really hacky solution. Since page table creation needs to
   // allocate memory but memory allocation requires page table creation
   // they depend on eachother. The bad/current solution is just to
@@ -563,5 +564,6 @@ void paging_init(void) {
     allocate_frame(
         get_page((void *)((0x302 + i) * 0x1000 * 1024), NULL, PAGE_ALLOCATE, 0),
         1, 1);
-  move_stack(0xA0000000, 0xC00000);
+        */
+  move_stack(0xA0000000, 0x80000);
 }

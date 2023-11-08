@@ -34,6 +34,8 @@ boot_page_directory:
 	.skip 4096
 boot_page_table1:
 	.skip 4096
+heap_table:
+	.skip 4096
 
 .section .multiboot.text, "a"
 .global _start
@@ -55,8 +57,8 @@ _start:
 
     # If we are past the kernel jump to the final stage
     # "label 3"
-	cmpl $(_kernel_end - 0xC0000000), %esi
-	jge 3f
+	cmpl $(_kernel_end- 0xC0000000), %esi
+	jge heap_start
     
 2:
     # Add permission to the pages
@@ -71,10 +73,30 @@ _start:
 	# Loop to the next entry if we haven't finished.
 	loop 1b
 
-3:
+heap_start:
+    # edi contains the buffer we wish to modify
+	movl $(heap_table - 0xC0000000), %edi
+
+    # for loop
+	movl $1024, %ecx
+    	addl $4096, %esi
+heap:
+	movl %esi, %edx
+	orl $0x003, %edx
+	movl %edx, (%edi)
+
+	# Size of page is 4096 bytes.
+	addl $4096, %esi
+	# Size of entries is 4 bytes.
+	addl $4, %edi
+
+	loop heap
+
+final:
 	# Map the page table to both virtual addresses 0x00000000 and 0xC0000000.
 	movl $(boot_page_table1 - 0xC0000000 + 0x003), boot_page_directory - 0xC0000000 + 0
 	movl $(boot_page_table1 - 0xC0000000 + 0x003), boot_page_directory - 0xC0000000 + 768 * 4
+	movl $(heap_table - 0xC0000000 + 0x003), boot_page_directory - 0xC0000000 + 769 * 4
 
 	# Set cr3 to the address of the boot_page_directory.
 	movl $(boot_page_directory - 0xC0000000), %ecx
