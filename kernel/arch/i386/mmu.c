@@ -530,6 +530,7 @@ void paging_init(uint64_t memsize) {
   asm volatile("mov %%cr3, %0" : "=r"(cr3));
   uint32_t *virtual = (uint32_t *)((uint32_t)cr3 + 0xC0000000);
   frames = ksbrk(1024 * sizeof(uint32_t));
+  memset(frames, 0, 1024 * sizeof(uint32_t));
   num_of_frames = 1024 * 32;
 
   kernel_directory = &real_kernel_directory;
@@ -547,6 +548,7 @@ void paging_init(uint64_t memsize) {
 
     // Loop through the pages in the table
     PageTable *table = kernel_directory->tables[i];
+    write_to_frame(kernel_directory->physical_tables[i], 1);
     for (size_t j = 0; j < 1024; j++) {
       if (!table->pages[j].present)
         continue;
@@ -584,6 +586,7 @@ void paging_init(uint64_t memsize) {
   available_memory_kb = memsize;
   num_of_frames = available_memory_kb / 4;
   uint32_t *new_frames = ksbrk(buffer_size);
+  memset(new_frames, 0, buffer_size);
   memcpy(new_frames, frames, 1024 * sizeof(uint32_t));
   frames = new_frames;
 }
