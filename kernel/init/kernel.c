@@ -39,17 +39,21 @@ uintptr_t data_end;
 
 void kernel_main(uint32_t kernel_end, unsigned long magic, unsigned long addr,
                  uint32_t inital_stack) {
-  data_end = kernel_end;
+  (void)kernel_end;
+  data_end = 0xc0400000;
   inital_esp = inital_stack;
 
   asm("cli");
   kprintf("If you see this then the serial driver works :D.\n");
   assert(magic == MULTIBOOT_BOOTLOADER_MAGIC);
 
-  paging_init();
+  multiboot_info_t *mb = (multiboot_info_t *)(addr + 0xc0000000);
+  uint32_t mem_kb = mb->mem_lower;
+  uint32_t mem_mb = (mb->mem_upper - 1000) / 1000;
+  uint64_t memsize_kb = mem_mb * 1000 + mem_kb;
+  paging_init(memsize_kb);
   klog("Paging Initalized", LOG_SUCCESS);
-  multiboot_info_t *mb =
-      mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
+  mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
 
   gdt_init();
   klog("GDT Initalized", LOG_SUCCESS);
