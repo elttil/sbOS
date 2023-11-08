@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <ksbrk.h>
 #include <log.h>
+#include <math.h>
 #include <mmu.h>
 
 #define INDEX_FROM_BIT(a) (a / (32))
@@ -15,8 +16,9 @@ PageDirectory real_kernel_directory;
 PageDirectory *active_directory = 0;
 
 #define END_OF_MEMORY 0x8000000 * 15
-const uint32_t num_of_frames = END_OF_MEMORY / PAGE_SIZE;
-uint32_t frames[END_OF_MEMORY / PAGE_SIZE] = {0};
+uint64_t num_of_frames;
+uint32_t *frames;
+uint64_t available_memory_kb;
 uint32_t num_allocated_frames = 0;
 
 #define KERNEL_START 0xc0000000
@@ -147,7 +149,6 @@ uint32_t first_free_frame(void) {
 
 void write_to_frame(uint32_t frame_address, uint8_t on) {
   uint32_t frame = frame_address / 0x1000;
-  assert(INDEX_FROM_BIT(frame) < sizeof(frames) / sizeof(frames[0]));
   if (on) {
     num_allocated_frames++;
     frames[INDEX_FROM_BIT(frame)] |= ((uint32_t)0x1 << OFFSET_FROM_BIT(frame));
@@ -359,7 +360,6 @@ void *allocate_frame(Page *page, int rw, int is_kernel) {
     return 0;
   }
   uint32_t frame_address = first_free_frame();
-  assert(frame_address < sizeof(frames) / sizeof(frames[0]));
   write_to_frame(frame_address * 0x1000, 1);
 
   page->present = 1;
@@ -380,7 +380,6 @@ void mmu_free_address_range(void *ptr, size_t length) {
     if (!page->frame)
       continue;
     // Sanity check that none of the frames are invalid
-    assert(page->frame < sizeof(frames) / sizeof(frames[0]));
     write_to_frame(((uint32_t)page->frame) * 0x1000, 0);
     page->present = 0;
     page->rw = 0;
@@ -430,8 +429,7 @@ void *virtual_to_physical(void *address, PageDirectory *directory) {
 }
 
 extern uint32_t inital_esp;
-void
-move_stack(uint32_t new_stack_address, uint32_t size) {
+void move_stack(uint32_t new_stack_address, uint32_t size) {
   mmu_allocate_region((void *)(new_stack_address - size), size, MMU_FLAG_KERNEL,
                       NULL);
 
@@ -516,13 +514,23 @@ void enable_paging(void) {
       "mov %eax, %cr0\n");
 }
 
-extern uint32_t boot_page_directory;
-extern uint32_t boot_page_table1;
+void create_table(int table_index) {
+  if (kernel_directory->tables[table_index])
+    return;
+  uint32_t physical;
+  kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
+  kernel_directory->tables[table_index] =
+      (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
+  memset(kernel_directory->tables[table_index], 0, sizeof(PageTable));
+  kernel_directory->physical_tables[table_index] = (uint32_t)physical | 0x3;
+}
 
-void paging_init(void) {
+void paging_init(uint64_t memsize) {
   uint32_t *cr3;
   asm volatile("mov %%cr3, %0" : "=r"(cr3));
   uint32_t *virtual = (uint32_t *)((uint32_t)cr3 + 0xC0000000);
+  frames = ksbrk(1024 * sizeof(uint32_t));
+  num_of_frames = 1024 * 32;
 
   kernel_directory = &real_kernel_directory;
   kernel_directory->physical_address = (uint32_t)cr3;
@@ -549,21 +557,33 @@ void paging_init(void) {
   }
 
   switch_page_directory(kernel_directory);
+  // Make null dereferences crash.
   get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
+  for (int i = 0; i < 16; i++)
+    create_table(770 + i);
   kernel_directory = clone_directory(kernel_directory);
 
-  // Make null dereferences crash.
   switch_page_directory(kernel_directory);
   switch_page_directory(clone_directory(kernel_directory));
-  /*
-  // FIXME: Really hacky solution. Since page table creation needs to
-  // allocate memory but memory allocation requires page table creation
-  // they depend on eachother. The bad/current solution is just to
-  // allocate a bunch of tables so the memory allocator has enough.
-  for (uintptr_t i = 0; i < 140; i++)
-    allocate_frame(
-        get_page((void *)((0x302 + i) * 0x1000 * 1024), NULL, PAGE_ALLOCATE, 0),
-        1, 1);
-        */
   move_stack(0xA0000000, 0x80000);
+
+  uint64_t buffer_size = (memsize / 32) * sizeof(uint32_t);
+  // TODO: Very hacky solution since we have to memcpy the old allocation. This
+  // places a strict requierment on how much RAM the system can have(altough it
+  // is very small). Ideally the number of frames required would be dynamically
+  // calculated.
+  assert(buffer_size >= 1024 * sizeof(uint32_t));
+
+  // TODO Do this better
+  // NOTE:
+  // There are some addresses that point to devices rather than RAM.
+  // Therefore we need frames for these to exist
+  uint64_t min_buffer_required = 0xFD000 + 0x100000;
+  buffer_size = max(min_buffer_required, buffer_size);
+
+  available_memory_kb = memsize;
+  num_of_frames = available_memory_kb / 4;
+  uint32_t *new_frames = ksbrk(buffer_size);
+  memcpy(new_frames, frames, 1024 * sizeof(uint32_t));
+  frames = new_frames;
 }
