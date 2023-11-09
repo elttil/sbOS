@@ -70,11 +70,11 @@ int syscall_pread(SYS_PREAD_PARAMS *args) {
 }
 
 int syscall_read(SYS_READ_PARAMS *args) {
-  if (!get_vfs_fd(args->fd))
+  vfs_fd_t *fd = get_vfs_fd(args->fd);
+  if (!fd)
     return -EBADF;
-  int rc = vfs_pread(args->fd, args->buf, args->count,
-                     get_current_task()->file_descriptors[args->fd]->offset);
-  get_current_task()->file_descriptors[args->fd]->offset += rc;
+  int rc = vfs_pread(args->fd, args->buf, args->count, fd->offset);
+  fd->offset += rc;
   return rc;
 }
 
@@ -83,11 +83,11 @@ int syscall_pwrite(SYS_PWRITE_PARAMS *args) {
 }
 
 int syscall_write(int fd, const char *buf, size_t count) {
-  if (!get_vfs_fd(fd))
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  if (!fd_ptr)
     return -EBADF;
-  int rc = vfs_pwrite(fd, (char *)buf, count,
-                      get_current_task()->file_descriptors[fd]->offset);
-  get_current_task()->file_descriptors[fd]->offset += rc;
+  int rc = vfs_pwrite(fd, (char *)buf, count, fd_ptr->offset);
+  fd_ptr->offset += rc;
   return rc;
 }
 
