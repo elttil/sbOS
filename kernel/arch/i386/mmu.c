@@ -379,7 +379,6 @@ void mmu_free_address_range(void *ptr, size_t length) {
       continue;
     if (!page->frame)
       continue;
-    // Sanity check that none of the frames are invalid
     write_to_frame(((uint32_t)page->frame) * 0x1000, 0);
     page->present = 0;
     page->rw = 0;
