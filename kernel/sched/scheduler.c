@@ -63,6 +63,8 @@ process_t *create_process(process_t *p) {
       if (r->file_descriptors[i]) {
         r->file_descriptors[i]->reference_count++;
       }
+    } else {
+      r->file_descriptors[i] = NULL;
     }
     if (i < 20)
       r->signal_handlers[i] = NULL;
