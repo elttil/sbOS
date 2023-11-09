@@ -22,9 +22,6 @@ void *load_elf_file(const char *f, uint32_t *ds) {
     return NULL;
   }
 
-  if (0 > fd) {
-    return NULL;
-  }
   Elf32_Phdr program_header;
   assert(sizeof(program_header) == header.e_phentsize);
   uint32_t header_offset = header.e_phoff;
