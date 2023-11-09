@@ -165,14 +165,20 @@ void ext2_write_inode(int inode_index, inode_t *data) {
 
 int ext2_get_inode_in_directory(int dir_inode, char *file,
                                 direntry_header_t *entry) {
-  // FIXME: Allocate sufficent size each time
-  unsigned char *data = kmalloc(block_byte_size * 5);
+  uint64_t file_size;
+  ASSERT_BUT_FIXME_PROPOGATE(-1 !=
+                             read_inode(dir_inode, NULL, 0, 0, &file_size));
+  uint64_t allocation_size = file_size;
+  unsigned char *data = kmalloc(allocation_size);
   ASSERT_BUT_FIXME_PROPOGATE(
-      -1 != read_inode(dir_inode, data, block_byte_size * 5, 0, 0));
+      -1 != read_inode(dir_inode, data, allocation_size, 0, NULL));
 
   direntry_header_t *dir;
   unsigned char *data_p = data;
-  for (; (dir = (direntry_header_t *)data_p)->inode; data_p += dir->size) {
+  unsigned char *data_end = data + allocation_size;
+  for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
+         (dir = (direntry_header_t *)data_p)->inode;
+       data_p += dir->size) {
     if (0 == dir->size)
       break;
     if (0 == dir->name_length)
