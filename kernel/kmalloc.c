@@ -2,7 +2,8 @@
 #include <kmalloc.h>
 #include <ksbrk.h>
 #include <math.h>
-#define NEW_ALLOC_SIZE 0x30000
+#include <random.h>
+#define NEW_ALLOC_SIZE 0x20000
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)
@@ -142,6 +143,7 @@ void *kmalloc(size_t s) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
+  get_random((void *)rc, s);
   return rc;
 }
 
@@ -215,16 +217,15 @@ void *kcalloc(size_t nelem, size_t elsize) {
 }
 
 void kfree(void *p) {
-  /*
-if (!p)
-return;
-// FIXME: This assumes that p is at the start of a allocated area.
-// Could this be avoided in a simple way?
-MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
-assert(h->magic == 0xdde51ab9410268b1);
-if (h->flags & IS_FREE)
-return;
+  if (!p)
+    return;
+  // FIXME: This assumes that p is at the start of a allocated area.
+  // Could this be avoided in a simple way?
+  MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
+  assert(h->magic == 0xdde51ab9410268b1);
+  if (h->flags & IS_FREE)
+    return;
 
-h->flags |= IS_FREE;
-merge_headers(h);*/
+  h->flags |= IS_FREE;
+  merge_headers(h);
 }

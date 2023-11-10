@@ -58,7 +58,7 @@ void cached_read_block(uint32_t block, void *address, size_t size,
   struct BLOCK_CACHE *c = &cache[free_found];
   c->block_num = block;
   read_lba(block * block_byte_size / 512, c->block, 1024, 0);
-  return cached_read_block(block, address, size, offset);
+  cached_read_block(block, address, size, offset);
 }
 
 void ext2_read_block(uint32_t block, void *address, size_t size,

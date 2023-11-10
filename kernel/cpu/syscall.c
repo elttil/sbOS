@@ -18,10 +18,10 @@
 #include <scalls/recvfrom.h>
 #include <scalls/sendto.h>
 #include <scalls/shm.h>
+#include <scalls/sigaction.h>
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
-#include <scalls/sigaction.h>
 #include <stdint.h>
 #include <string.h>
 
