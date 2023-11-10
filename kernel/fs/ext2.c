@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
-#include <typedefs.h>
 #include <string.h>
+#include <typedefs.h>
 
 #define EXT2_SUPERBLOCK_SECTOR 2
 #define EXT2_ROOT_INODE 2
@@ -20,8 +20,7 @@ void ext2_close(vfs_fd_t *fd) {
   return; // There is nothing to clear
 }
 
-int read_inode(int inode_num, char *data, u64 size, u64 offset,
-               u64 *file_size);
+int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size);
 
 inline void get_inode_data_size(int inode_num, u64 *file_size) {
   read_inode(inode_num, NULL, 0, 0, file_size);
@@ -36,8 +35,7 @@ struct BLOCK_CACHE {
 struct BLOCK_CACHE cache[NUM_BLOCK_CACHE] = {0};
 u8 last_taken_cache = 0;
 
-void cached_read_block(u32 block, void *address, size_t size,
-                       size_t offset) {
+void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
@@ -61,13 +59,11 @@ void cached_read_block(u32 block, void *address, size_t size,
   cached_read_block(block, address, size, offset);
 }
 
-void ext2_read_block(u32 block, void *address, size_t size,
-                     size_t offset) {
+void ext2_read_block(u32 block, void *address, size_t size, size_t offset) {
   cached_read_block(block, address, size, offset);
 }
 
-void ext2_write_block(u32 block, void *address, size_t size,
-                      size_t offset) {
+void ext2_write_block(u32 block, void *address, size_t size, size_t offset) {
   // Invalidate a old cache
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
@@ -173,13 +169,13 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
   ASSERT_BUT_FIXME_PROPOGATE(-1 !=
                              read_inode(dir_inode, NULL, 0, 0, &file_size));
   u64 allocation_size = file_size;
-  char *data = kmalloc(allocation_size);
+  u8 *data = kmalloc(allocation_size);
   ASSERT_BUT_FIXME_PROPOGATE(
       -1 != read_inode(dir_inode, data, allocation_size, 0, NULL));
 
   direntry_header_t *dir;
-  char *data_p = data;
-  char *data_end = data + allocation_size;
+  u8 *data_p = data;
+  u8 *data_end = data + allocation_size;
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode;
        data_p += dir->size) {
@@ -199,18 +195,18 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
   return 0;
 }
 
-int ext2_read_dir(int dir_inode, char *buffer, size_t len, size_t offset) {
+int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
   u64 file_size;
   get_inode_data_size(dir_inode, &file_size);
-  char *data = kmalloc(file_size);
+  u8 *data = kmalloc(file_size);
   read_inode(dir_inode, data, file_size, 0, NULL);
 
   direntry_header_t *dir;
   struct dirent tmp_entry;
   size_t n_dir = 0;
   int rc = 0;
-  char *data_p = data;
-  char *data_end = data + file_size;
+  u8 *data_p = data;
+  u8 *data_end = data + file_size;
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode && len > 0;
        data_p += dir->size, n_dir++) {
@@ -369,15 +365,14 @@ int get_free_inode(int allocate) {
   return -1;
 }
 
-int write_inode(int inode_num, char *data, u64 size, u64 offset,
-                u64 *file_size, int append) {
+int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
+                int append) {
   (void)file_size;
   u8 inode_buffer[inode_size];
   ext2_get_inode_header(inode_num, (inode_t *)inode_buffer);
   inode_t *inode = (inode_t *)inode_buffer;
 
-  u64 fsize = (u64)(((u64)inode->_upper_32size << 32) |
-                              (u64)inode->low_32size);
+  u64 fsize = (u64)(((u64)inode->_upper_32size << 32) | (u64)inode->low_32size);
   if (append)
     offset = fsize;
 
@@ -423,16 +418,14 @@ int write_inode(int inode_num, char *data, u64 size, u64 offset,
   return bytes_written;
 }
 
-int read_inode(int inode_num, char *data, u64 size, u64 offset,
-               u64 *file_size) {
+int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size) {
   // TODO: Fail if size is lower than the size of the file being read, and
   //       return the size of the file the callers is trying to read.
   u8 inode_buffer[inode_size];
   ext2_get_inode_header(inode_num, (inode_t *)inode_buffer);
   inode_t *inode = (inode_t *)inode_buffer;
 
-  u64 fsize = (u64)(((u64)inode->_upper_32size << 32) |
-                              (u64)inode->low_32size);
+  u64 fsize = (u64)(((u64)inode->_upper_32size << 32) | (u64)inode->low_32size);
 
   if (file_size)
     *file_size = fsize;
@@ -468,23 +461,21 @@ int read_inode(int inode_num, char *data, u64 size, u64 offset,
   return bytes_read;
 }
 
-size_t ext2_read_file_offset(const char *file, char *data, u64 size,
-                             u64 offset, u64 *file_size) {
+size_t ext2_read_file_offset(const char *file, u8 *data, u64 size, u64 offset,
+                             u64 *file_size) {
   // TODO: Fail if the file does not exist.
   u32 inode = ext2_find_inode(file);
   return read_inode(inode, data, size, offset, file_size);
 }
 
-size_t ext2_read_file(const char *file, char *data, size_t size,
-                      u64 *file_size) {
+size_t ext2_read_file(const char *file, u8 *data, size_t size, u64 *file_size) {
   return ext2_read_file_offset(file, data, size, 0, file_size);
 }
 
 int resolve_link(int inode_num) {
   u8 tmp[inode_size];
   inode_t *inode = (inode_t *)tmp;
-  u64 inode_size =
-      (((u64)inode->_upper_32size) << 32) & inode->low_32size;
+  u64 inode_size = (((u64)inode->_upper_32size) << 32) & inode->low_32size;
   assert(inode_size <= 60);
   ext2_get_inode_header(inode_num, inode);
   char *path = (char *)(tmp + (10 * 4));
@@ -522,7 +513,7 @@ int ext2_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
 int ext2_truncate(vfs_fd_t *fd, size_t length) {
   // TODO: Blocks that are no longer used should be freed.
-  char inode_buffer[inode_size];
+  u8 inode_buffer[inode_size];
   inode_t *ext2_inode = (inode_t *)inode_buffer;
 
   ext2_get_inode_header(fd->inode->inode_num, ext2_inode);
@@ -566,14 +557,14 @@ vfs_inode_t *ext2_open(const char *path) {
 }
 
 u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
-                                    direntry_header_t *meta) {
+                               direntry_header_t *meta) {
   u64 file_size;
   get_inode_data_size(dir_inode, &file_size);
-  char *data = kmalloc(file_size);
+  u8 *data = kmalloc(file_size);
   read_inode(dir_inode, data, file_size, 0, NULL);
 
   direntry_header_t *dir;
-  char *data_p = data;
+  u8 *data_p = data;
   u64 pos = 0;
   u64 prev = pos;
   for (; pos < file_size && (dir = (direntry_header_t *)data_p)->size;
@@ -582,7 +573,7 @@ u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
   if (entry_offset)
     *entry_offset = prev;
   if (meta)
-    memcpy(meta, ((char *)data) + prev, sizeof(direntry_header_t));
+    memcpy(meta, ((u8 *)data) + prev, sizeof(direntry_header_t));
   kfree(data);
   return pos;
 }
@@ -602,7 +593,7 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   // Modify the entry to have its real size
   meta.size = sizeof(direntry_header_t) + meta.name_length;
   meta.size += (4 - (meta.size % 4));
-  write_inode(directory_inode, (char *)&meta, sizeof(direntry_header_t),
+  write_inode(directory_inode, (u8 *)&meta, sizeof(direntry_header_t),
               entry_offset, NULL, 0);
 
   // Create new entry
@@ -620,7 +611,7 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   memset(buffer, 0, entry_header.size);
   memcpy(buffer, &entry_header, sizeof(entry_header));
   memcpy(buffer + sizeof(entry_header), name, entry_header.name_length);
-  write_inode(directory_inode, (char *)buffer, entry_header.size,
+  write_inode(directory_inode, (u8 *)buffer, entry_header.size,
               new_entry_offset, NULL, 0);
 }
 

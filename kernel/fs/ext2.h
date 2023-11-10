@@ -131,9 +131,8 @@ typedef struct DirectoryEntryHeader {
 int ext2_create_file(const char *path, int mode);
 vfs_inode_t *ext2_mount(void);
 void parse_superblock(void);
-size_t ext2_read_file_offset(const char *file, char *data, u64 size,
-                             u64 offset, u64 *file_size);
-size_t ext2_read_file(const char *file, char *data, size_t size,
-                      u64 *file_size);
+size_t ext2_read_file_offset(const char *file, u8 *data, u64 size, u64 offset,
+                             u64 *file_size);
+size_t ext2_read_file(const char *file, u8 *data, size_t size, u64 *file_size);
 int ext2_create_directory(const char *path, int mode);
 #endif
