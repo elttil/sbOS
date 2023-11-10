@@ -1,7 +1,7 @@
 #include <log.h>
 #include <mmu.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 #include <string.h>
 
 void kmalloc_allocate_heap(void);

@@ -1,5 +1,5 @@
-#include <stdint.h>
+#include <typedefs.h>
 
-void handle_ipv4(const uint8_t *payload, uint32_t packet_length);
-void send_ipv4_packet(uint32_t ip, uint8_t protocol, const uint8_t *payload,
-                      uint16_t length);
+void handle_ipv4(const u8 *payload, u32 packet_length);
+void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload,
+                      u16 length);

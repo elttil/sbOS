@@ -5,7 +5,7 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <sched/scheduler.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 #define PS2_REG_DATA 0x60
 #define PS2_REG_STATUS 0x64
@@ -24,11 +24,11 @@
 
 #define PS2_CMD_SET_MAKE_RELEASE 0xF8 // has rsp
 
-uint8_t kb_scancodes[3] = {0x43, 0x41, 0x3f};
+u8 kb_scancodes[3] = {0x43, 0x41, 0x3f};
 
 FIFO_FILE *keyboard_fifo;
 
-uint8_t ascii_table[] = {
+u8 ascii_table[] = {
     'e', '\x1B', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 8,
     '\t',
 
@@ -57,7 +57,7 @@ uint8_t ascii_table[] = {
     ' ', // ;
 };
 
-uint8_t capital_ascii_table[] = {
+u8 capital_ascii_table[] = {
     'e', '\x1B', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 8,
     '\t',
 
@@ -88,7 +88,7 @@ uint8_t capital_ascii_table[] = {
 
 vfs_inode_t *kb_inode;
 
-uint8_t keyboard_to_ascii(uint16_t key, uint8_t capital) {
+u8 keyboard_to_ascii(u16 key, u8 capital) {
   if ((key & 0xFF) > sizeof(ascii_table))
     return 'U';
   if (capital)
@@ -97,20 +97,20 @@ uint8_t keyboard_to_ascii(uint16_t key, uint8_t capital) {
     return ascii_table[key & 0xFF];
 }
 
-uint8_t is_shift_down = 0;
-uint8_t is_alt_down = 0;
+u8 is_shift_down = 0;
+u8 is_alt_down = 0;
 
 struct KEY_EVENT {
   char c;
-  uint8_t mode;    // (shift (0 bit)) (alt (1 bit))
-  uint8_t release; // 0 pressed, 1 released
+  u8 mode;    // (shift (0 bit)) (alt (1 bit))
+  u8 release; // 0 pressed, 1 released
 };
 
 extern process_t *ready_queue;
 __attribute__((interrupt)) void
 int_keyboard(__attribute__((unused)) struct interrupt_frame *frame) {
   outb(0x20, 0x20);
-  uint16_t c;
+  u16 c;
   c = inb(PS2_REG_DATA);
   int released = 0;
   if (c & 0x80) {
@@ -143,14 +143,14 @@ int_keyboard(__attribute__((unused)) struct interrupt_frame *frame) {
   ev.mode = 0;
   ev.mode |= is_shift_down << 0;
   ev.mode |= is_alt_down << 1;
-  fifo_object_write((uint8_t *)&ev, 0, sizeof(ev), keyboard_fifo);
+  fifo_object_write((u8 *)&ev, 0, sizeof(ev), keyboard_fifo);
   kb_inode->has_data = keyboard_fifo->has_data;
 }
 
 #define PS2_WAIT_RECV                                                          \
   {                                                                            \
     for (;;) {                                                                 \
-      uint8_t status = inb(PS2_REG_STATUS);                                    \
+      u8 status = inb(PS2_REG_STATUS);                                         \
       if (status & 0x1)                                                        \
         break;                                                                 \
     }                                                                          \
@@ -159,7 +159,7 @@ int_keyboard(__attribute__((unused)) struct interrupt_frame *frame) {
 #define PS2_WAIT_SEND                                                          \
   {                                                                            \
     for (;;) {                                                                 \
-      uint8_t status = inb(PS2_REG_STATUS);                                    \
+      u8 status = inb(PS2_REG_STATUS);                                         \
       if (!(status & (0x1 << 1)))                                              \
         break;                                                                 \
     }                                                                          \
@@ -170,8 +170,7 @@ void install_keyboard(void) {
   install_handler(int_keyboard, INT_32_INTERRUPT_GATE(0x3), 0x21);
 }
 
-int keyboard_read(uint8_t *buffer, uint64_t offset, uint64_t len,
-                  vfs_fd_t *fd) {
+int keyboard_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
 
   if (0 == fd->inode->has_data) {

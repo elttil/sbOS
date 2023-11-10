@@ -1,2 +1,2 @@
-#include <stdint.h>
-uint32_t syscall_uptime(void);
+#include <typedefs.h>
+u32 syscall_uptime(void);

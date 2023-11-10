@@ -3,22 +3,22 @@
 #include <fs/devfs.h>
 #include <fs/fifo.h>
 #include <fs/vfs.h>
-#include <stdint.h>
+#include <typedefs.h>
 
-uint8_t mouse_cycle = 0;  // unsigned char
-uint8_t mouse_uint8_t[3]; // signed char
-uint8_t mouse_x = 0;      // signed char
-uint8_t mouse_y = 0;      // signed char
+u8 mouse_cycle = 0;  // unsigned char
+u8 mouse_u8[3]; // signed char
+u8 mouse_x = 0;      // signed char
+u8 mouse_y = 0;      // signed char
 vfs_inode_t *mouse_inode;
 vfs_fd_t *mouse_fd;
 
 struct mouse_event {
-  uint8_t buttons;
-  uint8_t x;
-  uint8_t y;
+  u8 buttons;
+  u8 x;
+  u8 y;
 };
 
-int fs_mouse_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fs_mouse_write(u8 *buffer, u64 offset, u64 len,
                    vfs_fd_t *fd) {
   int rc = fifo_object_write(buffer, offset, len, fd->inode->internal_object);
   FIFO_FILE *f = fd->inode->internal_object;
@@ -26,7 +26,7 @@ int fs_mouse_write(uint8_t *buffer, uint64_t offset, uint64_t len,
   return rc;
 }
 
-int fs_mouse_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fs_mouse_read(u8 *buffer, u64 offset, u64 len,
                   vfs_fd_t *fd) {
   FIFO_FILE *f = fd->inode->internal_object;
   if (!mouse_inode->has_data)
@@ -53,24 +53,24 @@ __attribute__((interrupt)) void int_mouse(registers_t *r) {
   EOI(12);
   switch (mouse_cycle) {
   case 0:
-    mouse_uint8_t[0] = inb(0x60);
-    if(!(mouse_uint8_t[0] & (1 << 3))) {
+    mouse_u8[0] = inb(0x60);
+    if(!(mouse_u8[0] & (1 << 3))) {
 	mouse_cycle = 0;
     return;
     }
     mouse_cycle++;
     break;
   case 1:
-    mouse_uint8_t[1] = inb(0x60);
+    mouse_u8[1] = inb(0x60);
     mouse_cycle++;
     break;
   case 2:
-    mouse_uint8_t[2] = inb(0x60);
-    mouse_x = mouse_uint8_t[1];
-    mouse_y = mouse_uint8_t[2];
+    mouse_u8[2] = inb(0x60);
+    mouse_x = mouse_u8[1];
+    mouse_y = mouse_u8[2];
     mouse_cycle = 0;
     struct mouse_event e;
-    e.buttons = mouse_uint8_t[0];
+    e.buttons = mouse_u8[0];
     e.x = mouse_x;
     e.y = mouse_y;
     raw_vfs_pwrite(mouse_fd, &e, sizeof(e), 0);
@@ -78,8 +78,8 @@ __attribute__((interrupt)) void int_mouse(registers_t *r) {
   }
 }
 
-void mouse_wait(uint8_t a_type) {
-  uint32_t _time_out = 100000;
+void mouse_wait(u8 a_type) {
+  u32 _time_out = 100000;
   if (a_type == 0) {
     while (_time_out--) {
       if ((inb(0x64) & 1) == 1) {
@@ -97,7 +97,7 @@ void mouse_wait(uint8_t a_type) {
   }
 }
 
-void mouse_write(uint8_t a_write) {
+void mouse_write(u8 a_write) {
   // Wait to be able to send a command
   mouse_wait(1);
   // Tell the mouse we are sending a command
@@ -108,14 +108,14 @@ void mouse_write(uint8_t a_write) {
   outb(0x60, a_write);
 }
 
-uint8_t mouse_read() {
+u8 mouse_read() {
   // Get's response from mouse
   mouse_wait(0);
   return inb(0x60);
 }
 
 void install_mouse(void) {
-  uint8_t _status; // unsigned char
+  u8 _status; // unsigned char
   asm("cli");
   // Enable the auxiliary mouse device
   mouse_wait(1);

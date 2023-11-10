@@ -17,15 +17,15 @@ PageDirectory real_kernel_directory;
 PageDirectory *active_directory = 0;
 
 #define END_OF_MEMORY 0x8000000 * 15
-uint64_t num_of_frames;
-uint32_t *frames;
-uint64_t available_memory_kb;
-uint32_t num_allocated_frames = 0;
+u64 num_of_frames;
+u32 *frames;
+u64 available_memory_kb;
+u32 num_allocated_frames = 0;
 
 #define KERNEL_START 0xc0000000
 extern uintptr_t data_end;
 
-void write_to_frame(uint32_t frame_address, uint8_t on);
+void write_to_frame(u32 frame_address, u8 on);
 
 void *ksbrk(size_t s) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
@@ -42,12 +42,12 @@ void *ksbrk(size_t s) {
   // Determine whether we are approaching a unallocated table
   int table_index = 1 + (rc / (1024 * 0x1000));
   if (!active_directory->tables[table_index]) {
-    uint32_t physical;
+    u32 physical;
     active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
     active_directory->tables[table_index] =
         (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
     memset(active_directory->tables[table_index], 0, sizeof(PageTable));
-    active_directory->physical_tables[table_index] = (uint32_t)physical | 0x3;
+    active_directory->physical_tables[table_index] = (u32)physical | 0x3;
 
     kernel_directory->tables[table_index] =
         active_directory->tables[table_index];
@@ -71,7 +71,7 @@ void *ksbrk_physical(size_t s, void **physical) {
   return r;
 }
 
-uint32_t mmu_get_number_of_allocated_frames(void) {
+u32 mmu_get_number_of_allocated_frames(void) {
   return num_allocated_frames;
 }
 
@@ -82,17 +82,17 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
     directory = get_active_pagedirectory();
   address /= 0x1000;
 
-  uint32_t table_index = address / 1024;
+  u32 table_index = address / 1024;
   if (!directory->tables[table_index]) {
     if (!create_new_page)
       return 0;
 
-    uint32_t physical;
+    u32 physical;
     directory->tables[table_index] =
         (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
     memset(directory->tables[table_index], 0, sizeof(PageTable));
     directory->physical_tables[table_index] =
-        (uint32_t)physical | ((set_user) ? 0x7 : 0x3);
+        (u32)physical | ((set_user) ? 0x7 : 0x3);
 
     if (!set_user) {
       kernel_directory->tables[table_index] = directory->tables[table_index];
@@ -107,7 +107,7 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
   return &directory->tables[table_index]->pages[address % 1024];
 }
 
-void mmu_free_pages(void *a, uint32_t n) {
+void mmu_free_pages(void *a, u32 n) {
   for (; n > 0; n--) {
     Page *p = get_page(a, NULL, PAGE_NO_ALLOCATE, 0);
     p->present = 0;
@@ -118,7 +118,7 @@ void mmu_free_pages(void *a, uint32_t n) {
 
 void *next_page(void *ptr) {
   uintptr_t a = (uintptr_t)ptr;
-  return (void *)(a + (PAGE_SIZE - ((uint32_t)a & (PAGE_SIZE - 1))));
+  return (void *)(a + (PAGE_SIZE - ((u32)a & (PAGE_SIZE - 1))));
 }
 
 void *align_page(void *a) {
@@ -134,13 +134,13 @@ void flush_tlb(void) {
 	mov %eax, %cr3");
 }
 
-uint32_t first_free_frame(void) {
-  for (uint32_t i = 1; i < INDEX_FROM_BIT(num_of_frames); i++) {
+u32 first_free_frame(void) {
+  for (u32 i = 1; i < INDEX_FROM_BIT(num_of_frames); i++) {
     if (frames[i] == 0xFFFFFFFF)
       continue;
 
-    for (uint32_t c = 0; c < 32; c++)
-      if (!(frames[i] & ((uint32_t)1 << c)))
+    for (u32 c = 0; c < 32; c++)
+      if (!(frames[i] & ((u32)1 << c)))
         return i * 32 + c;
   }
 
@@ -150,32 +150,32 @@ uint32_t first_free_frame(void) {
   return 0;
 }
 
-void write_to_frame(uint32_t frame_address, uint8_t on) {
-  uint32_t frame = frame_address / 0x1000;
+void write_to_frame(u32 frame_address, u8 on) {
+  u32 frame = frame_address / 0x1000;
   if (on) {
     num_allocated_frames++;
-    frames[INDEX_FROM_BIT(frame)] |= ((uint32_t)0x1 << OFFSET_FROM_BIT(frame));
+    frames[INDEX_FROM_BIT(frame)] |= ((u32)0x1 << OFFSET_FROM_BIT(frame));
     return;
   }
   num_allocated_frames--;
-  frames[INDEX_FROM_BIT(frame)] &= ~((uint32_t)0x1 << OFFSET_FROM_BIT(frame));
+  frames[INDEX_FROM_BIT(frame)] &= ~((u32)0x1 << OFFSET_FROM_BIT(frame));
 }
 
 PageDirectory *get_active_pagedirectory(void) { return active_directory; }
 
-PageTable *clone_table(uint32_t src_index, PageDirectory *src_directory,
-                       uint32_t *physical_address) {
+PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
+                       u32 *physical_address) {
   PageTable *new_table =
       ksbrk_physical(sizeof(PageTable), (void **)physical_address);
   PageTable *src = src_directory->tables[src_index];
 
   // Copy all the pages
-  for (uint16_t i = 0; i < 1024; i++) {
+  for (u16 i = 0; i < 1024; i++) {
     if (!src->pages[i].present) {
       new_table->pages[i].present = 0;
       continue;
     }
-    uint32_t frame_address = first_free_frame();
+    u32 frame_address = first_free_frame();
     write_to_frame(frame_address * 0x1000, 1);
     new_table->pages[i].frame = frame_address;
 
@@ -189,7 +189,7 @@ PageTable *clone_table(uint32_t src_index, PageDirectory *src_directory,
   // Now copy all of the data to the new table. This is done by creating a
   // virutal pointer to this newly created tables physical frame so we can
   // copy data to it.
-  for (uint32_t i = 0; i < 1024; i++) {
+  for (u32 i = 0; i < 1024; i++) {
     // Find a unused table
     if (src_directory->tables[i])
       continue;
@@ -201,13 +201,13 @@ PageTable *clone_table(uint32_t src_index, PageDirectory *src_directory,
     switch_page_directory(src_directory);
 
     // For each page in the table copy all the data over.
-    for (uint32_t c = 0; c < 1024; c++) {
+    for (u32 c = 0; c < 1024; c++) {
       // Only copy pages that are used.
       if (!src->pages[c].frame || !src->pages[c].present)
         continue;
 
-      uint32_t table_data_pointer = i << 22 | c << 12;
-      uint32_t src_data_pointer = src_index << 22 | c << 12;
+      u32 table_data_pointer = i << 22 | c << 12;
+      u32 src_data_pointer = src_index << 22 | c << 12;
       memcpy((void *)table_data_pointer, (void *)src_data_pointer, 0x1000);
     }
     src_directory->tables[i] = 0;
@@ -219,12 +219,12 @@ PageTable *clone_table(uint32_t src_index, PageDirectory *src_directory,
   return 0;
 }
 
-PageTable *copy_table(PageTable *src, uint32_t *physical_address) {
+PageTable *copy_table(PageTable *src, u32 *physical_address) {
   PageTable *new_table =
       ksbrk_physical(sizeof(PageTable), (void **)physical_address);
 
   // copy all the pages
-  for (uint16_t i = 0; i < 1024; i++) {
+  for (u16 i = 0; i < 1024; i++) {
     if (!src->pages[i].present) {
       new_table->pages[i].present = 0;
       continue;
@@ -243,23 +243,23 @@ PageDirectory *clone_directory(PageDirectory *original) {
   if (!original)
     original = get_active_pagedirectory();
 
-  uint32_t physical_address;
+  u32 physical_address;
   PageDirectory *new_directory =
       ksbrk_physical(sizeof(PageDirectory), (void **)&physical_address);
-  uint32_t offset =
-      (uint32_t)new_directory->physical_tables - (uint32_t)new_directory;
+  u32 offset =
+      (u32)new_directory->physical_tables - (u32)new_directory;
   new_directory->physical_address = physical_address + offset;
 
   for (int i = 0; i < 1024; i++) {
     if (!original->tables[i]) {
       new_directory->tables[i] = NULL;
-      new_directory->physical_tables[i] = (uint32_t)NULL;
+      new_directory->physical_tables[i] = (u32)NULL;
       continue;
     }
 
     // Make sure to copy instead of cloning the stack.
     if (i >= 635 && i <= 641) {
-      uint32_t physical;
+      u32 physical;
       new_directory->tables[i] = clone_table(i, original, &physical);
       new_directory->physical_tables[i] =
           physical | (original->physical_tables[i] & 0xFFF);
@@ -273,7 +273,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
       continue;
     }
 
-    uint32_t physical;
+    u32 physical;
     new_directory->tables[i] = clone_table(i, original, &physical);
     new_directory->physical_tables[i] =
         physical | (original->physical_tables[i] & 0xFFF);
@@ -362,7 +362,7 @@ void *allocate_frame(Page *page, int rw, int is_kernel) {
       ;
     return 0;
   }
-  uint32_t frame_address = first_free_frame();
+  u32 frame_address = first_free_frame();
   write_to_frame(frame_address * 0x1000, 1);
 
   page->present = 1;
@@ -382,7 +382,7 @@ void mmu_free_address_range(void *ptr, size_t length) {
       continue;
     if (!page->frame)
       continue;
-    write_to_frame(((uint32_t)page->frame) * 0x1000, 0);
+    write_to_frame(((u32)page->frame) * 0x1000, 0);
     page->present = 0;
     page->rw = 0;
     page->user = 0;
@@ -394,14 +394,14 @@ void mmu_map_directories(void *dst, PageDirectory *d, void *src,
                          PageDirectory *s, size_t length) {
   d = (!d) ? get_active_pagedirectory() : d;
   s = (!s) ? get_active_pagedirectory() : s;
-  size_t num_pages = (uint32_t)align_page((void *)length) / 0x1000;
+  size_t num_pages = (u32)align_page((void *)length) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, dst += 0x1000, src += 0x1000) {
     Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
     p->present = 1;
     p->rw = 1;
     p->user = 1;
     void *physical = virtual_to_physical(src, s);
-    p->frame = (uint32_t)physical / PAGE_SIZE;
+    p->frame = (u32)physical / PAGE_SIZE;
   }
   flush_tlb();
 }
@@ -409,7 +409,7 @@ void mmu_map_directories(void *dst, PageDirectory *d, void *src,
 void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
                       size_t length) {
   d = (!d) ? get_active_pagedirectory() : d;
-  size_t num_pages = (uint32_t)align_page((void *)length) / 0x1000;
+  size_t num_pages = (u32)align_page((void *)length) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, dst += 0x1000, physical += 0x1000) {
     Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
     p->present = 1;
@@ -430,30 +430,30 @@ void *virtual_to_physical(void *address, PageDirectory *directory) {
                   (((uintptr_t)address) & 0xFFF));
 }
 
-extern uint32_t inital_esp;
-void move_stack(uint32_t new_stack_address, uint32_t size) {
+extern u32 inital_esp;
+void move_stack(u32 new_stack_address, u32 size) {
   mmu_allocate_region((void *)(new_stack_address - size), size, MMU_FLAG_KERNEL,
                       NULL);
 
-  uint32_t old_stack_pointer, old_base_pointer;
+  u32 old_stack_pointer, old_base_pointer;
 
   asm volatile("mov %%esp, %0" : "=r"(old_stack_pointer));
   asm volatile("mov %%ebp, %0" : "=r"(old_base_pointer));
 
-  uint32_t new_stack_pointer =
-      old_stack_pointer + ((uint32_t)new_stack_address - inital_esp);
-  uint32_t new_base_pointer =
-      old_base_pointer + ((uint32_t)new_stack_address - inital_esp);
+  u32 new_stack_pointer =
+      old_stack_pointer + ((u32)new_stack_address - inital_esp);
+  u32 new_base_pointer =
+      old_base_pointer + ((u32)new_stack_address - inital_esp);
 
   // Copy the stack
   memcpy((void *)new_stack_pointer, (void *)old_stack_pointer,
          inital_esp - old_stack_pointer);
-  for (uint32_t i = (uint32_t)new_stack_address; i > new_stack_address - size;
+  for (u32 i = (u32)new_stack_address; i > new_stack_address - size;
        i -= 4) {
-    uint32_t tmp = *(uint32_t *)i;
+    u32 tmp = *(u32 *)i;
     if (old_stack_pointer < tmp && tmp < inital_esp) {
       tmp = tmp + (new_stack_address - inital_esp);
-      uint32_t *tmp2 = (uint32_t *)i;
+      u32 *tmp2 = (u32 *)i;
       *tmp2 = tmp;
     }
   }
@@ -470,7 +470,7 @@ void move_stack(uint32_t new_stack_address, uint32_t size) {
 void *is_valid_user_c_string(const char *ptr, size_t *size) {
   void *r = (void *)ptr;
   size_t s = 0;
-  for (; ((uint32_t)ptr - (uint32_t)r) < 0x1000;) {
+  for (; ((u32)ptr - (u32)r) < 0x1000;) {
     void *page = (void *)((uintptr_t)ptr & (uintptr_t)(~(PAGE_SIZE - 1)));
     if (!is_valid_userpointer(page, PAGE_SIZE))
       return NULL;
@@ -519,25 +519,25 @@ void enable_paging(void) {
 void create_table(int table_index) {
   if (kernel_directory->tables[table_index])
     return;
-  uint32_t physical;
+  u32 physical;
   kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   kernel_directory->tables[table_index] =
       (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
   memset(kernel_directory->tables[table_index], 0, sizeof(PageTable));
-  kernel_directory->physical_tables[table_index] = (uint32_t)physical | 0x3;
+  kernel_directory->physical_tables[table_index] = (u32)physical | 0x3;
 }
 
-void paging_init(uint64_t memsize) {
-  uint32_t *cr3;
+void paging_init(u64 memsize) {
+  u32 *cr3;
   asm volatile("mov %%cr3, %0" : "=r"(cr3));
-  uint32_t *virtual = (uint32_t *)((uint32_t)cr3 + 0xC0000000);
-  frames = ksbrk(1024 * sizeof(uint32_t));
-  memset(frames, 0, 1024 * sizeof(uint32_t));
+  u32 *virtual = (u32 *)((u32)cr3 + 0xC0000000);
+  frames = ksbrk(1024 * sizeof(u32));
+  memset(frames, 0, 1024 * sizeof(u32));
   num_of_frames = 1024 * 32;
 
   kernel_directory = &real_kernel_directory;
-  kernel_directory->physical_address = (uint32_t)cr3;
-  for (uint32_t i = 0; i < 1024; i++) {
+  kernel_directory->physical_address = (u32)cr3;
+  for (u32 i = 0; i < 1024; i++) {
     kernel_directory->physical_tables[i] = virtual[i];
 
     if (!kernel_directory->physical_tables[i]) {
@@ -571,24 +571,24 @@ void paging_init(uint64_t memsize) {
   switch_page_directory(clone_directory(kernel_directory));
   move_stack(0xA0000000, 0x80000);
 
-  uint64_t buffer_size = (memsize / 32) * sizeof(uint32_t);
+  u64 buffer_size = (memsize / 32) * sizeof(u32);
   // TODO: Very hacky solution since we have to memcpy the old allocation. This
   // places a strict requierment on how much RAM the system can have(altough it
   // is very small). Ideally the number of frames required would be dynamically
   // calculated.
-  assert(buffer_size >= 1024 * sizeof(uint32_t));
+  assert(buffer_size >= 1024 * sizeof(u32));
 
   // TODO Do this better
   // NOTE:
   // There are some addresses that point to devices rather than RAM.
   // Therefore we need frames for these to exist
-  uint64_t min_buffer_required = 0xFD000 + 0x100000;
+  u64 min_buffer_required = 0xFD000 + 0x100000;
   buffer_size = max(min_buffer_required, buffer_size);
 
   available_memory_kb = memsize;
   num_of_frames = available_memory_kb / 4;
-  uint32_t *new_frames = ksbrk(buffer_size);
+  u32 *new_frames = ksbrk(buffer_size);
   memset(new_frames, 0, buffer_size);
-  memcpy(new_frames, frames, 1024 * sizeof(uint32_t));
+  memcpy(new_frames, frames, 1024 * sizeof(u32));
   frames = new_frames;
 }

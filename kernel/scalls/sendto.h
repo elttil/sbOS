@@ -1,9 +1,9 @@
 #include <socket.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 struct t_two_args {
-  uint32_t a;
-  uint32_t b;
+  u32 a;
+  u32 b;
 };
 size_t syscall_sendto(int socket, const void *message, size_t length,
            int flags, struct t_two_args *extra_args /*

@@ -3,9 +3,9 @@
 #include <elf.h>
 #include <sched/scheduler.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
-void *load_elf_file(const char *f, uint32_t *ds) {
+void *load_elf_file(const char *f, u32 *ds) {
   //  ELFHeader *header = kmalloc(sizeof(ELFHeader));
   ELFHeader header;
   int fd = vfs_open(f, O_RDONLY, 0);
@@ -24,7 +24,7 @@ void *load_elf_file(const char *f, uint32_t *ds) {
 
   Elf32_Phdr program_header;
   assert(sizeof(program_header) == header.e_phentsize);
-  uint32_t header_offset = header.e_phoff;
+  u32 header_offset = header.e_phoff;
   uintptr_t end_of_code = 0;
   for (int i = 0; i < header.e_phnum;
        i++, header_offset += header.e_phentsize) {
@@ -39,11 +39,11 @@ void *load_elf_file(const char *f, uint32_t *ds) {
 
     // 1. Clear p_memsz bytes at p_vaddr to 0.(We also allocate frames for
     // that range)
-    uint32_t p_memsz = program_header.p_memsz;
-    uint32_t p_vaddr = program_header.p_vaddr;
+    u32 p_memsz = program_header.p_memsz;
+    u32 p_vaddr = program_header.p_vaddr;
 
-    uint32_t pages_to_allocate =
-        (uint32_t)align_page((void *)(p_vaddr + p_memsz));
+    u32 pages_to_allocate =
+        (u32)align_page((void *)(p_vaddr + p_memsz));
     pages_to_allocate -= p_vaddr - (p_vaddr % 0x1000);
     pages_to_allocate /= 0x1000;
 

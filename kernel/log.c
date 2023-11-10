@@ -3,14 +3,14 @@
 
 struct stackframe {
   struct stackframe *ebp;
-  uint32_t eip;
+  u32 eip;
 };
 
-void dump_backtrace(uint32_t max_frames) {
+void dump_backtrace(u32 max_frames) {
   struct stackframe *stk;
   asm("mov %%ebp,%0" : "=r"(stk)::);
   kprintf("Stack trace:\n");
-  for (uint32_t frame = 0; stk && frame < max_frames; ++frame) {
+  for (u32 frame = 0; stk && frame < max_frames; ++frame) {
     kprintf(" 0x%x\n", stk->eip);
     stk = stk->ebp;
   }

@@ -1,11 +1,11 @@
 #ifndef HALTS_H
 #define HALTS_H
 #include <fs/vfs.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 typedef struct {
-  uint8_t *ptr;
-  uint8_t active;
+  u8 *ptr;
+  u8 active;
 } halt_t;
 
 int create_read_fdhalt(vfs_fd_t *fd);

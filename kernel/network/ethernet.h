@@ -1,5 +1,5 @@
-#include <stdint.h>
+#include <typedefs.h>
 
-void handle_ethernet(const uint8_t *packet, uint64_t packet_length);
-void send_ethernet_packet(uint8_t mac_dst[6], uint16_t type, uint8_t *payload,
-                          uint64_t payload_length);
+void handle_ethernet(const u8 *packet, u64 packet_length);
+void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
+                          u64 payload_length);

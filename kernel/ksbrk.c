@@ -2,7 +2,7 @@
 #include <ksbrk.h>
 #include <mmu.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 /*
 extern uintptr_t data_end;

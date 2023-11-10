@@ -4,7 +4,7 @@
 #include <network/ipv4.h>
 #include <network/udp.h>
 #include <socket.h>
-extern uint8_t ip_address[4];
+extern u8 ip_address[4];
 
 #define CWR (1 << 7)
 #define ECE (1 << 6)
@@ -16,56 +16,56 @@ extern uint8_t ip_address[4];
 #define FIN (1 << 0)
 
 struct __attribute__((__packed__)) TCP_HEADER {
-  uint16_t src_port;
-  uint16_t dst_port;
-  uint32_t seq_num;
-  uint32_t ack_num;
-  uint8_t reserved : 4;
-  uint8_t data_offset : 4;
-  uint8_t flags;
-  uint16_t window_size;
-  uint16_t checksum;
-  uint16_t urgent_pointer;
+  u16 src_port;
+  u16 dst_port;
+  u32 seq_num;
+  u32 ack_num;
+  u8 reserved : 4;
+  u8 data_offset : 4;
+  u8 flags;
+  u16 window_size;
+  u16 checksum;
+  u16 urgent_pointer;
 };
 
 struct __attribute__((__packed__)) PSEUDO_TCP_HEADER {
-  uint32_t src_addr;
-  uint32_t dst_addr;
-  uint8_t zero;
-  uint8_t protocol;
-  uint16_t tcp_length;
-  uint16_t src_port;
-  uint16_t dst_port;
-  uint32_t seq_num;
-  uint32_t ack_num;
-  uint8_t reserved : 4;
-  uint8_t data_offset : 4;
-  uint8_t flags;
-  uint16_t window_size;
-  uint16_t checksum_zero; // ?????
-  uint16_t urgent_pointer;
+  u32 src_addr;
+  u32 dst_addr;
+  u8 zero;
+  u8 protocol;
+  u16 tcp_length;
+  u16 src_port;
+  u16 dst_port;
+  u32 seq_num;
+  u32 ack_num;
+  u8 reserved : 4;
+  u8 data_offset : 4;
+  u8 flags;
+  u16 window_size;
+  u16 checksum_zero; // ?????
+  u16 urgent_pointer;
 };
 
-uint16_t tcp_checksum(uint16_t *buffer, int size) {
+u16 tcp_checksum(u16 *buffer, int size) {
   unsigned long cksum = 0;
   while (size > 1) {
     cksum += *buffer++;
-    size -= sizeof(uint16_t);
+    size -= sizeof(u16);
   }
   if (size)
-    cksum += *(uint8_t *)buffer;
+    cksum += *(u8 *)buffer;
 
   cksum = (cksum >> 16) + (cksum & 0xffff);
   cksum += (cksum >> 16);
-  return (uint16_t)(~cksum);
+  return (u16)(~cksum);
 }
 
-void tcp_calculate_checksum(uint8_t src_ip[4], uint8_t dst_ip[4],
-                            const uint8_t *payload, uint16_t payload_length,
+void tcp_calculate_checksum(u8 src_ip[4], u8 dst_ip[4],
+                            const u8 *payload, u16 payload_length,
                             struct TCP_HEADER *header) {
   struct PSEUDO_TCP_HEADER ps = {0};
-  memcpy(&ps.src_addr, src_ip, sizeof(uint32_t));
-  memcpy(&ps.dst_addr, dst_ip, sizeof(uint32_t));
+  memcpy(&ps.src_addr, src_ip, sizeof(u32));
+  memcpy(&ps.dst_addr, dst_ip, sizeof(u32));
   ps.protocol = 6;
   ps.tcp_length = htons(20 + payload_length);
   ps.src_port = header->src_port;
@@ -79,10 +79,10 @@ void tcp_calculate_checksum(uint8_t src_ip[4], uint8_t dst_ip[4],
   ps.urgent_pointer = header->urgent_pointer;
   //  ps.options = 0;
   int buffer_length = sizeof(ps) + payload_length;
-  uint8_t buffer[buffer_length];
+  u8 buffer[buffer_length];
   memcpy(buffer, &ps, sizeof(ps));
   memcpy(buffer + sizeof(ps), payload, payload_length);
-  header->checksum = tcp_checksum((uint16_t *)buffer, buffer_length);
+  header->checksum = tcp_checksum((u16 *)buffer, buffer_length);
 }
 
 void tcp_close_connection(struct INCOMING_TCP_CONNECTION *inc) {
@@ -96,21 +96,21 @@ void tcp_close_connection(struct INCOMING_TCP_CONNECTION *inc) {
   header.flags = FIN | ACK;
   header.window_size = htons(512);
   header.urgent_pointer = 0;
-  uint32_t dst_ip;
+  u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
-  uint8_t payload[0];
-  uint16_t payload_length = 0;
-  tcp_calculate_checksum(ip_address, inc->ip, (const uint8_t *)payload,
+  u8 payload[0];
+  u16 payload_length = 0;
+  tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload,
                          payload_length, &header);
   int send_len = sizeof(header) + payload_length;
-  uint8_t send_buffer[send_len];
+  u8 send_buffer[send_len];
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
   send_ipv4_packet(dst_ip, 6, send_buffer, send_len);
 }
 
-void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, uint8_t *payload,
-                     uint16_t payload_length) {
+void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, u8 *payload,
+                     u16 payload_length) {
   struct TCP_HEADER header = {0};
   header.src_port = htons(inc->dst_port);
   header.dst_port = inc->n_port;
@@ -121,12 +121,12 @@ void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, uint8_t *payload,
   header.flags = PSH | ACK;
   header.window_size = htons(512);
   header.urgent_pointer = 0;
-  uint32_t dst_ip;
+  u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
-  tcp_calculate_checksum(ip_address, inc->ip, (const uint8_t *)payload,
+  tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload,
                          payload_length, &header);
   int send_len = sizeof(header) + payload_length;
-  uint8_t send_buffer[send_len];
+  u8 send_buffer[send_len];
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
   send_ipv4_packet(dst_ip, 6, send_buffer, send_len);
@@ -134,9 +134,9 @@ void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, uint8_t *payload,
   inc->seq_num += payload_length;
 }
 
-void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, uint8_t flags,
-                            uint32_t inc_seq_num, uint16_t n_dst_port,
-                            uint16_t n_src_port) {
+void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, u8 flags,
+                            u32 inc_seq_num, u16 n_dst_port,
+                            u16 n_src_port) {
   struct TCP_HEADER header = {0};
   header.src_port = n_dst_port;
   header.dst_port = n_src_port;
@@ -148,28 +148,28 @@ void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, uint8_t flags,
   header.window_size = htons(512); // TODO: What does this actually mean?
   header.urgent_pointer = 0;
   char payload[0];
-  tcp_calculate_checksum(ip_address, inc->ip, (const uint8_t *)payload, 0,
+  tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload, 0,
                          &header);
-  uint32_t dst_ip;
+  u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
-  send_ipv4_packet(dst_ip, 6, (const uint8_t *)&header, sizeof(header));
+  send_ipv4_packet(dst_ip, 6, (const u8 *)&header, sizeof(header));
 }
 
-void handle_tcp(uint8_t src_ip[4], const uint8_t *payload,
-                uint32_t payload_length) {
+void handle_tcp(u8 src_ip[4], const u8 *payload,
+                u32 payload_length) {
   const struct TCP_HEADER *inc_header = (const struct TCP_HEADER *)payload;
-  uint16_t n_src_port = *(uint16_t *)(payload);
-  uint16_t n_dst_port = *(uint16_t *)(payload + 2);
-  uint32_t n_seq_num = *(uint32_t *)(payload + 4);
-  uint32_t n_ack_num = *(uint32_t *)(payload + 8);
+  u16 n_src_port = *(u16 *)(payload);
+  u16 n_dst_port = *(u16 *)(payload + 2);
+  u32 n_seq_num = *(u32 *)(payload + 4);
+  u32 n_ack_num = *(u32 *)(payload + 8);
 
-  uint8_t flags = *(payload + 13);
+  u8 flags = *(payload + 13);
 
-  uint16_t src_port = htons(n_src_port);
+  u16 src_port = htons(n_src_port);
   (void)src_port;
-  uint16_t dst_port = htons(n_dst_port);
-  uint32_t seq_num = htonl(n_seq_num);
-  uint32_t ack_num = htonl(n_ack_num);
+  u16 dst_port = htons(n_dst_port);
+  u32 seq_num = htonl(n_seq_num);
+  u32 ack_num = htonl(n_ack_num);
   (void)ack_num;
 
   if (SYN == flags) {
@@ -177,7 +177,7 @@ void handle_tcp(uint8_t src_ip[4], const uint8_t *payload,
     struct INCOMING_TCP_CONNECTION *inc;
     if (!(inc = handle_incoming_tcp_connection(src_ip, n_src_port, dst_port)))
       return;
-    memcpy(inc->ip, src_ip, sizeof(uint8_t[4]));
+    memcpy(inc->ip, src_ip, sizeof(u8[4]));
     inc->seq_num = 0;
     inc->ack_num = seq_num + 1;
     inc->connection_closed = 0;
@@ -206,10 +206,10 @@ void handle_tcp(uint8_t src_ip[4], const uint8_t *payload,
   }
   if (flags & PSH) {
     kprintf("send ipv4 packet: %x\n", pit_num_ms());
-    uint16_t tcp_payload_length =
-        payload_length - inc_header->data_offset * sizeof(uint32_t);
+    u16 tcp_payload_length =
+        payload_length - inc_header->data_offset * sizeof(u32);
     fifo_object_write(
-        (uint8_t *)(payload + inc_header->data_offset * sizeof(uint32_t)), 0,
+        (u8 *)(payload + inc_header->data_offset * sizeof(u32)), 0,
         tcp_payload_length, inc->data_file);
 
     // Send back a ACK
@@ -225,11 +225,11 @@ void handle_tcp(uint8_t src_ip[4], const uint8_t *payload,
     header.window_size = htons(512); // TODO: What does this actually mean?
     header.urgent_pointer = 0;
     char payload[0];
-    tcp_calculate_checksum(ip_address, src_ip, (const uint8_t *)payload, 0,
+    tcp_calculate_checksum(ip_address, src_ip, (const u8 *)payload, 0,
                            &header);
-    uint32_t dst_ip;
+    u32 dst_ip;
     memcpy(&dst_ip, src_ip, sizeof(dst_ip));
-    send_ipv4_packet(dst_ip, 6, (const uint8_t *)&header, sizeof(header));
+    send_ipv4_packet(dst_ip, 6, (const u8 *)&header, sizeof(header));
     kprintf("after ipv4 packet: %x\n", pit_num_ms());
     return;
   }

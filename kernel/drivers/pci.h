@@ -1,26 +1,26 @@
-#include <stdint.h>
+#include <typedefs.h>
 
 struct GENERAL_DEVICE {
-  uint32_t base_mem_io;
-  uint8_t interrupt_line;
+  u32 base_mem_io;
+  u8 interrupt_line;
 };
 
 struct PCI_DEVICE {
-  uint16_t vendor;
-  uint16_t device;
-  uint8_t bus;
-  uint8_t slot;
+  u16 vendor;
+  u16 device;
+  u8 bus;
+  u8 slot;
   union {
     struct GENERAL_DEVICE gen;
   };
 };
 
-uint32_t pci_config_read32(const struct PCI_DEVICE *device, uint8_t func,
-                           uint8_t offset);
-void pci_config_write32(const struct PCI_DEVICE *device, uint8_t func,
-                        uint8_t offset, uint32_t data);
+u32 pci_config_read32(const struct PCI_DEVICE *device, u8 func,
+                           u8 offset);
+void pci_config_write32(const struct PCI_DEVICE *device, u8 func,
+                        u8 offset, u32 data);
 
-int pci_populate_device_struct(uint16_t vendor, uint16_t device,
+int pci_populate_device_struct(u16 vendor, u16 device,
                                struct PCI_DEVICE *pci_device);
 
-uint8_t pci_get_interrupt_line(const struct PCI_DEVICE *device);
+u8 pci_get_interrupt_line(const struct PCI_DEVICE *device);

@@ -6,7 +6,7 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 typedef struct LinkedList {
   const char *key;
@@ -20,7 +20,7 @@ typedef struct HashMap {
   LinkedList **entries;
   size_t size;
   size_t num_entries;
-  uint32_t (*hash_function)(const uint8_t *data, size_t len);
+  u32 (*hash_function)(const u8 *data, size_t len);
 } HashMap;
 
 HashMap *hashmap_create(size_t size);

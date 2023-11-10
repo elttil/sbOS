@@ -22,9 +22,10 @@
 #include <sched/scheduler.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 #include <stdio.h>
 #include <string.h>
+#include <typedefs.h>
 
 #if defined(__linux__)
 #error "You are not using a cross-compiler."
@@ -34,11 +35,11 @@
 #error "This OS needs to be compiled with a ix86-elf compiler"
 #endif
 
-uint32_t inital_esp;
+u32 inital_esp;
 uintptr_t data_end;
 
-void kernel_main(uint32_t kernel_end, unsigned long magic, unsigned long addr,
-                 uint32_t inital_stack) {
+void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
+                 u32 inital_stack) {
   (void)kernel_end;
   data_end = 0xc0400000;
   inital_esp = inital_stack;
@@ -48,9 +49,9 @@ void kernel_main(uint32_t kernel_end, unsigned long magic, unsigned long addr,
   assert(magic == MULTIBOOT_BOOTLOADER_MAGIC);
 
   multiboot_info_t *mb = (multiboot_info_t *)(addr + 0xc0000000);
-  uint32_t mem_kb = mb->mem_lower;
-  uint32_t mem_mb = (mb->mem_upper - 1000) / 1000;
-  uint64_t memsize_kb = mem_mb * 1000 + mem_kb;
+  u32 mem_kb = mb->mem_lower;
+  u32 mem_mb = (mb->mem_upper - 1000) / 1000;
+  u64 memsize_kb = mem_mb * 1000 + mem_kb;
   paging_init(memsize_kb);
   klog("Paging Initalized", LOG_SUCCESS);
   mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));

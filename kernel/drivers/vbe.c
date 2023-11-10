@@ -5,11 +5,11 @@
 #include <mmu.h>
 #include <stdio.h>
 
-uint8_t *framebuffer;
-uint32_t framebuffer_physical;
-uint32_t framebuffer_width;
-uint32_t framebuffer_height;
-uint64_t framebuffer_size;
+u8 *framebuffer;
+u32 framebuffer_physical;
+u32 framebuffer_width;
+u32 framebuffer_height;
+u64 framebuffer_size;
 
 vfs_vm_object_t vbe_vm_object;
 
@@ -17,9 +17,9 @@ vfs_vm_object_t vbe_vm_object;
 #define min(_a, _b) (((_a) > (_b)) ? (_b) : (_a))
 
 struct DISPLAY_INFO {
-  uint32_t width;
-  uint32_t height;
-  uint8_t bpp;
+  u32 width;
+  u32 height;
+  u8 bpp;
 };
 
 struct DISPLAY_INFO vbe_info;
@@ -29,27 +29,27 @@ void display_driver_init(multiboot_info_t *mbi) {
   framebuffer_width = mbi->framebuffer_width;
   framebuffer_height = mbi->framebuffer_height;
 
-  uint32_t bits_pp = mbi->framebuffer_bpp;
-  uint32_t bytes_pp = (bits_pp / 8) + (8 - (bits_pp % 8));
+  u32 bits_pp = mbi->framebuffer_bpp;
+  u32 bytes_pp = (bits_pp / 8) + (8 - (bits_pp % 8));
 
   framebuffer_size = bytes_pp * framebuffer_width * framebuffer_height;
 
   framebuffer_physical = mbi->framebuffer_addr;
   framebuffer =
-      mmu_map_frames((void *)(uint32_t)mbi->framebuffer_addr, framebuffer_size);
+      mmu_map_frames((void *)(u32)mbi->framebuffer_addr, framebuffer_size);
 
   vbe_info.width = framebuffer_width;
   vbe_info.height = framebuffer_height;
   vbe_info.bpp = mbi->framebuffer_bpp;
 }
 
-vfs_vm_object_t *vbe_get_vm_object(uint64_t length, uint64_t offset,
+vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset,
                                    vfs_fd_t *fd) {
   (void)fd;
   (void)length;
   (void)offset;
   vbe_vm_object.size = framebuffer_size;
-  int n = (uintptr_t)align_page((void *)(uint32_t)framebuffer_size) / 0x1000;
+  int n = (uintptr_t)align_page((void *)(u32)framebuffer_size) / 0x1000;
   vbe_vm_object.object = kmalloc(sizeof(void *) * n);
   for (int i = 0; i < n; i++) {
     vbe_vm_object.object[i] = (void *)framebuffer_physical + (i * 0x1000);
@@ -57,7 +57,7 @@ vfs_vm_object_t *vbe_get_vm_object(uint64_t length, uint64_t offset,
   return &vbe_vm_object;
 }
 
-int display_info_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int display_info_read(u8 *buffer, u64 offset, u64 len,
                       vfs_fd_t *fd) {
   (void)offset;
   int read_len = min(sizeof(struct DISPLAY_INFO), len);

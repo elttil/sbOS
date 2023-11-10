@@ -26,26 +26,26 @@ void set_signal_handler(int sig, void (*handler)(int));
 typedef struct {
   void *u_address;
   void *k_address;
-  uint32_t length;
+  u32 length;
   int fd;
 } MemoryMap;
 
 typedef struct Process process_t;
 
 struct Process {
-  uint32_t pid;
+  u32 pid;
   char program_name[100];
   char current_working_directory[MAX_PATH];
-  uint32_t eip, esp, ebp;
-  uint8_t incoming_signal;
-  uint32_t signal_handler_stack;
+  u32 eip, esp, ebp;
+  u8 incoming_signal;
+  u32 signal_handler_stack;
   void *signal_handlers[20];
   PageDirectory *cr3;
   vfs_fd_t *file_descriptors[100];
   vfs_inode_t *read_halt_inode[100];
   vfs_inode_t *write_halt_inode[100];
   vfs_inode_t *disconnect_halt_inode[100];
-  uint32_t halts[2];
+  u32 halts[2];
   struct Halt *halt_list;
   void *data_segment_end;
   process_t *next;
@@ -54,7 +54,7 @@ struct Process {
   // can do stuff such as reap zombies and get status.
   process_t *child;
   MemoryMap *maps[100];
-  uint32_t sleep_until;
+  u32 sleep_until;
   int child_rc;
   int dead;
 };

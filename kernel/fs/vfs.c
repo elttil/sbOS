@@ -23,15 +23,15 @@ vfs_fd_t *get_vfs_fd(int fd) {
 }
 
 vfs_inode_t *vfs_create_inode(
-    int inode_num, int type, uint8_t has_data, uint8_t can_write,
-    uint8_t is_open, void *internal_object, uint64_t file_size,
+    int inode_num, int type, u8 has_data, u8 can_write,
+    u8 is_open, void *internal_object, u64 file_size,
     vfs_inode_t *(*open)(const char *path),
     int (*create_file)(const char *path, int mode),
-    int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
-    int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
+    int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
+    int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     void (*close)(vfs_fd_t *fd),
     int (*create_directory)(const char *path, int mode),
-    vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
+    vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset,
                                       vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length)) {
   vfs_inode_t *r = kmalloc(sizeof(inode_t));
@@ -226,14 +226,14 @@ int vfs_close(int fd) {
   return 0;
 }
 
-int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, uint64_t count,
-                  uint64_t offset) {
+int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count,
+                  u64 offset) {
   if (!(vfs_fd->flags & O_READ))
     return -EBADF;
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
 }
 
-int vfs_pread(int fd, void *buf, uint64_t count, uint64_t offset) {
+int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   if (fd >= 100) {
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
@@ -260,15 +260,15 @@ int vfs_pread(int fd, void *buf, uint64_t count, uint64_t offset) {
   return rc;
 }
 
-int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, uint64_t count,
-                   uint64_t offset) {
+int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count,
+                   u64 offset) {
   assert(vfs_fd);
   assert(vfs_fd->inode);
   assert(vfs_fd->inode->write);
   return vfs_fd->inode->write(buf, offset, count, vfs_fd);
 }
 
-int vfs_pwrite(int fd, void *buf, uint64_t count, uint64_t offset) {
+int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
   vfs_fd_t *vfs_fd = get_vfs_fd(fd);
   if (!vfs_fd)
     return -EBADF;
@@ -278,7 +278,7 @@ int vfs_pwrite(int fd, void *buf, uint64_t count, uint64_t offset) {
   return raw_vfs_pwrite(vfs_fd, buf, count, offset);
 }
 
-vfs_vm_object_t *vfs_get_vm_object(int fd, uint64_t length, uint64_t offset) {
+vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
   vfs_fd_t *vfs_fd = get_vfs_fd(fd);
   if (!vfs_fd)
     return NULL;

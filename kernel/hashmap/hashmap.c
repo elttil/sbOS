@@ -17,7 +17,7 @@
  * one that can be found in hash.c. But it should be possible to use any
  * other hashing algorithm should you want to as long as it uses these
  * types:
- * uint32_t hash_function(uint8_t*, size_t)
+ * u32 hash_function(u8*, size_t)
  *
  * The hashing algorithm can be changed via changing the "hash_function"
  * pointer in the HashMap structure.
@@ -35,7 +35,7 @@
 
 #define CONSTANT 0x031b5515
 
-uint32_t mix(uint32_t x) {
+u32 mix(u32 x) {
   x ^= CONSTANT;
   x ^= (x << 13);
   x ^= (x >> 7);
@@ -43,11 +43,11 @@ uint32_t mix(uint32_t x) {
   return x;
 }
 
-uint32_t hash(const uint8_t *data, size_t len) {
-  uint32_t hash = 0;
+u32 hash(const u8 *data, size_t len) {
+  u32 hash = 0;
   for (; len;) {
-    uint32_t value = 0;
-    uint8_t read_len = (sizeof(uint32_t) < len) ? sizeof(uint32_t) : len;
+    u32 value = 0;
+    u8 read_len = (sizeof(u32) < len) ? sizeof(u32) : len;
     memcpy(&value, data, read_len);
     hash ^= mix(value);
     data += read_len;
@@ -67,7 +67,7 @@ char *copy_c_string(const char *str) {
   return ret_string;
 }
 
-uint32_t limit_hash(HashMap *m, uint32_t hash) { return hash % m->size; }
+u32 limit_hash(HashMap *m, u32 hash) { return hash % m->size; }
 
 void free_linkedlist_entry(LinkedList *entry) {
   if (entry->key_allocated) {
@@ -104,8 +104,8 @@ void *get_linkedlist_value(LinkedList *list, const char *key) {
   return entry->value;
 }
 
-uint32_t find_index(HashMap *m, const char *key) {
-  return limit_hash(m, m->hash_function((uint8_t *)key, strlen(key)));
+u32 find_index(HashMap *m, const char *key) {
+  return limit_hash(m, m->hash_function((u8 *)key, strlen(key)));
 }
 
 int hashmap_add_entry(HashMap *m, const char *key, void *value,
@@ -128,7 +128,7 @@ int hashmap_add_entry(HashMap *m, const char *key, void *value,
   entry->upon_deletion = upon_deletion;
 
   // Add the new entry to the list.
-  uint32_t index = find_index(m, key);
+  u32 index = find_index(m, key);
   LinkedList **list_pointer = &m->entries[index];
   for (; *list_pointer;)
     list_pointer = &(*list_pointer)->next;
@@ -139,7 +139,7 @@ int hashmap_add_entry(HashMap *m, const char *key, void *value,
 }
 
 void *hashmap_get_entry(HashMap *m, const char *key) {
-  uint32_t index = find_index(m, key);
+  u32 index = find_index(m, key);
   if (!m->entries[index])
     return NULL;
   return get_linkedlist_value(m->entries[index], key);

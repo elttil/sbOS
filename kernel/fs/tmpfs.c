@@ -4,14 +4,14 @@
 #include <fs/tmpfs.h>
 #include <halts.h>
 #include <sched/scheduler.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 void tmp_close(vfs_fd_t *fd) {
   fd->inode->is_open = 0;
   ((tmp_inode *)fd->inode->internal_object)->read_inode->is_open = 0;
 }
 
-int tmp_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int tmp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   tmp_inode *calling_file = fd->inode->internal_object;
   tmp_inode *child_file = calling_file->read_inode->internal_object;
   if (child_file->is_closed)
@@ -23,7 +23,7 @@ int tmp_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return rc;
 }
 
-int tmp_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int tmp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   tmp_inode *calling_file = fd->inode->internal_object;
   tmp_inode *child_file = calling_file->read_inode->internal_object;
   if (calling_file->is_closed)

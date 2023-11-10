@@ -1,6 +1,6 @@
 #include "idt.h"
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 void syscalls_init(void);
 

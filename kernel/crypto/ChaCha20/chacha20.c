@@ -6,10 +6,10 @@
 	 a += b, d ^= a, d = ROTL(d, 8), c += d, b ^= c, b = ROTL(b, 7))
 #define ROUNDS 20
 
-void chacha_block(uint32_t out[16], uint32_t const in[16])
+void chacha_block(u32 out[16], u32 const in[16])
 {
 	int i;
-	uint32_t x[16];
+	u32 x[16];
 
 	for (i = 0; i < 16; ++i)
 		x[i] = in[i];

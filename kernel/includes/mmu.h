@@ -1,9 +1,9 @@
 #ifndef PAGING_H
 #define PAGING_H
 #include "kmalloc.h"
-#include <stdint.h>
+#include <typedefs.h>
 
-typedef uint8_t mmu_flags;
+typedef u8 mmu_flags;
 
 #define MMU_FLAG_RW (1 << 0)
 #define MMU_FLAG_KERNEL (1 << 1)
@@ -12,13 +12,13 @@ void *next_page(void *a);
 void *align_page(void *a);
 
 typedef struct Page {
-  uint32_t present : 1;
-  uint32_t rw : 1;
-  uint32_t user : 1;
-  uint32_t accessed : 1;
-  uint32_t dirty : 1;
-  uint32_t unused : 7;
-  uint32_t frame : 20;
+  u32 present : 1;
+  u32 rw : 1;
+  u32 user : 1;
+  u32 accessed : 1;
+  u32 dirty : 1;
+  u32 unused : 7;
+  u32 frame : 20;
 } __attribute__((packed)) Page;
 
 typedef struct PageTable {
@@ -27,8 +27,8 @@ typedef struct PageTable {
 
 typedef struct PageDirectory {
   PageTable *tables[1024];
-  uint32_t physical_tables[1024];
-  uint32_t physical_address;
+  u32 physical_tables[1024];
+  u32 physical_address;
 } PageDirectory;
 
 int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
@@ -39,16 +39,16 @@ void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);
 void mmu_free_address_range(void *ptr, size_t length);
 void mmu_map_directories(void *dst, PageDirectory *d, void *src,
                          PageDirectory *s, size_t length);
-uint32_t mmu_get_number_of_allocated_frames(void);
+u32 mmu_get_number_of_allocated_frames(void);
 void *mmu_map_frames(void *ptr, size_t s);
 void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
                       size_t length);
-void mmu_free_pages(void *a, uint32_t n);
+void mmu_free_pages(void *a, u32 n);
 
 void flush_tlb(void);
-void paging_init(uint64_t memsize);
+void paging_init(u64 memsize);
 PageDirectory *get_active_pagedirectory(void);
-void move_stack(uint32_t new_stack_address, uint32_t size);
+void move_stack(u32 new_stack_address, u32 size);
 void switch_page_directory(PageDirectory *directory);
 void *allocate_frame(Page *page, int rw, int is_kernel);
 PageDirectory *clone_directory(PageDirectory *original);

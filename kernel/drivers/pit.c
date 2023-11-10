@@ -3,14 +3,14 @@
 #define PIT_IO_CHANNEL_0 0x40
 #define PIT_IO_MODE_COMMAND 0x43
 
-uint64_t clock_num_ms_ticks = 0;
-uint64_t pit_counter = 0;
-uint16_t hertz;
+u64 clock_num_ms_ticks = 0;
+u64 pit_counter = 0;
+u16 hertz;
 
-uint64_t pit_num_ms(void) { return clock_num_ms_ticks; }
+u64 pit_num_ms(void) { return clock_num_ms_ticks; }
 
-uint16_t read_pit_count(void) {
-  uint16_t count = 0;
+u16 read_pit_count(void) {
+  u16 count = 0;
 
   outb(PIT_IO_MODE_COMMAND, 0x0 /*0b00000000*/);
 
@@ -20,8 +20,8 @@ uint16_t read_pit_count(void) {
   return count;
 }
 
-void set_pit_count(uint16_t hertz) {
-  uint16_t divisor = 1193180 / hertz;
+void set_pit_count(u16 hertz) {
+  u16 divisor = 1193180 / hertz;
 
   /*
    * 0b00110110

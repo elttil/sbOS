@@ -1,10 +1,10 @@
-#include <stdint.h>
+#include <typedefs.h>
 
 enum { type_kind_int = 0, type_kind_float = 1, type_unknown = 0xffff };
 
 struct type_descriptor {
-  uint16_t type_kind;
-  uint16_t type_info;
+  u16 type_kind;
+  u16 type_info;
   char type_name[1];
 };
 
@@ -13,8 +13,8 @@ struct source_location {
   union {
     unsigned long reported;
     struct {
-      uint32_t line;
-      uint32_t column;
+      u32 line;
+      u32 column;
     };
   };
 };

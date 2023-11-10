@@ -1,4 +1,4 @@
-#include <stdint.h>
-void get_mac_address(uint8_t mac[6]);
+#include <typedefs.h>
+void get_mac_address(u8 mac[6]);
 void rtl8139_init(void);
-int rtl8139_send_data(uint8_t *data, uint16_t data_size);
+int rtl8139_send_data(u8 *data, u16 data_size);

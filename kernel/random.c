@@ -10,7 +10,7 @@
 #define HASH_CTX SHA1_CTX
 #define HASH_LEN SHA1_LEN
 
-uint32_t internal_chacha_block[16] = {
+u32 internal_chacha_block[16] = {
     // Constant ascii values of "expand 32-byte k"
     0x61707865,
     0x3320646e,
@@ -33,15 +33,15 @@ uint32_t internal_chacha_block[16] = {
 };
 
 void mix_chacha(void) {
-  uint8_t rand_data[BLOCK_SIZE];
+  u8 rand_data[BLOCK_SIZE];
   get_random((BYTEPTR)rand_data, BLOCK_SIZE);
   memcpy(internal_chacha_block + KEY, rand_data, KEY_SIZE);
   memcpy(internal_chacha_block + NONCE, rand_data + KEY_SIZE, NONCE_SIZE);
   internal_chacha_block[COUNT] = 0;
 }
 
-void get_random(BYTEPTR buffer, uint64_t len) {
-  uint8_t rand_data[BLOCK_SIZE];
+void get_random(BYTEPTR buffer, u64 len) {
+  u8 rand_data[BLOCK_SIZE];
   for (; len > 0;) {
     if (COUNT_MAX - 1 == internal_chacha_block[COUNT]) {
       // The current block has used up all the 2^32 counts. If the
@@ -53,8 +53,8 @@ void get_random(BYTEPTR buffer, uint64_t len) {
       internal_chacha_block[COUNT]++;
       mix_chacha();
     }
-    uint32_t read_len = (BLOCK_SIZE < len) ? (BLOCK_SIZE) : len;
-    chacha_block((uint32_t *)rand_data, internal_chacha_block);
+    u32 read_len = (BLOCK_SIZE < len) ? (BLOCK_SIZE) : len;
+    chacha_block((u32 *)rand_data, internal_chacha_block);
     internal_chacha_block[COUNT]++;
     memcpy(buffer, rand_data, read_len);
     buffer += read_len;
@@ -63,13 +63,13 @@ void get_random(BYTEPTR buffer, uint64_t len) {
 }
 
 HASH_CTX hash_pool;
-uint32_t hash_pool_size = 0;
+u32 hash_pool_size = 0;
 
 void add_hash_pool(void) {
-  uint8_t new_chacha_key[KEY_SIZE];
+  u8 new_chacha_key[KEY_SIZE];
   get_random(new_chacha_key, KEY_SIZE);
 
-  uint8_t hash_buffer[HASH_LEN];
+  u8 hash_buffer[HASH_LEN];
   SHA1_Final(&hash_pool, hash_buffer);
   for (size_t i = 0; i < HASH_LEN; i++)
     new_chacha_key[i % KEY_SIZE] ^= hash_buffer[i];
@@ -77,7 +77,7 @@ void add_hash_pool(void) {
   SHA1_Init(&hash_pool);
   SHA1_Update(&hash_pool, hash_buffer, HASH_LEN);
 
-  uint8_t block[BLOCK_SIZE];
+  u8 block[BLOCK_SIZE];
   get_random(block, BLOCK_SIZE);
   SHA1_Update(&hash_pool, block, BLOCK_SIZE);
 
@@ -86,7 +86,7 @@ void add_hash_pool(void) {
   mix_chacha();
 }
 
-void add_entropy(uint8_t *buffer, size_t size) {
+void add_entropy(u8 *buffer, size_t size) {
   SHA1_Update(&hash_pool, buffer, size);
   hash_pool_size += size;
   if (hash_pool_size >= HASH_LEN * 2)
@@ -120,14 +120,14 @@ void setup_random(void) {
   vfs_close(rand_fd);
 }
 
-int random_write(BYTEPTR buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int random_write(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
   add_entropy(buffer, len);
   return len; // add_entropy() never fails to recieve (len) amount of data.
 }
 
-int random_read(BYTEPTR buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int random_read(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
   get_random(buffer, len);

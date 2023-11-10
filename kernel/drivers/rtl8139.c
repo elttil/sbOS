@@ -15,53 +15,53 @@
 #define TSAD0 0x20 // transmit start address
 
 struct PCI_DEVICE rtl8139;
-uint8_t *device_buffer;
+u8 *device_buffer;
 
-uint8_t *send_buffers[4];
+u8 *send_buffers[4];
 
 struct _INT_PACKET_HEADER {
-  uint8_t ROK : 1;
-  uint8_t FAE : 1;
-  uint8_t CRC : 1;
-  uint8_t LONG : 1;
-  uint8_t RUNT : 1;
-  uint8_t ISE : 1;
-  uint8_t reserved : 5;
-  uint8_t BAR : 1;
-  uint8_t PAM : 1;
-  uint8_t MAR : 1;
+  u8 ROK : 1;
+  u8 FAE : 1;
+  u8 CRC : 1;
+  u8 LONG : 1;
+  u8 RUNT : 1;
+  u8 ISE : 1;
+  u8 reserved : 5;
+  u8 BAR : 1;
+  u8 PAM : 1;
+  u8 MAR : 1;
 };
 
 struct PACKET_HEADER {
   union {
-    uint16_t raw;
+    u16 raw;
     struct _INT_PACKET_HEADER data;
   };
 };
 
-uint16_t current_packet_read = 0;
+u16 current_packet_read = 0;
 
 void handle_packet(void) {
-  assert(sizeof(struct _INT_PACKET_HEADER) == sizeof(uint16_t));
+  assert(sizeof(struct _INT_PACKET_HEADER) == sizeof(u16));
 
-  uint16_t *buf = (uint16_t *)(device_buffer + current_packet_read);
+  u16 *buf = (u16 *)(device_buffer + current_packet_read);
   struct PACKET_HEADER packet_header;
   packet_header.raw = *buf;
   assert(packet_header.data.ROK);
   kprintf("packet_header.raw: %x\n", packet_header.raw);
-  uint16_t packet_length = *(buf + 1);
+  u16 packet_length = *(buf + 1);
   kprintf("packet_length: %x\n", packet_length);
 
-  uint8_t packet_buffer[8192 + 16];
+  u8 packet_buffer[8192 + 16];
   if (current_packet_read + packet_length >= 8192 + 16) {
-    uint32_t first_run = ((uint8_t *)buf + (8192 + 16)) - device_buffer;
+    u32 first_run = ((u8 *)buf + (8192 + 16)) - device_buffer;
     memcpy(packet_buffer, buf, first_run);
     memcpy(packet_buffer, device_buffer, packet_length - first_run);
   } else {
     memcpy(packet_buffer, buf, packet_length);
   }
 
-  handle_ethernet((uint8_t *)packet_buffer + 4, packet_length);
+  handle_ethernet((u8 *)packet_buffer + 4, packet_length);
 
   // Thanks to exscape
   // https://github.com/exscape/exscapeOS/blob/master/src/kernel/net/rtl8139.c
@@ -76,7 +76,7 @@ void handle_packet(void) {
 
 __attribute__((interrupt)) void rtl8139_handler(void *regs) {
   (void)regs;
-  uint16_t status = inw(rtl8139.gen.base_mem_io + 0x3e);
+  u16 status = inw(rtl8139.gen.base_mem_io + 0x3e);
   kprintf("status: %x\n", status);
 
   outw(rtl8139.gen.base_mem_io + 0x3E, 0x5);
@@ -91,7 +91,7 @@ __attribute__((interrupt)) void rtl8139_handler(void *regs) {
   EOI(0xB);
 }
 
-int rtl8139_send_data(uint8_t *data, uint16_t data_size) {
+int rtl8139_send_data(u8 *data, u16 data_size) {
   const struct PCI_DEVICE *device = &rtl8139;
   // FIXME: It should block or fail if there is too little space for the
   // buffer
@@ -103,30 +103,30 @@ int rtl8139_send_data(uint8_t *data, uint16_t data_size) {
   }
   memcpy(send_buffers[loop], data, data_size);
   outl(device->gen.base_mem_io + 0x20 + loop * 4,
-       (uint32_t)virtual_to_physical(send_buffers[loop], NULL));
+       (u32)virtual_to_physical(send_buffers[loop], NULL));
   outl(device->gen.base_mem_io + 0x10 + loop * 4, data_size);
   loop += 1;
   return 1;
 }
 
-void get_mac_address(uint8_t mac[6]) {
-  uint32_t base_address = rtl8139.gen.base_mem_io;
+void get_mac_address(u8 mac[6]) {
+  u32 base_address = rtl8139.gen.base_mem_io;
   // Read the MAC address
-  uint64_t mac_address;
+  u64 mac_address;
   {
-    uint32_t low_mac = inl(base_address);
-    uint16_t high_mac = inw(base_address + 0x4);
-    mac_address = ((uint64_t)high_mac << 32) | low_mac;
+    u32 low_mac = inl(base_address);
+    u16 high_mac = inw(base_address + 0x4);
+    mac_address = ((u64)high_mac << 32) | low_mac;
   }
   kprintf("mac_address: %x\n", mac_address);
-  memcpy(mac, &mac_address, sizeof(uint8_t[6]));
+  memcpy(mac, &mac_address, sizeof(u8[6]));
 }
 
-uint8_t rtl8139_get_transmit_status(uint32_t base_address) {
-  uint32_t status_register = inl(base_address + 0x3E);
+u8 rtl8139_get_transmit_status(u32 base_address) {
+  u32 status_register = inl(base_address + 0x3E);
   if ((status_register >> 3) & 0x1)
     kprintf("transmit error :(\n");
-  uint8_t status = (status_register >> 2) & 0x1;
+  u8 status = (status_register >> 2) & 0x1;
   outl(base_address + 0x3E, 0x5);
   return status;
 }
@@ -138,14 +138,14 @@ void rtl8139_init(void) {
   }
   kprintf("RTL8139 found at bus: %x slot: %x\n", rtl8139.bus, rtl8139.slot);
 
-  uint8_t header_type = (pci_config_read32(&rtl8139, 0, 0xC) >> 16) & 0xFF;
+  u8 header_type = (pci_config_read32(&rtl8139, 0, 0xC) >> 16) & 0xFF;
   assert(0 == header_type);
 
-  uint32_t base_address = rtl8139.gen.base_mem_io;
-  uint8_t interrupt_line = pci_get_interrupt_line(&rtl8139);
+  u32 base_address = rtl8139.gen.base_mem_io;
+  u8 interrupt_line = pci_get_interrupt_line(&rtl8139);
 
   // Enable bus mastering
-  uint32_t register1 = pci_config_read32(&rtl8139, 0, 0x4);
+  u32 register1 = pci_config_read32(&rtl8139, 0, 0x4);
   register1 |= (1 << 2);
   pci_config_write32(&rtl8139, 0, 0x4, register1);
 
@@ -159,7 +159,7 @@ void rtl8139_init(void) {
   device_buffer = ksbrk(8192 + 16);
   memset(device_buffer, 0, 8192 + 16);
   // Setupt the recieve buffer
-  uint32_t rx_buffer = (uint32_t)virtual_to_physical(device_buffer, NULL);
+  u32 rx_buffer = (u32)virtual_to_physical(device_buffer, NULL);
   outl(base_address + RBSTART, rx_buffer);
 
   // Set IMR + ISR

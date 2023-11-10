@@ -1,5 +1,5 @@
-#include <stdint.h>
+#include <typedefs.h>
 
-uint16_t ntohs(uint16_t net);
-uint16_t htons(uint16_t net);
-uint32_t htonl(uint32_t net);
+u16 ntohs(u16 net);
+u16 htons(u16 net);
+u32 htonl(u32 net);

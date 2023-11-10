@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include <typedefs.h>
 #include <stddef.h>
 
 #define POLLIN (1 << 0)

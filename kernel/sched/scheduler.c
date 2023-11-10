@@ -13,9 +13,9 @@
 
 process_t *ready_queue;
 process_t *current_task = NULL;
-uint32_t next_pid = 0;
+u32 next_pid = 0;
 
-extern uint32_t read_eip(void);
+extern u32 read_eip(void);
 
 process_t *get_current_task(void) { return current_task; }
 
@@ -56,7 +56,7 @@ process_t *create_process(process_t *p) {
 
   strcpy(r->current_working_directory, "/");
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
-  memset((void *)r->halts, 0, 2 * sizeof(uint32_t));
+  memset((void *)r->halts, 0, 2 * sizeof(u32));
   for (int i = 0; i < 100; i++) {
     if (p) {
       r->file_descriptors[i] = p->file_descriptors[i];
@@ -149,12 +149,12 @@ void exit(int status) {
   switch_task();
 }
 
-uint32_t setup_stack(uint32_t stack_pointer, int argc, char **argv) {
+u32 setup_stack(u32 stack_pointer, int argc, char **argv) {
   mmu_allocate_region(STACK_LOCATION - STACK_SIZE, STACK_SIZE, MMU_FLAG_RW,
                       NULL);
   flush_tlb();
 
-  uint32_t ptr = stack_pointer;
+  u32 ptr = stack_pointer;
 
   char *argv_ptrs[argc + 1];
   for (int i = 0; i < argc; i++) {
@@ -196,7 +196,7 @@ int exec(const char *filename, char **argv) {
     argc++;
   }
 
-  uint32_t end_of_code;
+  u32 end_of_code;
   void *entry = load_elf_file(filename, &end_of_code);
   if (!entry) {
     return 0;
@@ -207,7 +207,7 @@ int exec(const char *filename, char **argv) {
 
   current_task->data_segment_end = align_page((void *)end_of_code);
 
-  uint32_t ptr = setup_stack(0x90000000, argc, argv);
+  u32 ptr = setup_stack(0x90000000, argc, argv);
 
   jump_usermode((void (*)())(entry), ptr);
   ASSERT_NOT_REACHED;
@@ -225,7 +225,7 @@ int fork(void) {
 
   tmp_task->next = new_task;
 
-  uint32_t eip = read_eip();
+  u32 eip = read_eip();
 
   if (current_task != parent_task) {
     return 0;
@@ -278,7 +278,7 @@ int task_save_state(void) {
   asm("mov %%esp, %0" : "=r"(current_task->esp));
   asm("mov %%ebp, %0" : "=r"(current_task->ebp));
 
-  uint32_t eip = read_eip();
+  u32 eip = read_eip();
 
   if (0x1 == eip) {
     // Should the returned value from read_eip be equal to one it
@@ -310,7 +310,7 @@ int kill(pid_t pid, int sig) {
   return 0;
 }
 
-void jump_signal_handler(void *func, uint32_t esp);
+void jump_signal_handler(void *func, u32 esp);
 void switch_task() {
   if (!current_task)
     return;
@@ -324,7 +324,7 @@ void switch_task() {
   active_directory = current_task->cr3;
 
   if (current_task->incoming_signal) {
-    uint8_t sig = current_task->incoming_signal;
+    u8 sig = current_task->incoming_signal;
     current_task->incoming_signal = 0;
     asm("mov %0, %%cr3" ::"r"(current_task->cr3->physical_address));
 

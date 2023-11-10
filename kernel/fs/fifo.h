@@ -3,25 +3,25 @@ typedef struct S_FIFO_FILE FIFO_FILE;
 #define FIFO_H
 #include "vfs.h"
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 struct S_FIFO_FILE {
   char *buffer;
-  uint64_t buffer_len;
-  uint64_t write_len;
-  uint8_t is_blocking;
-  uint8_t has_data;
-  uint8_t can_write;
+  u64 buffer_len;
+  u64 write_len;
+  u8 is_blocking;
+  u8 has_data;
+  u8 can_write;
 };
 
 int create_fifo(void);
 FIFO_FILE *create_fifo_object(void);
-int fifo_object_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_object_write(u8 *buffer, u64 offset, u64 len,
                       FIFO_FILE *file);
-int fifo_object_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_object_read(u8 *buffer, u64 offset, u64 len,
                      FIFO_FILE *file);
-int fifo_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_write(u8 *buffer, u64 offset, u64 len,
                vfs_fd_t *fd);
-int fifo_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_read(u8 *buffer, u64 offset, u64 len,
               vfs_fd_t *fd);
 #endif

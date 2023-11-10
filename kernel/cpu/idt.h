@@ -5,7 +5,7 @@ typedef struct registers registers_t;
 #include <cpu/gdt.h>
 #include <cpu/io.h>
 #include <log.h>
-#include <stdint.h>
+#include <typedefs.h>
 #include <stdio.h>
 
 /*
@@ -55,16 +55,16 @@ typedef struct registers registers_t;
 struct interrupt_frame;
 
 struct registers {
-  uint32_t error_code;
-  uint32_t eip;
-  uint32_t cs;
-  uint32_t eflags;
-  uint32_t esp;
-  uint32_t ss;
+  u32 error_code;
+  u32 eip;
+  u32 cs;
+  u32 eflags;
+  u32 esp;
+  u32 ss;
 };
 
 void idt_init(void);
 __attribute__((no_caller_saved_registers)) void EOI(unsigned char irq);
-void install_handler(void (*handler_function)(), uint16_t type_attribute,
-                     uint8_t entry);
+void install_handler(void (*handler_function)(), u16 type_attribute,
+                     u8 entry);
 #endif

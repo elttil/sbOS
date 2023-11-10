@@ -1,2 +1,2 @@
-#include <stdint.h>
-uint8_t locked;
+#include <typedefs.h>
+u8 locked;

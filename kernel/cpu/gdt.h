@@ -1,6 +1,6 @@
 #ifndef GDT_H
 #define GDT_H
-#include <stdint.h>
+#include <typedefs.h>
 #include <string.h>
 
 #define GDT_ENTRY_SIZE 0x8
@@ -13,64 +13,64 @@
 
 struct GDT_Entry
 {
-	uint16_t limit_low;
-	uint32_t base_low               : 24;
-	uint32_t accessed               :  1;
-	uint32_t read_write             :  1; // readable for code, writable for data
-	uint32_t conforming_expand_down :  1; // conforming for code, expand down for data
-	uint32_t code                   :  1; // 1 for code, 0 for data
-	uint32_t code_data_segment      :  1; // should be 1 for everything but TSS and LDT
-	uint32_t DPL                    :  2; // privilege level
-	uint32_t present                :  1;
-	uint32_t limit_high             :  4;
-	uint32_t available              :  1; // only used in software; has no effect on hardware
-	uint32_t long_mode              :  1;
-	uint32_t big                    :  1; // 32-bit opcodes for code, uint32_t stack for data
-	uint32_t gran                   :  1; // 1 to use 4k page addressing, 0 for byte addressing
-	uint8_t base_high;
+	u16 limit_low;
+	u32 base_low               : 24;
+	u32 accessed               :  1;
+	u32 read_write             :  1; // readable for code, writable for data
+	u32 conforming_expand_down :  1; // conforming for code, expand down for data
+	u32 code                   :  1; // 1 for code, 0 for data
+	u32 code_data_segment      :  1; // should be 1 for everything but TSS and LDT
+	u32 DPL                    :  2; // privilege level
+	u32 present                :  1;
+	u32 limit_high             :  4;
+	u32 available              :  1; // only used in software; has no effect on hardware
+	u32 long_mode              :  1;
+	u32 big                    :  1; // 32-bit opcodes for code, u32 stack for data
+	u32 gran                   :  1; // 1 to use 4k page addressing, 0 for byte addressing
+	u8 base_high;
 }__attribute__((packed));
 
 typedef struct GDT_Pointer
 {
-	uint16_t size;
-	uint32_t offset;
+	u16 size;
+	u32 offset;
 }__attribute__((packed)) GDT_Pointer;
 
 struct tss_entry_struct
 {
-	uint32_t prev_tss; // The previous TSS - with hardware task switching these form a kind of backward linked list.
-	uint32_t esp0;     // The stack pointer to load when changing to kernel mode.
-	uint32_t ss0;      // The stack segment to load when changing to kernel mode.
+	u32 prev_tss; // The previous TSS - with hardware task switching these form a kind of backward linked list.
+	u32 esp0;     // The stack pointer to load when changing to kernel mode.
+	u32 ss0;      // The stack segment to load when changing to kernel mode.
 	// Everything below here is unused.
-	uint32_t esp1; // esp and ss 1 and 2 would be used when switching to rings 1 or 2.
-	uint32_t ss1;
-	uint32_t esp2;
-	uint32_t ss2;
-	uint32_t cr3;
-	uint32_t eip;
-	uint32_t eflags;
-	uint32_t eax;
-	uint32_t ecx;
-	uint32_t edx;
-	uint32_t ebx;
-	uint32_t esp;
-	uint32_t ebp;
-	uint32_t esi;
-	uint32_t edi;
-	uint32_t es;
-	uint32_t cs;
-	uint32_t ss;
-	uint32_t ds;
-	uint32_t fs;
-	uint32_t gs;
-	uint32_t ldt;
-	uint16_t trap;
-	uint16_t iomap_base;
+	u32 esp1; // esp and ss 1 and 2 would be used when switching to rings 1 or 2.
+	u32 ss1;
+	u32 esp2;
+	u32 ss2;
+	u32 cr3;
+	u32 eip;
+	u32 eflags;
+	u32 eax;
+	u32 ecx;
+	u32 edx;
+	u32 ebx;
+	u32 esp;
+	u32 ebp;
+	u32 esi;
+	u32 edi;
+	u32 es;
+	u32 cs;
+	u32 ss;
+	u32 ds;
+	u32 fs;
+	u32 gs;
+	u32 ldt;
+	u16 trap;
+	u16 iomap_base;
 } __attribute__((packed));
 
 void gdt_init();
 
-uint8_t gen_access_byte(uint8_t priv, uint8_t s, uint8_t ex, uint8_t dc, uint8_t rw);
-uint64_t gen_gdt_entry(uint32_t base, uint32_t limit, uint8_t access_byte, uint8_t flag);
-uint8_t gen_flag(uint8_t gr, uint8_t sz);
+u8 gen_access_byte(u8 priv, u8 s, u8 ex, u8 dc, u8 rw);
+u64 gen_gdt_entry(u32 base, u32 limit, u8 access_byte, u8 flag);
+u8 gen_flag(u8 gr, u8 sz);
 #endif

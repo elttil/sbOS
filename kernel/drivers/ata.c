@@ -28,11 +28,11 @@
 #define STATUS_DRQ ((1 << 3))
 #define STATUS_ERR ((1 << 0))
 
-uint32_t io_base;
+u32 io_base;
 
 unsigned char read_buffer[SECTOR_SIZE];
 
-void select_drive(uint8_t master_slave) {
+void select_drive(u8 master_slave) {
   outb(io_base + DRIVE_SELECT, (master_slave) ? 0xA0 : 0xB0);
 }
 
@@ -59,7 +59,7 @@ int identify(int master_slave) {
     return -1;
   }
 
-  for (uint16_t status;;) {
+  for (u16 status;;) {
     status = inb(io_base + STATUS_PORT);
 
     if (1 == (status & STATUS_ERR)) {
@@ -76,13 +76,13 @@ int identify(int master_slave) {
   // and store them.
   // TODO: This returns some intreasting information.
   // https://wiki.osdev.org/ATA_PIO_Mode#Interesting_information_returned_by_IDENTIFY
-  uint16_t array[256];
+  u16 array[256];
   rep_insw(1 * SECTOR_SIZE / 16, io_base + DATA_PORT, array);
   return 1;
 }
 
 int poll_status(void) {
-  for (uint16_t status;;) {
+  for (u16 status;;) {
     // Read the Regular Status port until...
     // We read this 15 times to give some
     // time for the drive to catch up.
@@ -106,7 +106,7 @@ int poll_status(void) {
 
 // Instructions from: https://wiki.osdev.org/ATA_PIO_Mode#28_bit_PIO
 void
-setup_drive_for_command(uint32_t lba, uint32_t sector_count) {
+setup_drive_for_command(u32 lba, u32 sector_count) {
   // 1. Send 0xE0 for the "master" or 0xF0 for
   //    the "slave", ORed with the highest 4 bits
   //    of the LBA to port 0x1F6
@@ -131,21 +131,21 @@ setup_drive_for_command(uint32_t lba, uint32_t sector_count) {
   outb(io_base + LBAhi, (lba >> 16) & 0xFF);
 }
 
-void delayed_rep_outsw(size_t n, uint16_t port, volatile uint8_t *buffer) {
+void delayed_rep_outsw(size_t n, u16 port, volatile u8 *buffer) {
   for (volatile size_t i = 0; i < n; i++) {
-    outsw(port, (uint32_t)buffer);
+    outsw(port, (u32)buffer);
     buffer += 2;
     //    outsw(port, buffer);
   }
 }
 
-void ata_write_lba28(uint32_t lba, uint32_t sector_count,
-                     volatile const uint8_t *buffer) {
+void ata_write_lba28(u32 lba, u32 sector_count,
+                     volatile const u8 *buffer) {
   setup_drive_for_command(lba, sector_count);
 
   outb(io_base + COMMAND_PORT, WRITE_SECTORS);
 
-  for (volatile uint32_t i = 0; i < sector_count; i++) {
+  for (volatile u32 i = 0; i < sector_count; i++) {
     if (!poll_status()) {
       // FIXME: Fail properly
       for (;;)
@@ -153,7 +153,7 @@ void ata_write_lba28(uint32_t lba, uint32_t sector_count,
     }
 
     delayed_rep_outsw(256, io_base + DATA_PORT,
-                      (void *)((uint32_t)buffer + i * 256));
+                      (void *)((u32)buffer + i * 256));
   }
 
   // Cache flush
@@ -161,14 +161,14 @@ void ata_write_lba28(uint32_t lba, uint32_t sector_count,
 
   // Wait for BSY to clear
   for (;;) {
-    uint16_t status = inb(io_base + STATUS_PORT);
+    u16 status = inb(io_base + STATUS_PORT);
     if (!(status & STATUS_BSY))
       break;
   }
 }
 
 // Instructions from: https://wiki.osdev.org/ATA_PIO_Mode#28_bit_PIO
-void ata_read_lba28(uint32_t lba, uint32_t sector_count,
+void ata_read_lba28(u32 lba, u32 sector_count,
                     volatile void *address) {
   // Step 1-6 is done in this function.
   setup_drive_for_command(lba, sector_count);
@@ -180,9 +180,9 @@ void ata_read_lba28(uint32_t lba, uint32_t sector_count,
 
   // This step can be found in the for loop
 
-  // 9. Transfer 256 16-bit values, a uint16_t at a time,
+  // 9. Transfer 256 16-bit values, a u16 at a time,
   //    into your buffer from I/O port 0x1F0
-  for (volatile uint32_t i = 0; i < sector_count; i++) {
+  for (volatile u32 i = 0; i < sector_count; i++) {
     // 10. Then loop back to waiting for the next IRQ
     // or poll again for each successive sector.
     // 8. Wait for an IRQ or poll.
@@ -191,7 +191,7 @@ void ata_read_lba28(uint32_t lba, uint32_t sector_count,
       for (;;)
         ;
     }
-    rep_insw(256, io_base + DATA_PORT, (void *)((uint32_t)address + i * 256));
+    rep_insw(256, io_base + DATA_PORT, (void *)((u32)address + i * 256));
   }
 }
 
@@ -210,13 +210,13 @@ void ata_init(void) {
   select_drive(1);
 }
 
-void read_lba(uint32_t lba, void *address, size_t size, size_t offset) {
+void read_lba(u32 lba, void *address, size_t size, size_t offset) {
   uintptr_t ptr = (uintptr_t)address;
   lba += offset / SECTOR_SIZE;
   offset = offset % SECTOR_SIZE;
   size_t total_read = 0;
   for (int i = 0; size > 0; i++) {
-    uint32_t read_len =
+    u32 read_len =
         (SECTOR_SIZE < (size + offset)) ? (SECTOR_SIZE - offset) : size;
     ata_read_lba28(lba + i, 1, read_buffer);
     memcpy((void *)ptr, read_buffer + offset, read_len);
@@ -227,16 +227,16 @@ void read_lba(uint32_t lba, void *address, size_t size, size_t offset) {
   }
 }
 
-void write_lba(uint32_t lba, volatile void *address, size_t size,
+void write_lba(u32 lba, volatile void *address, size_t size,
                size_t offset) {
   uintptr_t ptr = (uintptr_t)address;
   lba += offset / SECTOR_SIZE;
   offset = offset % SECTOR_SIZE;
   size_t total_write = 0;
-  uint8_t sector_buffer[512];
+  u8 sector_buffer[512];
   for (int i = 0; size > 0; i++) {
     ata_read_lba28(lba + i, 1, sector_buffer);
-    uint32_t write_len =
+    u32 write_len =
         (SECTOR_SIZE < (size + offset)) ? (SECTOR_SIZE - offset) : size;
 
     memcpy(sector_buffer + offset, (void *)ptr, write_len);

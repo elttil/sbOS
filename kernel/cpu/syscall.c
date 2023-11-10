@@ -22,7 +22,7 @@
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
-#include <stdint.h>
+#include <typedefs.h>
 #include <string.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -170,8 +170,8 @@ void (*syscall_functions[])() = {
     (void(*))syscall_sigaction,
 };
 
-void syscall_function_handler(uint32_t eax, uint32_t arg1, uint32_t arg2,
-                              uint32_t arg3, uint32_t arg4, uint32_t arg5) {
+void syscall_function_handler(u32 eax, u32 arg1, u32 arg2,
+                              u32 arg3, u32 arg4, u32 arg5) {
   assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
   syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
 }

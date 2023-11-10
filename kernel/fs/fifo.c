@@ -9,7 +9,7 @@ void fifo_close(vfs_fd_t *fd) {
   return;
 }
 
-int fifo_object_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_object_write(u8 *buffer, u64 offset, u64 len,
                       FIFO_FILE *file) {
   (void)offset;
   file->has_data = 1;
@@ -22,7 +22,7 @@ int fifo_object_write(uint8_t *buffer, uint64_t offset, uint64_t len,
   return len;
 }
 
-int fifo_object_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int fifo_object_read(u8 *buffer, u64 offset, u64 len,
                      FIFO_FILE *file) {
   (void)offset;
   if (file->write_len == 0) {
@@ -78,7 +78,7 @@ int create_fifo(void) {
   return fd_n;
 }
 
-int fifo_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int fifo_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   FIFO_FILE *file = (FIFO_FILE *)fd->inode->internal_object;
   int rc = fifo_object_write(buffer, offset, len, file);
@@ -87,7 +87,7 @@ int fifo_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return rc;
 }
 
-int fifo_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int fifo_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   FIFO_FILE *file = (FIFO_FILE *)fd->inode->internal_object;
   file->is_blocking = !(fd->flags & O_NONBLOCK);
   int rc = fifo_object_read(buffer, offset, len, file);

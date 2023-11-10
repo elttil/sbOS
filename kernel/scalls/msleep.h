@@ -1,5 +1,5 @@
 #ifndef MSLEEP_H
 #define MSLEEP_H
-#include <stdint.h>
-void syscall_msleep(uint32_t ms);
+#include <typedefs.h>
+void syscall_msleep(u32 ms);
 #endif

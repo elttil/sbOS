@@ -13,15 +13,15 @@
 #define IDT_MAX_ENTRY 256
 
 struct IDT_Descriptor {
-  uint16_t low_offset;
-  uint16_t code_segment_selector;
-  uint8_t zero; // Always should be zero
-  uint8_t type_attribute;
-  uint16_t high_offset;
+  u16 low_offset;
+  u16 code_segment_selector;
+  u8 zero; // Always should be zero
+  u8 type_attribute;
+  u16 high_offset;
 } __attribute__((packed)) __attribute__((aligned(4)));
 
 struct IDT_Pointer {
-  uint16_t size;
+  u16 size;
   struct IDT_Descriptor **interrupt_table;
 } __attribute__((packed));
 
@@ -30,9 +30,8 @@ struct IDT_Pointer idtr;
 
 extern void load_idtr(void *idtr);
 
-void format_descriptor(uint32_t offset, uint16_t code_segment,
-                       uint8_t type_attribute,
-                       struct IDT_Descriptor *descriptor) {
+void format_descriptor(u32 offset, u16 code_segment,
+                       u8 type_attribute, struct IDT_Descriptor *descriptor) {
   descriptor->low_offset = offset & 0xFFFF;
   descriptor->high_offset = offset >> 16;
   descriptor->type_attribute = type_attribute;
@@ -40,13 +39,13 @@ void format_descriptor(uint32_t offset, uint16_t code_segment,
   descriptor->zero = 0;
 }
 
-void install_handler(void (*handler_function)(), uint16_t type_attribute,
-                     uint8_t entry) {
-  format_descriptor((uint32_t)handler_function, KERNEL_CODE_SEGMENT_OFFSET,
+void install_handler(void (*handler_function)(), u16 type_attribute,
+                     u8 entry) {
+  format_descriptor((u32)handler_function, KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
 }
 
-__attribute__((no_caller_saved_registers)) void EOI(uint8_t irq) {
+__attribute__((no_caller_saved_registers)) void EOI(u8 irq) {
   if (irq > 7)
     outb(SLAVE_PIC_COMMAND_PORT, 0x20);
 
@@ -158,8 +157,8 @@ void PIC_remap(int offset) {
 }
 
 void IRQ_set_mask(unsigned char IRQline) {
-  uint16_t port;
-  uint8_t value;
+  u16 port;
+  u8 value;
   port = (IRQline < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
   if (IRQline >= 8)
     IRQline -= 8;
@@ -168,8 +167,8 @@ void IRQ_set_mask(unsigned char IRQline) {
 }
 
 void IRQ_clear_mask(unsigned char IRQline) {
-  uint16_t port;
-  uint8_t value;
+  u16 port;
+  u8 value;
   port = (IRQline < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
   if (IRQline >= 8) {
     IRQline -= 8;

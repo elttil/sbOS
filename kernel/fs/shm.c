@@ -11,7 +11,7 @@ HashMap *shared_memory_objects;
 
 void shm_init(void) { shared_memory_objects = hashmap_create(10); }
 
-int shm_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int shm_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_vm_object_t *p = fd->inode->internal_object;
 
   if (offset > p->size)
@@ -25,7 +25,7 @@ int shm_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return len;
 }
 
-int shm_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int shm_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_vm_object_t *p = fd->inode->internal_object;
 
   if (offset > p->size)
@@ -39,7 +39,7 @@ int shm_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return len;
 }
 
-vfs_vm_object_t *shm_get_vm_object(uint64_t length, uint64_t offset,
+vfs_vm_object_t *shm_get_vm_object(u64 length, u64 offset,
                                    vfs_fd_t *fd) {
   (void)length;
   (void)offset;
@@ -51,7 +51,7 @@ int shm_ftruncate(vfs_fd_t *fd, size_t length) {
   vfs_vm_object_t *p = fd->inode->internal_object;
   p->size = length;
   p->virtual_object = ksbrk(length);
-  int n = (uintptr_t)align_page((void *)(uint32_t)length) / 0x1000;
+  int n = (uintptr_t)align_page((void *)(u32)length) / 0x1000;
   p->object = kmalloc(sizeof(void *) * n);
   for (int i = 0; i < n; i++)
     p->object[i] =

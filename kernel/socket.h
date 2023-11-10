@@ -3,7 +3,7 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 #define AF_UNIX 0
 #define AF_INET 1
@@ -36,25 +36,25 @@ typedef struct {
 } OPEN_UNIX_SOCKET;
 
 typedef struct {
-  uint32_t address;
-  uint16_t port;
+  u32 address;
+  u16 port;
   SOCKET *s;
 } OPEN_INET_SOCKET;
 
 struct INCOMING_TCP_CONNECTION {
-  uint8_t ip[4];
-  uint16_t n_port;
-  uint16_t dst_port;
+  u8 ip[4];
+  u16 n_port;
+  u16 dst_port;
   FIFO_FILE *data_file;
-  uint8_t is_used;
-  uint32_t ack_num;
-  uint32_t seq_num;
-  uint8_t connection_closed;
-  uint8_t requesting_connection_close;
+  u8 is_used;
+  u32 ack_num;
+  u32 seq_num;
+  u8 connection_closed;
+  u8 requesting_connection_close;
 };
 
-typedef uint32_t in_addr_t;
-typedef uint16_t in_port_t;
+typedef u32 in_addr_t;
+typedef u16 in_port_t;
 typedef unsigned int sa_family_t;
 typedef int socklen_t;
 
@@ -66,10 +66,10 @@ struct sockaddr {
 struct sockaddr_in {
   sa_family_t sin_family;
   union {
-    uint32_t s_addr;
-    uint8_t a[4];
+    u32 s_addr;
+    u8 a[4];
   } sin_addr;
-  uint16_t sin_port;
+  u16 sin_port;
 };
 
 struct sockaddr_un {
@@ -77,16 +77,16 @@ struct sockaddr_un {
   char *sun_path;         /* Socket pathname */
 };
 
-OPEN_INET_SOCKET *find_open_udp_port(uint16_t port);
-OPEN_INET_SOCKET *find_open_tcp_port(uint16_t port);
+OPEN_INET_SOCKET *find_open_udp_port(u16 port);
+OPEN_INET_SOCKET *find_open_tcp_port(u16 port);
 
 int uds_open(const char *path);
 int socket(int domain, int type, int protocol);
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 struct INCOMING_TCP_CONNECTION *
-handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
-                               uint16_t dst_port);
-struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(uint8_t ip[4],
-                                                            uint16_t n_port);
+handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
+                               u16 dst_port);
+struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
+                                                            u16 n_port);
 #endif

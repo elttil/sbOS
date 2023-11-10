@@ -1,5 +1,5 @@
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 typedef struct SYS_MMAP_PARAMS {
   void *addr;

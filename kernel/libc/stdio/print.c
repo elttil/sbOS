@@ -10,7 +10,7 @@ const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
 
 inline void putc(const char c) { write_serial(c); }
 
-int kprint_hex(uint64_t num) {
+int kprint_hex(u64 num) {
   int c = 2;
 
   if (num == 0) {
@@ -79,7 +79,7 @@ int kprintf(const char *format, ...) {
         ;
       break;
     case 'x':
-      c += kprint_hex(va_arg(list, const uint32_t));
+      c += kprint_hex(va_arg(list, const u32));
       break;
     case '%':
       putc('%');

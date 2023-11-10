@@ -1,15 +1,15 @@
-#include <stdint.h>
+#include <typedefs.h>
 
-extern void outsw(uint16_t, uint32_t);
-extern void outb(uint16_t, uint8_t);
-extern void outw(uint16_t, uint16_t);
-extern void outl(uint16_t, uint32_t);
+extern void outsw(u16, u32);
+extern void outb(u16, u8);
+extern void outw(u16, u16);
+extern void outl(u16, u32);
 
-extern uint32_t inl(uint16_t);
-extern uint16_t inw(uint16_t);
-extern uint16_t inb(uint16_t);
+extern u32 inl(u16);
+extern u16 inw(u16);
+extern u16 inb(u16);
 
-extern void rep_outsw(uint16_t count, uint16_t port, volatile void *addy);
+extern void rep_outsw(u16 count, u16 port, volatile void *addy);
 __attribute__((no_caller_saved_registers)) extern void
-rep_insw(uint16_t count, uint16_t port, volatile void *addy);
-extern void jump_usermode(void (*address)(), uint32_t stack_pointer);
+rep_insw(u16 count, u16 port, volatile void *addy);
+extern void jump_usermode(void (*address)(), u32 stack_pointer);

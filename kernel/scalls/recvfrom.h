@@ -1,8 +1,8 @@
 #include <socket.h>
 
 struct two_args {
-  uint32_t a;
-  uint32_t b;
+  u32 a;
+  u32 b;
 };
 
 size_t syscall_recvfrom(

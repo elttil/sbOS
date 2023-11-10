@@ -14,7 +14,7 @@ OPEN_INET_SOCKET *inet_sockets[100] = {0};
 
 struct INCOMING_TCP_CONNECTION tcp_connections[100] = {0};
 
-int tcp_socket_write(uint8_t *buffer, uint64_t offset, uint64_t len,
+int tcp_socket_write(u8 *buffer, u64 offset, u64 len,
                      vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
@@ -24,7 +24,7 @@ int tcp_socket_write(uint8_t *buffer, uint64_t offset, uint64_t len,
   return len;
 }
 
-int tcp_socket_read(uint8_t *buffer, uint64_t offset, uint64_t len,
+int tcp_socket_read(u8 *buffer, u64 offset, u64 len,
                     vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
@@ -47,10 +47,10 @@ void tcp_socket_close(vfs_fd_t *fd) {
   s->is_used = 0;
 }
 
-struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(uint8_t ip[4],
-                                                            uint16_t n_port) {
+struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
+                                                            u16 n_port) {
   for (int i = 0; i < 100; i++) {
-    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(uint8_t[4])))
+    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(u8[4])))
       continue;
     if (n_port != tcp_connections[i].n_port)
       continue;
@@ -60,8 +60,8 @@ struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(uint8_t ip[4],
 }
 
 struct INCOMING_TCP_CONNECTION *
-handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
-                               uint16_t dst_port) {
+handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
+                               u16 dst_port) {
   OPEN_INET_SOCKET *in = find_open_tcp_port(htons(dst_port));
   if (!in) {
     kprintf("TCP SYN to unopened port: %d\n", dst_port);
@@ -75,7 +75,7 @@ handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
   }
 
   tcp_connections[i].is_used = 1;
-  memcpy(tcp_connections[i].ip, ip, sizeof(uint8_t[4]));
+  memcpy(tcp_connections[i].ip, ip, sizeof(u8[4]));
   tcp_connections[i].n_port = n_port;
   tcp_connections[i].dst_port = dst_port;
   tcp_connections[i].data_file = create_fifo_object();
@@ -97,7 +97,7 @@ handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
   // Shitty way of telling the accepting socket we have a incoming
   // connection.
   char c = 'i';
-  fifo_object_write((uint8_t *)&c, 1, 0, s->fifo_file);
+  fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
   s->ptr_socket_fd->inode->has_data = 1;
 
   vfs_close(n); // Closes the file descriptor in the current process.
@@ -108,7 +108,7 @@ handle_incoming_tcp_connection(uint8_t ip[4], uint16_t n_port,
   return &tcp_connections[i];
 }
 
-OPEN_INET_SOCKET *find_open_tcp_port(uint16_t port) {
+OPEN_INET_SOCKET *find_open_tcp_port(u16 port) {
   for (int i = 0; i < 100; i++) {
     if (!inet_sockets[i])
       continue;
@@ -123,7 +123,7 @@ OPEN_INET_SOCKET *find_open_tcp_port(uint16_t port) {
   return NULL;
 }
 
-OPEN_INET_SOCKET *find_open_udp_port(uint16_t port) {
+OPEN_INET_SOCKET *find_open_udp_port(u16 port) {
   for (int i = 0; i < 100; i++) {
     if (!inet_sockets[i])
       continue;
@@ -164,7 +164,7 @@ int uds_open(const char *path) {
   dual_pipe(fd);
 
   char c = 'i';
-  fifo_object_write((uint8_t *)&c, 1, 0, s->fifo_file);
+  fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
   s->ptr_socket_fd->inode->has_data = 1;
 
   s->incoming_fd = get_current_task()->file_descriptors[fd[1]];
@@ -250,7 +250,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   return 0;
 }
 
-int socket_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   SOCKET *s = (SOCKET *)fd->inode->internal_object;
   FIFO_FILE *file = s->fifo_file;
   int rc = fifo_object_write(buffer, 0, len, file);
@@ -258,7 +258,7 @@ int socket_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return rc;
 }
 
-int socket_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   SOCKET *s = (SOCKET *)fd->inode->internal_object;
   FIFO_FILE *file = s->fifo_file;
   int rc = fifo_object_read(buffer, 0, len, file);

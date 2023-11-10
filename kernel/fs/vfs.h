@@ -8,7 +8,7 @@ typedef struct vfs_mounts vfs_mounts_t;
 #include <sched/scheduler.h>
 #include <socket.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <typedefs.h>
 
 // FIXME: Is there some standard value for this?
 #define O_NONBLOCK (1 << 0)
@@ -29,7 +29,7 @@ typedef struct vfs_mounts vfs_mounts_t;
 struct vfs_vm_object {
   void *virtual_object;
   void **object;
-  uint64_t size;
+  u64 size;
 };
 
 struct vfs_mounts {
@@ -55,18 +55,18 @@ struct vfs_fd {
 struct vfs_inode {
   int inode_num;
   int type;
-  uint8_t has_data;
-  uint8_t can_write;
-  uint8_t is_open;
+  u8 has_data;
+  u8 can_write;
+  u8 is_open;
   void *internal_object;
-  uint64_t file_size;
+  u64 file_size;
   vfs_inode_t *(*open)(const char *path);
   int (*create_file)(const char *path, int mode);
-  int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd);
-  int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd);
+  int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd);
+  int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd);
   void (*close)(vfs_fd_t *fd);
   int (*create_directory)(const char *path, int mode);
-  vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
+  vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset,
                                     vfs_fd_t *fd);
   int (*truncate)(vfs_fd_t *fd, size_t length);
 };
@@ -75,26 +75,26 @@ int vfs_close(int fd);
 vfs_fd_t *get_vfs_fd(int fd);
 int vfs_open(const char *file, int flags, int mode);
 void vfs_mount(char *path, vfs_inode_t *local_root);
-int vfs_pwrite(int fd, void *buf, uint64_t count, uint64_t offset);
-int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, uint64_t count,
-                   uint64_t offset);
-int vfs_pread(int fd, void *buf, uint64_t count, uint64_t offset);
-vfs_vm_object_t *vfs_get_vm_object(int fd, uint64_t length, uint64_t offset);
+int vfs_pwrite(int fd, void *buf, u64 count, u64 offset);
+int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count,
+                   u64 offset);
+int vfs_pread(int fd, void *buf, u64 count, u64 offset);
+vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset);
 int vfs_dup2(int org_fd, int new_fd);
 vfs_inode_t *vfs_internal_open(const char *file);
 int vfs_mkdir(const char *path, int mode);
 int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd);
 int vfs_ftruncate(int fd, size_t length);
 vfs_inode_t *vfs_create_inode(
-    int inode_num, int type, uint8_t has_data, uint8_t can_write,
-    uint8_t is_open, void *internal_object, uint64_t file_size,
+    int inode_num, int type, u8 has_data, u8 can_write,
+    u8 is_open, void *internal_object, u64 file_size,
     vfs_inode_t *(*open)(const char *path),
     int (*create_file)(const char *path, int mode),
-    int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
-    int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
+    int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
+    int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     void (*close)(vfs_fd_t *fd),
     int (*create_directory)(const char *path, int mode),
-    vfs_vm_object_t *(*get_vm_object)(uint64_t length, uint64_t offset,
+    vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset,
                                       vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length));
 #endif

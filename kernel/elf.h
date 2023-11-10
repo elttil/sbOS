@@ -1,6 +1,6 @@
 #ifndef ELF_H
 #define ELF_H
-#include <stdint.h>
+#include <typedefs.h>
 #include <mmu.h>
 #include <fs/vfs.h>
 #include <assert.h>
@@ -29,11 +29,11 @@
 #define ELF_WRITABLE (1 << 1)
 #define ELF_READABLE (1 << 2)
 
-#define Elf32_Addr uint32_t  // Unsigned program address
-#define Elf32_Half uint16_t  // Unsigned medium integer
-#define Elf32_Off uint32_t   // Unsigned file offset
-#define Elf32_Sword uint32_t // Signed large integer
-#define Elf32_Word uint32_t  // Unsigned large integer
+#define Elf32_Addr u32  // Unsigned program address
+#define Elf32_Half u16  // Unsigned medium integer
+#define Elf32_Off u32   // Unsigned file offset
+#define Elf32_Sword u32 // Signed large integer
+#define Elf32_Word u32  // Unsigned large integer
 
 #define ELF_EXEC (1 << 0)
 #define ELF_WRITE (1 << 1)
@@ -95,5 +95,5 @@ typedef struct {
 } __attribute__((packed)) Elf32_Phdr;
 
 
-void *load_elf_file(const char *f, uint32_t *ds);
+void *load_elf_file(const char *f, u32 *ds);
 #endif

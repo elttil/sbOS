@@ -21,7 +21,7 @@ size_t syscall_recvfrom(
     poll(fds, 1, 0);
   }
 
-  uint16_t data_length;
+  u16 data_length;
   socklen_t tmp_socklen;
   vfs_pread(socket, &tmp_socklen, sizeof(socklen_t), 0);
   if (address_len)

@@ -9,11 +9,11 @@ int num_files = 0;
 
 vfs_inode_t *devfs_add_file(
     char *path,
-    int (*read)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
-    int (*write)(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd),
-    vfs_vm_object_t *(get_vm_object)(uint64_t length, uint64_t offset,
+    int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
+    int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
+    vfs_vm_object_t *(get_vm_object)(u64 length, u64 offset,
                                      vfs_fd_t *fd),
-    uint8_t has_data, uint8_t can_write, int type) {
+    u8 has_data, u8 can_write, int type) {
   files[num_files].name = copy_and_allocate_string(path);
 
   vfs_inode_t *i = kmalloc(sizeof(vfs_inode_t));
@@ -38,20 +38,20 @@ vfs_inode_t *devfs_open(const char *file) {
   return 0;
 }
 
-int devfs_read(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int devfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return fd->inode->read(buffer, offset, len, fd);
 }
 
-int devfs_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int devfs_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return fd->inode->write(buffer, offset, len, fd);
 }
 
-vfs_vm_object_t *devfs_get_vm_object(uint64_t length, uint64_t offset,
+vfs_vm_object_t *devfs_get_vm_object(u64 length, u64 offset,
                                      vfs_fd_t *fd) {
   return fd->inode->get_vm_object(length, offset, fd);
 }
 
-int stdout_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int stdout_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
 
@@ -61,7 +61,7 @@ int stdout_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
   return rc;
 }
 
-int serial_write(uint8_t *buffer, uint64_t offset, uint64_t len, vfs_fd_t *fd) {
+int serial_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
 

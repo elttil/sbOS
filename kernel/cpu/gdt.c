@@ -9,16 +9,16 @@ tss_entry_t tss_entry;
 
 typedef union {
   struct GDT_Entry s;
-  uint64_t raw;
+  u64 raw;
 } GDT_Entry;
 
 GDT_Entry gdt_entries[6] = {0};
 GDT_Pointer gdtr;
 
-extern uint32_t inital_esp;
+extern u32 inital_esp;
 void write_tss(struct GDT_Entry *gdt_entry) {
-  uint32_t base = (uint32_t)&tss_entry;
-  uint32_t limit = sizeof(tss_entry);
+  u32 base = (u32)&tss_entry;
+  u32 limit = sizeof(tss_entry);
 
   gdt_entry->limit_low = limit;
   gdt_entry->base_low = base;
@@ -34,11 +34,11 @@ void write_tss(struct GDT_Entry *gdt_entry) {
   gdt_entry->long_mode = 0;
   gdt_entry->big = 0;
   gdt_entry->gran = 0;
-  gdt_entry->base_high = (base & ((uint32_t)0xff << 24)) >> 24;
+  gdt_entry->base_high = (base & ((u32)0xff << 24)) >> 24;
 
   memset(&tss_entry, 0, sizeof tss_entry);
   tss_entry.ss0 = GDT_KERNEL_DATA_SEGMENT * GDT_ENTRY_SIZE;
-  register uint32_t esp asm("esp");
+  register u32 esp asm("esp");
   tss_entry.esp0 = esp;
 }
 
@@ -63,7 +63,7 @@ void gdt_init() {
 
   write_tss((struct GDT_Entry *)&gdt_entries[GDT_TSS_SEGMENT]);
 
-  gdtr.offset = (uint32_t)&gdt_entries;
+  gdtr.offset = (u32)&gdt_entries;
   gdtr.size = sizeof(gdt_entries) - 1;
 
   asm("cli");

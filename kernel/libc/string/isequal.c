@@ -7,7 +7,7 @@ int isequal(const char *s1, const char *s2) {
     return 1;
 }
 
-int isequal_n(const char *s1, const char *s2, uint32_t n) {
+int isequal_n(const char *s1, const char *s2, u32 n) {
     for(;*s1 && n;s1++,s2++,n--)
         if(*s1 != *s2)
             return 0;

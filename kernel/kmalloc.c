@@ -9,17 +9,17 @@
 #define IS_FINAL (1 << 1)
 
 typedef struct MallocHeader {
-  uint64_t magic;
-  uint32_t size;
-  uint8_t flags;
+  u64 magic;
+  u32 size;
+  u8 flags;
   struct MallocHeader *n;
 } MallocHeader;
 
-uint64_t delta_page(uint64_t a) { return 0x1000 - (a % 0x1000); }
+u64 delta_page(u64 a) { return 0x1000 - (a % 0x1000); }
 
 MallocHeader *head = NULL;
 MallocHeader *final = NULL;
-uint32_t total_heap_size = 0;
+u32 total_heap_size = 0;
 
 int init_heap(void) {
   head = (MallocHeader *)ksbrk(NEW_ALLOC_SIZE);
@@ -42,7 +42,7 @@ int add_heap_memory(size_t min_desired) {
   }
   total_heap_size += allocation_size - sizeof(MallocHeader);
   void *e = final;
-  e = (void *)((uint32_t)e + final->size);
+  e = (void *)((u32)e + final->size);
   if (p == e) {
     final->size += allocation_size - sizeof(MallocHeader);
     return 1;
@@ -77,7 +77,7 @@ MallocHeader *next_close_header(MallocHeader *a) {
   return next_header(a);
 }
 
-MallocHeader *find_free_entry(uint32_t s) {
+MallocHeader *find_free_entry(u32 s) {
   // A new header is required as well as the newly allocated chunk
   s += sizeof(MallocHeader);
   if (!head)
@@ -87,7 +87,7 @@ MallocHeader *find_free_entry(uint32_t s) {
     assert(p->magic == 0xdde51ab9410268b1);
     if (!(p->flags & IS_FREE))
       continue;
-    uint64_t required_size = s;
+    u64 required_size = s;
     if (p->size < required_size)
       continue;
     return p;
@@ -151,7 +151,7 @@ void *kmalloc(size_t s) {
 #define PHYS 0x403000
 
 void *latest = NULL;
-uint64_t left = 0;
+u64 left = 0;
 
 void *kmalloc_eternal_physical_align(size_t s, void **physical) {
   void *return_address = ksbrk(s);

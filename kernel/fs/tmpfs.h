@@ -7,7 +7,7 @@
 
 typedef struct {
   FIFO_FILE *fifo;
-  uint8_t is_closed;
+  u8 is_closed;
   vfs_inode_t *read_inode;
 } tmp_inode;
 

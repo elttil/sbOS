@@ -1,5 +1,5 @@
-#include <stdint.h>
+#include <typedefs.h>
 
-int get_mac_from_ip(const uint8_t ip[4], uint8_t mac[6]);
-void send_arp_request(const uint8_t ip[4]);
-void handle_arp(const uint8_t *payload);
+int get_mac_from_ip(const u8 ip[4], u8 mac[6]);
+void send_arp_request(const u8 ip[4]);
+void handle_arp(const u8 *payload);
