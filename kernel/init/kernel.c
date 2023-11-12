@@ -4,6 +4,7 @@
 #include <cpu/spinlock.h>
 #include <cpu/syscall.h>
 #include <crypto/SHA1/sha1.h>
+#include <drivers/ahci.h>
 #include <drivers/ata.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>

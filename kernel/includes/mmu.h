@@ -56,7 +56,14 @@ void *virtual_to_physical(void *address, PageDirectory *directory);
 void *is_valid_userpointer(const void *const p, size_t s);
 void *is_valid_user_c_string(const char *ptr, size_t *size);
 void *ksbrk(size_t s);
+void *ksbrk_physical(size_t s, void **physical);
 
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user);
+
+void create_physical_to_virtual_mapping(void *physical, void *virtual,
+                                        u32 length);
+// This can only be used on addreses that be been mapped using:
+// create_physical_to_virtual_mapping
+void *physical_to_virtual(void *address);
 #endif

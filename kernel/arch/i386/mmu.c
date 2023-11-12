@@ -71,9 +71,7 @@ void *ksbrk_physical(size_t s, void **physical) {
   return r;
 }
 
-u32 mmu_get_number_of_allocated_frames(void) {
-  return num_allocated_frames;
-}
+u32 mmu_get_number_of_allocated_frames(void) { return num_allocated_frames; }
 
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user) {
@@ -246,8 +244,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
   u32 physical_address;
   PageDirectory *new_directory =
       ksbrk_physical(sizeof(PageDirectory), (void **)&physical_address);
-  u32 offset =
-      (u32)new_directory->physical_tables - (u32)new_directory;
+  u32 offset = (u32)new_directory->physical_tables - (u32)new_directory;
   new_directory->physical_address = physical_address + offset;
 
   for (int i = 0; i < 1024; i++) {
@@ -337,7 +334,6 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
 
 void *mmu_map_frames(void *const ptr, size_t s) {
   void *const r = mmu_find_unallocated_virtual_range((void *)0xEF000000, s);
-  kprintf("r: %x\n", r);
   size_t num_pages = s / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
     Page *p = get_page((void *)(r + i * 0x1000), NULL, PAGE_ALLOCATE, 1);
@@ -350,7 +346,6 @@ void *mmu_map_frames(void *const ptr, size_t s) {
     p->frame = (uintptr_t)(ptr + i * 0x1000) / 0x1000;
     write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
   }
-  flush_tlb();
   return r;
 }
 
@@ -421,6 +416,44 @@ void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
   flush_tlb();
 }
 
+struct PhysVirtMap {
+  u32 physical;
+  u32 virtual;
+  u32 length;
+  u8 in_use;
+};
+
+struct PhysVirtMap phys_to_virt_map[256] = {0};
+
+void create_physical_to_virtual_mapping(void *physical, void *virtual,
+                                        u32 length) {
+  for (u16 i = 0; i < 256; i++) {
+    if (phys_to_virt_map[i].in_use)
+      continue;
+    phys_to_virt_map[i].physical = (u32)physical;
+    phys_to_virt_map[i].virtual = (u32) virtual;
+    phys_to_virt_map[i].length = length;
+    phys_to_virt_map[i].in_use = 1;
+    return;
+  }
+  assert(0);
+}
+
+void *physical_to_virtual(void *address) {
+  for (u16 i = 0; i < 256; i++) {
+    if (!phys_to_virt_map[i].in_use)
+      continue;
+    if (phys_to_virt_map[i].physical + phys_to_virt_map[i].length <
+        (u32)address)
+      continue;
+    if (phys_to_virt_map[i].physical > (u32)address)
+      continue;
+    return (void *)phys_to_virt_map[i].virtual;
+  }
+  assert(0);
+  return NULL;
+}
+
 void *virtual_to_physical(void *address, PageDirectory *directory) {
   if (0 == directory)
     directory = get_active_pagedirectory();
@@ -448,8 +481,7 @@ void move_stack(u32 new_stack_address, u32 size) {
   // Copy the stack
   memcpy((void *)new_stack_pointer, (void *)old_stack_pointer,
          inital_esp - old_stack_pointer);
-  for (u32 i = (u32)new_stack_address; i > new_stack_address - size;
-       i -= 4) {
+  for (u32 i = (u32)new_stack_address; i > new_stack_address - size; i -= 4) {
     u32 tmp = *(u32 *)i;
     if (old_stack_pointer < tmp && tmp < inital_esp) {
       tmp = tmp + (new_stack_address - inital_esp);
