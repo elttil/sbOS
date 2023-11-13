@@ -1,6 +1,7 @@
 // FIXME: This is mostlikely incredibly inefficent and insecure.
 #include <crypto/ChaCha20/chacha20.h>
 #include <crypto/SHA1/sha1.h>
+#include <crypto/xoshiro256plusplus/xoshiro256plusplus.h>
 #include <fs/devfs.h>
 #include <fs/vfs.h>
 #include <random.h>
@@ -40,7 +41,23 @@ void mix_chacha(void) {
   internal_chacha_block[COUNT] = 0;
 }
 
-void get_random(BYTEPTR buffer, u64 len) {
+void get_fast_insecure_random(u8 *buffer, u64 len) {
+  static u8 is_fast_random_seeded = 0;
+  if (!is_fast_random_seeded) {
+    uint64_t seed[4];
+    get_random((u8 *)&seed, sizeof(seed));
+    seed_xoshiro_256_pp(seed);
+    is_fast_random_seeded = 1;
+  }
+  for (; len >= 8; len -= 8, buffer += 8) {
+    *((uint64_t *)buffer) = xoshiro_256_pp();
+  }
+  for (; len > 0; len--, buffer++) {
+    *((uint8_t *)buffer) = xoshiro_256_pp() & 0xFF;
+  }
+}
+
+void get_random(u8* buffer, u64 len) {
   u8 rand_data[BLOCK_SIZE];
   for (; len > 0;) {
     if (COUNT_MAX - 1 == internal_chacha_block[COUNT]) {

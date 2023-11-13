@@ -36,7 +36,7 @@ void *ksbrk(size_t s) {
     // If there is no active pagedirectory we
     // just assume that the memory is
     // already mapped.
-    get_random((void *)rc, data_end - rc);
+    get_fast_insecure_random((void *)rc, data_end - rc);
     return (void *)rc;
   }
   // Determine whether we are approaching a unallocated table
@@ -59,7 +59,7 @@ void *ksbrk(size_t s) {
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
   memset((void *)rc, 0x00, s);
 
-  get_random((void *)rc, data_end - rc);
+  get_fast_insecure_random((void *)rc, data_end - rc);
   return (void *)rc;
 }
 

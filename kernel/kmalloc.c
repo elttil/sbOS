@@ -143,7 +143,7 @@ void *kmalloc(size_t s) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
-  get_random((void *)rc, s);
+  get_fast_insecure_random((void *)rc, s);
   return rc;
 }
 
