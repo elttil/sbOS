@@ -41,7 +41,7 @@ void *ksbrk(size_t s) {
   }
   // Determine whether we are approaching a unallocated table
   int table_index = 1 + (rc / (1024 * 0x1000));
-  if (!active_directory->tables[table_index]) {
+  if (!kernel_directory->tables[table_index]) {
     u32 physical;
     active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
     active_directory->tables[table_index] =
@@ -248,7 +248,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
   new_directory->physical_address = physical_address + offset;
 
   for (int i = 0; i < 1024; i++) {
-    if (!original->tables[i]) {
+    if (!original->tables[i] && !kernel_directory->tables[i]) {
       new_directory->tables[i] = NULL;
       new_directory->physical_tables[i] = (u32)NULL;
       continue;
@@ -263,8 +263,9 @@ PageDirectory *clone_directory(PageDirectory *original) {
       continue;
     }
 
-    //    if (original->tables[i] == kernel_directory->tables[i]) {
-    if (i > 641) {
+    if (original->tables[i] == kernel_directory->tables[i] || i > 641) {
+      if (original->tables[i])
+        assert(kernel_directory->tables[i]);
       new_directory->tables[i] = kernel_directory->tables[i];
       new_directory->physical_tables[i] = kernel_directory->physical_tables[i];
       continue;
@@ -282,11 +283,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
 void mmu_allocate_shared_kernel_region(void *rc, size_t n) {
   size_t num_pages = n / PAGE_SIZE;
   for (size_t i = 0; i <= num_pages; i++) {
-    Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_NO_ALLOCATE, 0);
-    if (!p) {
-      kprintf("don't have: %x\n", rc + i * 0x1000);
-      p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
-    }
+    Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
     if (!p->present || !p->frame)
       allocate_frame(p, 0, 1);
   }
@@ -336,7 +333,7 @@ void *mmu_map_frames(void *const ptr, size_t s) {
   void *const r = mmu_find_unallocated_virtual_range((void *)0xEF000000, s);
   size_t num_pages = s / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
-    Page *p = get_page((void *)(r + i * 0x1000), NULL, PAGE_ALLOCATE, 1);
+    Page *p = get_page((void *)(r + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
     assert(p);
     int rw = 1;
     int is_kernel = 1;

@@ -1,5 +1,7 @@
 #include <assert.h>
 #include <drivers/pci.h>
+#include <fs/devfs.h>
+#include <fs/vfs.h>
 #include <mmu.h>
 #include <stdio.h>
 
