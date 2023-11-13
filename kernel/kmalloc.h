@@ -6,11 +6,6 @@
 
 void kmalloc_allocate_heap(void);
 
-void *kmalloc_eternal(size_t size);
-void *kmalloc_eternal_align(size_t size);
-void *kmalloc_eternal_physical(size_t size, void **physical);
-void *kmalloc_eternal_physical_align(size_t size, void **physical);
-
 void *kmalloc(size_t s);
 void *kmalloc_align(size_t s);
 void *krealloc(void *ptr, size_t size);

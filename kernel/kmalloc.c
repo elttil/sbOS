@@ -147,31 +147,6 @@ void *kmalloc(size_t s) {
   return rc;
 }
 
-#define HEAP 0x00E00000
-#define PHYS 0x403000
-
-void *latest = NULL;
-u64 left = 0;
-
-void *kmalloc_eternal_physical_align(size_t s, void **physical) {
-  void *return_address = ksbrk(s);
-  if (physical) {
-    if (0 == get_active_pagedirectory())
-      *physical =
-          (void *)((uintptr_t)return_address - (0xC0000000 + PHYS) + HEAP);
-    else
-      *physical = (void *)virtual_to_physical(return_address, 0);
-  }
-  memset(return_address, 0, 0x1000);
-  return return_address;
-}
-
-void *kmalloc_eternal_align(size_t s) {
-  return kmalloc_eternal_physical_align(s, NULL);
-}
-
-void *kmalloc_eternal(size_t s) { return kmalloc_eternal_align(s); }
-
 size_t get_mem_size(void *ptr) {
   if (!ptr)
     return 0;

@@ -272,7 +272,7 @@ int socket(int domain, int type, int protocol) {
   if (!(AF_UNIX == domain || AF_INET == domain))
     return -EINVAL;
 
-  SOCKET *new_socket = kmalloc_eternal(sizeof(SOCKET));
+  SOCKET *new_socket = kmalloc(sizeof(SOCKET));
   vfs_inode_t *inode = vfs_create_inode(
       0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
       1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,

@@ -310,7 +310,7 @@ int vfs_ftruncate(int fd, size_t length) {
 
 void vfs_mount(char *path, vfs_inode_t *local_root) {
   int len = strlen(path);
-  mounts[num_mounts].path = kmalloc_eternal(len + 1);
+  mounts[num_mounts].path = kmalloc(len + 1);
   memcpy(mounts[num_mounts].path, path, len);
   mounts[num_mounts].path[len] = '\0';
   mounts[num_mounts].local_root = local_root;
