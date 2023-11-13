@@ -13,6 +13,10 @@
 // https://wiki.osdev.org/ATA_Command_Matrix
 #define ATA_CMD_READ_DMA_EX 0x25
 
+volatile struct HBA_MEM *hba;
+
+const u16 num_prdt = 8;
+
 typedef enum {
   FIS_TYPE_REG_H2D = 0x27,   // Register FIS - host to device
   FIS_TYPE_REG_D2H = 0x34,   // Register FIS - device to host
@@ -246,8 +250,8 @@ void ahci_set_base(volatile struct HBA_PORT *port, u32 virt_clb_address,
   struct HBA_CMD_HEADER *cmdheader =
       (struct HBA_CMD_HEADER *)(virt_clb_address);
   for (u8 i = 0; i < 32; i++) {
-    cmdheader[i].prdtl = 8; // 8 prdt entries per command table
-                            // 256 bytes per command table, 64+16+48+16*8
+    cmdheader[i].prdtl = num_prdt; // 8 prdt entries per command table
+                                   // 256 bytes per command table, 64+16+48+16*8
     cmdheader[i].ctba = command_table_array + i * 256;
     cmdheader[i].ctbau = 0;
   }
@@ -294,8 +298,12 @@ u8 get_free_command_slot(volatile struct HBA_PORT *port, u8 *err) {
   return 0;
 }
 
-u8 ahci_read(volatile struct HBA_PORT *port, u32 startl, u32 starth, u32 count,
-             u16 *outbuffer) {
+u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
+                 u32 count, u16 *outbuffer) {
+  // TODO: The number of PRDT tables are hardcoded at a seemingly
+  // very low number. It can be up to 65,535. Should it maybe be
+  // changed?
+  assert(count <= num_prdt);
   port->is = -1; // Clear pending interrupts
   u8 err;
   u32 command_slot = get_free_command_slot(port, &err);
@@ -356,10 +364,10 @@ u8 ahci_read(volatile struct HBA_PORT *port, u32 startl, u32 starth, u32 count,
   // The below loop waits until the port is no longer busy before issuing a new
   // command
   u32 spin = 0;
-  while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000) {
+  while ((port->tfd & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 10000) {
     spin++;
   }
-  if (spin == 1000000) {
+  if (spin == 10000) {
     kprintf("Port is hung\n");
     return 0;
   }
@@ -388,13 +396,43 @@ u8 ahci_read(volatile struct HBA_PORT *port, u32 startl, u32 starth, u32 count,
   return 1;
 }
 
-void ahci_test(volatile struct HBA_PORT *port) {
-  char buffer[1024];
-  memset(buffer, 1, 1024);
-  assert(ahci_read(port, 0, 0, 2, (u16 *)buffer));
-  for (u32 i = 0; i < 1024; i++) {
-    kprintf("%x", buffer[i]);
+int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  vfs_inode_t *inode = fd->inode;
+  int port = inode->inode_num;
+  assert(port == 0);
+  u32 lba = offset / 512;
+  offset %= 512;
+  int rc = len;
+
+  u32 sector_count = len / 512;
+  if (len % 512 != 0)
+    sector_count++;
+  u8 tmp_buffer[512 * num_prdt];
+  for (; sector_count >= num_prdt; lba++) {
+    ahci_raw_read(&hba->ports[port], lba, 0, num_prdt, (u16 *)tmp_buffer);
+    memcpy(buffer, tmp_buffer + offset, 512 * num_prdt);
+    offset = 0;
+    buffer += num_prdt * 512;
+    len -= num_prdt * 512;
+    sector_count -= num_prdt;
   }
+
+  if (sector_count > 0) {
+    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
+    memcpy(buffer, tmp_buffer + offset, len);
+  }
+  return rc;
+}
+
+void add_devfs_drive_file(u8 port) {
+  static u8 num_drives_added = 0;
+  char *path = "/sda";
+  path[strlen(path)] += num_drives_added;
+  num_drives_added++;
+  vfs_inode_t *inode =
+      devfs_add_file(path, ahci_read, NULL /*write*/, NULL /*get_vm_object*/,
+                     1 /*has_data*/, 0 /*can_write*/, FS_TYPE_BLOCK_DEVICE);
+  inode->inode_num = port;
 }
 
 void ahci_init(void) {
@@ -409,7 +447,7 @@ void ahci_init(void) {
   pci_get_bar(&device, 5, &bar);
 
   u8 *HBA_base = mmu_map_frames((void *)bar.address, bar.size);
-  volatile struct HBA_MEM *hba = (volatile struct HBA_MEM *)(HBA_base);
+  hba = (volatile struct HBA_MEM *)(HBA_base);
   for (u8 i = 0; i < 32; i++) {
     if (!((hba->pi >> i) & 1))
       continue;
@@ -417,7 +455,7 @@ void ahci_init(void) {
     switch (type) {
     case AHCI_DEV_SATA:
       ahci_sata_setup(&hba->ports[i]);
-      ahci_test(&hba->ports[i]);
+      add_devfs_drive_file(i);
       kprintf("SATA drive found at port %d\n", i);
       break;
     case AHCI_DEV_SATAPI:

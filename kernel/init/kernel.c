@@ -23,7 +23,6 @@
 #include <sched/scheduler.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <typedefs.h>
 #include <stdio.h>
 #include <string.h>
 #include <typedefs.h>
@@ -82,8 +81,10 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   install_keyboard();
   klog("PS2 Keyboard driver installed", LOG_SUCCESS);
 
-  vfs_mount("/", ext2_mount());
   vfs_mount("/dev", devfs_mount());
+  ahci_init();
+  vfs_mount("/", ext2_mount());
+
   add_stdout();
   add_serial();
   add_random_devices();

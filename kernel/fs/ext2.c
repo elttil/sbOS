@@ -14,6 +14,8 @@ u32 block_byte_size;
 u32 inode_size;
 u32 inodes_per_block;
 
+vfs_fd_t *mount_fd = NULL;
+
 #define BLOCK_SIZE (block_byte_size)
 
 void ext2_close(vfs_fd_t *fd) {
@@ -55,7 +57,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
 
   struct BLOCK_CACHE *c = &cache[free_found];
   c->block_num = block;
-  read_lba(block * block_byte_size / 512, c->block, 1024, 0);
+  raw_vfs_pread(mount_fd, c->block, 1024, block * block_byte_size);
   cached_read_block(block, address, size, offset);
 }
 
@@ -740,6 +742,11 @@ int ext2_create_file(const char *path, int mode) {
 }
 
 vfs_inode_t *ext2_mount(void) {
+  int fd = vfs_open("/dev/sda", O_RDWR, 0);
+  // TODO: Can this be done better? Maybe create a seperate function in
+  // the VFS?
+  mount_fd = get_current_task()->file_descriptors[fd];
+  get_current_task()->file_descriptors[fd] = NULL;
   parse_superblock();
   return vfs_create_inode(0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/,
                           0 /*can_write*/, 0 /*is_open*/,
@@ -751,7 +758,9 @@ vfs_inode_t *ext2_mount(void) {
 
 void parse_superblock(void) {
   superblock = ksbrk(2 * SECTOR_SIZE);
-  read_lba(EXT2_SUPERBLOCK_SECTOR, (void *)superblock, 2 * SECTOR_SIZE, 0);
+  raw_vfs_pread(mount_fd, superblock, 2 * SECTOR_SIZE,
+                EXT2_SUPERBLOCK_SECTOR * 512);
+
   block_byte_size = 1024 << superblock->block_size;
 
   if (0xEF53 != superblock->ext2_signature) {
