@@ -73,7 +73,7 @@ void ext2_write_block(u32 block, void *address, size_t size, size_t offset) {
       break;
     }
   }
-  write_lba(block * block_byte_size / 512, address, size, offset);
+  raw_vfs_pwrite(mount_fd, address, size, block * block_byte_size + offset);
 }
 
 void write_group_descriptor(u32 group_index, bgdt_t *block_group) {

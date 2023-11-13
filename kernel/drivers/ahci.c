@@ -12,6 +12,7 @@
 
 // https://wiki.osdev.org/ATA_Command_Matrix
 #define ATA_CMD_READ_DMA_EX 0x25
+#define ATA_CMD_WRITE_DMA_EX 0x35
 
 volatile struct HBA_MEM *hba;
 
@@ -298,8 +299,9 @@ u8 get_free_command_slot(volatile struct HBA_PORT *port, u8 *err) {
   return 0;
 }
 
-u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
-                 u32 count, u16 *outbuffer) {
+// is_write: Determins whether a read or write command will be used.
+u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
+                        u32 count, u16 *buffer, u8 is_write) {
   // TODO: The number of PRDT tables are hardcoded at a seemingly
   // very low number. It can be up to 65,535. Should it maybe be
   // changed?
@@ -314,7 +316,7 @@ u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   struct HBA_CMD_HEADER *cmdheader =
       (struct HBA_CMD_HEADER *)physical_to_virtual((void *)port->clb);
   cmdheader += command_slot;
-  cmdheader->w = 0; // No write(aka read)
+  cmdheader->w = is_write;
   cmdheader->cfl = sizeof(struct FIS_REG_H2D) / sizeof(u32);
   cmdheader->prdtl = (u16)((count - 1) / 16 + 1); // Number of PRDT
 
@@ -329,17 +331,17 @@ u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   // 8K bytes (16 sectors) per PRDT
   u16 i = 0;
   for (; i < cmdheader->prdtl - 1; i++) {
-    cmdtbl->prdt_entry[i].dba = (u32)virtual_to_physical(outbuffer, NULL);
+    cmdtbl->prdt_entry[i].dba = (u32)virtual_to_physical(buffer, NULL);
     cmdtbl->prdt_entry[i].dbc =
         8 * 1024 - 1; // 8K bytes (this value should always be set to 1 less
                       // than the actual value)
     cmdtbl->prdt_entry[i].i = 1;
-    outbuffer += 4 * 1024; // 4K words
-    count -= 16;           // 16 sectors
+    buffer += 4 * 1024; // 4K words
+    count -= 16;        // 16 sectors
   }
   // FIXME: Edge case if the count does not fit. This should not be here it is
   // ugly. Find a more general case.
-  cmdtbl->prdt_entry[i].dba = (u32)virtual_to_physical(outbuffer, NULL);
+  cmdtbl->prdt_entry[i].dba = (u32)virtual_to_physical(buffer, NULL);
   cmdtbl->prdt_entry[i].dbc = count * 512 - 1;
   cmdtbl->prdt_entry[i].i = 1;
 
@@ -347,7 +349,7 @@ u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
 
   cmdfis->fis_type = FIS_TYPE_REG_H2D;
   cmdfis->c = 1;
-  cmdfis->command = ATA_CMD_READ_DMA_EX;
+  cmdfis->command = (is_write) ? ATA_CMD_WRITE_DMA_EX : ATA_CMD_READ_DMA_EX;
 
   cmdfis->lba0 = (u8)startl;
   cmdfis->lba1 = (u8)(startl >> 8);
@@ -396,6 +398,44 @@ u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   return 1;
 }
 
+u8 ahci_raw_write(volatile struct HBA_PORT *port, u32 startl, u32 starth,
+                  u32 count, u16 *inbuffer) {
+  return ahci_perform_command(port, startl, starth, count, inbuffer, 1);
+}
+
+u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
+                 u32 count, u16 *outbuffer) {
+  return ahci_perform_command(port, startl, starth, count, outbuffer, 0);
+}
+
+int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  vfs_inode_t *inode = fd->inode;
+  int port = inode->inode_num;
+  assert(port == 0);
+  u32 lba = offset / 512;
+  offset %= 512;
+  int rc = len;
+
+  u32 sector_count = len / 512;
+  if (len % 512 != 0)
+    sector_count++;
+  for (; sector_count >= num_prdt; lba++) {
+    ahci_raw_write(&hba->ports[port], lba, 0, num_prdt, (u16 *)buffer);
+    offset = 0;
+    buffer += num_prdt * 512;
+    len -= num_prdt * 512;
+    sector_count -= num_prdt;
+  }
+
+  if (sector_count > 0) {
+    u8 tmp_buffer[512 * num_prdt];
+    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
+    memcpy(tmp_buffer + offset, buffer, len);
+    ahci_raw_write(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
+  }
+  return rc;
+}
+
 int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_inode_t *inode = fd->inode;
   int port = inode->inode_num;
@@ -430,7 +470,7 @@ void add_devfs_drive_file(u8 port) {
   path[strlen(path)] += num_drives_added;
   num_drives_added++;
   vfs_inode_t *inode =
-      devfs_add_file(path, ahci_read, NULL /*write*/, NULL /*get_vm_object*/,
+      devfs_add_file(path, ahci_read, ahci_write, NULL /*get_vm_object*/,
                      1 /*has_data*/, 0 /*can_write*/, FS_TYPE_BLOCK_DEVICE);
   inode->inode_num = port;
 }
