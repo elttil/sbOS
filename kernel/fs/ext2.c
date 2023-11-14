@@ -2,6 +2,7 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <typedefs.h>
 
 #define EXT2_SUPERBLOCK_SECTOR 2
@@ -24,7 +25,7 @@ void ext2_close(vfs_fd_t *fd) {
 
 int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size);
 
-inline void get_inode_data_size(int inode_num, u64 *file_size) {
+void get_inode_data_size(int inode_num, u64 *file_size) {
   read_inode(inode_num, NULL, 0, 0, file_size);
 }
 
@@ -513,6 +514,18 @@ int ext2_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return rc;
 }
 
+int ext2_stat(vfs_fd_t *fd, struct stat *buf) {
+  u8 buffer[inode_size];
+  inode_t *inode = (inode_t *)buffer;
+  ext2_get_inode_header(fd->inode->inode_num, inode);
+  if (DIRECTORY == inode->types_permissions) {
+    buf->st_mode = STAT_DIR;
+  } else {
+    buf->st_mode = STAT_REG;
+  }
+  return 0;
+}
+
 int ext2_truncate(vfs_fd_t *fd, size_t length) {
   // TODO: Blocks that are no longer used should be freed.
   u8 inode_buffer[inode_size];
@@ -533,7 +546,8 @@ vfs_inode_t *ext2_open(const char *path) {
   if (0 == inode_num)
     return NULL;
 
-  inode_t ext2_inode[inode_size];
+  u8 buffer[inode_size];
+  inode_t *ext2_inode = (inode_t *)buffer;
   ext2_get_inode_header(inode_num, ext2_inode);
   u64 file_size =
       ((u64)(ext2_inode->_upper_32size) << 32) | ext2_inode->low_32size;
@@ -551,11 +565,11 @@ vfs_inode_t *ext2_open(const char *path) {
     break;
   }
 
-  return vfs_create_inode(inode_num, type, 1 /*has_data*/, 1 /*can_write*/,
-                          1 /*is_open*/, NULL /*internal_object*/, file_size,
-                          ext2_open, ext2_create_file, ext2_read, ext2_write,
-                          ext2_close, ext2_create_directory,
-                          NULL /*get_vm_object*/, ext2_truncate /*truncate*/);
+  return vfs_create_inode(
+      inode_num, type, 1 /*has_data*/, 1 /*can_write*/, 1 /*is_open*/,
+      NULL /*internal_object*/, file_size, ext2_open, ext2_create_file,
+      ext2_read, ext2_write, ext2_close, ext2_create_directory,
+      NULL /*get_vm_object*/, ext2_truncate /*truncate*/, ext2_stat);
 }
 
 u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
@@ -753,7 +767,7 @@ vfs_inode_t *ext2_mount(void) {
                           NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
                           ext2_create_file, ext2_read, ext2_write, ext2_close,
                           ext2_create_directory, NULL /*get_vm_object*/,
-                          ext2_truncate /*truncate*/);
+                          ext2_truncate /*truncate*/, ext2_stat);
 }
 
 void parse_superblock(void) {

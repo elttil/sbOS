@@ -70,6 +70,8 @@ typedef struct BlockGroupDescriptorTable {
   u16 num_unallocated_blocks_in_group;
   u16 num_unallocated_inodes_in_group;
   u16 num_directories_group;
+  u16 padding;
+  u8 reserved[12];
 } __attribute__((packed)) bgdt_t;
 
 typedef struct INode {
