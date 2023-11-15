@@ -66,6 +66,7 @@ int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd) {
   r->mode = mode;
   r->inode = inode;
   r->reference_count = 1;
+  r->offset = 0;
   p->file_descriptors[i] = r;
   if (fd)
     *fd = r;
