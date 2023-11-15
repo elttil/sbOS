@@ -135,6 +135,24 @@ int pci_populate_device_struct(u16 vendor, u16 device,
   return 0;
 }
 
+void pci_enable_interrupts(const struct PCI_DEVICE *device) {
+  u32 register1 = pci_config_read32(device, 0, 0x4);
+  u8 current_interrupt = (register1 >> 10) & 1;
+  if (current_interrupt) {
+    kprintf("PCI: Interrrupt already enabled\n");
+  }
+  register1 |= (1 << 10);
+  pci_config_write32(device, 0, 0x4, register1);
+}
+
+void pci_set_interrupt_line(const struct PCI_DEVICE *device,
+                            u8 interrupt_line) {
+  u32 register1 = pci_config_read32(device, 0, 0x3C);
+  register1 &= ~(0xFF);
+  register1 |= interrupt_line;
+  pci_config_write32(device, 0, 0x3C, register1);
+}
+
 u8 pci_get_interrupt_line(const struct PCI_DEVICE *device) {
   return pci_config_read32(device, 0, 0x3C) & 0xFF;
 }

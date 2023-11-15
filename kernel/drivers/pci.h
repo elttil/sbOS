@@ -33,4 +33,6 @@ int pci_populate_device_struct(u16 vendor, u16 device,
 u8 pci_devices_by_id(u8 class_id, u8 subclass_id,
                      struct PCI_DEVICE *pci_device);
 
+void pci_enable_interrupts(const struct PCI_DEVICE *device);
 u8 pci_get_interrupt_line(const struct PCI_DEVICE *device);
+void pci_set_interrupt_line(const struct PCI_DEVICE *device, u8 interrupt_line);
