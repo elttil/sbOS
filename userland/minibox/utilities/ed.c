@@ -12,7 +12,7 @@ FILE *fp = NULL;
 FILE *mem_fp = NULL;
 int line_number = 1;
 
-int getline(char *buffer, size_t s) {
+int ed_getline(char *buffer, size_t s) {
   (void)s;
   int i = 0;
   char c;
@@ -86,7 +86,7 @@ void delete_line(void) {
 void read_command(void) {
   char buffer[4096];
   char *s = buffer;
-  getline(buffer, 4096);
+  ed_getline(buffer, 4096);
   int a = -1;
   int rc = sscanf(buffer, "%d", &a);
   if (0 < rc) {
@@ -107,7 +107,7 @@ void read_command(void) {
 
 void read_input(void) {
   char buffer[4096];
-  int l = getline(buffer, 4096);
+  int l = ed_getline(buffer, 4096);
   if (0 == strcmp(buffer, ".")) {
     mode = COMMAND_MODE;
     return;

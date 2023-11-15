@@ -115,4 +115,8 @@ int fsetpos(FILE *stream, const fpos_t *pos);
 int fgetpos(FILE *restrict stream, fpos_t *restrict pos);
 char *tmpnam(char *s);
 int rename(const char *old, const char *new);
+size_t getdelim(char ** lineptr, size_t * n,
+       int delimiter, FILE * stream);
+size_t getline(char ** lineptr, size_t * n,
+       FILE * stream);
 #endif

@@ -686,6 +686,38 @@ void dirname_test(void) {
   dbgln("dirname TEST PASSED");
 }
 
+void getline_test(void) {
+  dbgln("getline TEST");
+  {
+    char *buffer;
+    size_t size;
+    FILE *fp = open_memstream(&buffer, &size);
+    assert(fp);
+    const char *s = "line1\nline2\nfoo\nbar";
+    size_t line = strlen(s);
+    assert(fwrite(s, 1, line, fp) == line);
+    assert(0 == fseek(fp, 0, SEEK_SET));
+    char *line_buffer = NULL;
+    {
+      size_t n;
+      n = 256;
+      getline(&line_buffer, &n, fp);
+      assert(0 == strcmp("line1", line_buffer));
+      n = 256;
+      getline(&line_buffer, &n, fp);
+      assert(0 == strcmp("line2", line_buffer));
+      n = 256;
+      getline(&line_buffer, &n, fp);
+      assert(0 == strcmp("foo", line_buffer));
+      n = 256;
+      getline(&line_buffer, &n, fp);
+      assert(0 == strcmp("bar", line_buffer));
+    }
+    free(buffer);
+  }
+  dbgln("getline TEST PASSED");
+}
+
 int main(void) {
   dbgln("START");
   malloc_test();
@@ -723,6 +755,7 @@ int main(void) {
   qsort_test();
   basename_test();
   dirname_test();
+  getline_test();
   // TODO: Add mkstemp
   return 0;
 }
