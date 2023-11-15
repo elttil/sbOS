@@ -2,8 +2,7 @@
 #define SHM_H
 #include <stddef.h>
 #include <typedefs.h>
-
-typedef int mode_t;
+#include <sys/types.h>
 
 void shm_init(void);
 int shm_open(const char *name, int oflag, mode_t mode);

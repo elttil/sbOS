@@ -86,7 +86,8 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
       0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
       1 /*is_open*/, &tcp_connections[i], 0 /*file_size*/, NULL /*open*/,
       NULL /*create_file*/, tcp_socket_read, tcp_socket_write, tcp_socket_close,
-      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/);
+      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
+      NULL /*stat*/);
 
   vfs_fd_t *fd;
   int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);
@@ -278,7 +279,7 @@ int socket(int domain, int type, int protocol) {
       1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
       NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
       socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/);
+      NULL /*truncate*/, NULL /*stat*/);
 
   vfs_fd_t *fd;
   int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);

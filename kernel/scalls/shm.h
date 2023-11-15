@@ -2,7 +2,7 @@
 #define SYS_SHM_H
 #include <stddef.h>
 #include <typedefs.h>
-typedef int mode_t;
+#include <sys/types.h>
 
 typedef struct SYS_SHM_OPEN_PARAMS {
   const char *name;

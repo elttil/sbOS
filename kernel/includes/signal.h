@@ -6,8 +6,6 @@
 #define SIGWINCH 2
 #define SIGQUIT 3
 #define SIG_IGN 4
-typedef int pid_t;
-typedef int uid_t;
 typedef int sigset_t;
 
 union sigval {

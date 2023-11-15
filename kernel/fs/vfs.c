@@ -23,17 +23,17 @@ vfs_fd_t *get_vfs_fd(int fd) {
 }
 
 vfs_inode_t *vfs_create_inode(
-    int inode_num, int type, u8 has_data, u8 can_write,
-    u8 is_open, void *internal_object, u64 file_size,
+    int inode_num, int type, u8 has_data, u8 can_write, u8 is_open,
+    void *internal_object, u64 file_size,
     vfs_inode_t *(*open)(const char *path),
     int (*create_file)(const char *path, int mode),
     int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     void (*close)(vfs_fd_t *fd),
     int (*create_directory)(const char *path, int mode),
-    vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset,
-                                      vfs_fd_t *fd),
-    int (*truncate)(vfs_fd_t *fd, size_t length)) {
+    vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
+    int (*truncate)(vfs_fd_t *fd, size_t length),
+    int (*stat)(vfs_fd_t *fd, struct stat *buf)) {
   vfs_inode_t *r = kmalloc(sizeof(inode_t));
   r->inode_num = inode_num;
   r->type = type;
@@ -50,6 +50,7 @@ vfs_inode_t *vfs_create_inode(
   r->create_directory = create_directory;
   r->get_vm_object = get_vm_object;
   r->truncate = truncate;
+  r->stat = stat;
   return r;
 }
 
@@ -96,7 +97,6 @@ int vfs_create_file(const char *file) {
   }
   //  ext2_create_file("/etc/oscreated", 0);
   assert(file_mount->local_root->create_file);
-  kprintf("Creating a file\n");
   return file_mount->local_root->create_file(file, 0);
 }
 
@@ -158,6 +158,14 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
   char *final = vfs_clean_path(r, resolved_path);
   //  kfree(r);
   return final;
+}
+
+int vfs_fstat(int fd, struct stat *buf) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  if (!fd_ptr)
+    return -EBADF;
+  assert(fd_ptr->inode->stat);
+  return fd_ptr->inode->stat(fd_ptr, buf);
 }
 
 int vfs_mkdir(const char *path, int mode) {
