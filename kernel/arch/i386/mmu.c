@@ -57,7 +57,6 @@ void *ksbrk(size_t s) {
   }
   mmu_allocate_shared_kernel_region((void *)rc, (data_end - (uintptr_t)rc));
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
-  memset((void *)rc, 0x00, s);
 
   get_fast_insecure_random((void *)rc, data_end - rc);
   return (void *)rc;
