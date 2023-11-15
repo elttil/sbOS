@@ -168,6 +168,27 @@ int vfs_fstat(int fd, struct stat *buf) {
   return fd_ptr->inode->stat(fd_ptr, buf);
 }
 
+int vfs_chdir(const char *path) {
+  char tmp_path[256];
+  char *resolved_path = vfs_resolve_path(path, tmp_path);
+  {
+    int tmp_fd = vfs_open(resolved_path, O_READ, 0);
+    if (0 > tmp_fd)
+      return tmp_fd;
+    struct stat stat_result;
+    vfs_fstat(tmp_fd, &stat_result);
+    if (STAT_DIR != stat_result.st_mode) {
+      kprintf("vfs_chdir: -ENOTDIR\n");
+      return -ENOTDIR;
+    }
+    vfs_close(tmp_fd);
+  }
+  strcpy(get_current_task()->current_working_directory, resolved_path);
+  if ('/' != resolved_path[strlen(resolved_path)])
+    strcat(get_current_task()->current_working_directory, "/");
+  return 0;
+}
+
 int vfs_mkdir(const char *path, int mode) {
   vfs_mounts_t *file_mount = 0;
   int length = 0;

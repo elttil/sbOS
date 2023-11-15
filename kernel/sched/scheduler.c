@@ -54,7 +54,11 @@ process_t *create_process(process_t *p) {
                       r->cr3);
   r->signal_handler_stack = 0x80000000;
 
-  strcpy(r->current_working_directory, "/");
+  if (p) {
+    strcpy(r->current_working_directory, p->current_working_directory);
+  } else {
+    strcpy(r->current_working_directory, "/");
+  }
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
   memset((void *)r->halts, 0, 2 * sizeof(u32));
   for (int i = 0; i < 100; i++) {

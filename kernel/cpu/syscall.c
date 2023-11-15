@@ -9,6 +9,7 @@
 #include <kmalloc.h>
 #include <scalls/accept.h>
 #include <scalls/bind.h>
+#include <scalls/chdir.h>
 #include <scalls/ftruncate.h>
 #include <scalls/kill.h>
 #include <scalls/mkdir.h>
@@ -22,8 +23,8 @@
 #include <scalls/socket.h>
 #include <scalls/stat.h>
 #include <scalls/uptime.h>
-#include <typedefs.h>
 #include <string.h>
+#include <typedefs.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -167,11 +168,11 @@ void (*syscall_functions[])() = {
     (void(*))syscall_msleep,    (void(*))syscall_uptime,
     (void(*))syscall_mkdir,     (void(*))syscall_recvfrom,
     (void(*))syscall_sendto,    (void(*))syscall_kill,
-    (void(*))syscall_sigaction,
+    (void(*))syscall_sigaction, (void(*))syscall_chdir,
 };
 
-void syscall_function_handler(u32 eax, u32 arg1, u32 arg2,
-                              u32 arg3, u32 arg4, u32 arg5) {
+void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
+                              u32 arg5) {
   assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
   syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
 }
