@@ -37,6 +37,7 @@
 #define SYS_KILL 29
 #define SYS_SIGACTION 30
 #define SYS_CHDIR 31
+#define SYS_GETCWD 32
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

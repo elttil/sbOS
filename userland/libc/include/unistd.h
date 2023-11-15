@@ -20,6 +20,7 @@ int unlink(const char *path);
 int execvp(const char *file, char *const argv[]);
 void _exit(int status);
 void msleep(uint32_t ms); // not standard
-uint32_t uptime(void); // not standard
+uint32_t uptime(void);    // not standard
 int chdir(const char *path);
+char *getcwd(char *buf, size_t size);
 #endif

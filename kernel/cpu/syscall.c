@@ -11,6 +11,7 @@
 #include <scalls/bind.h>
 #include <scalls/chdir.h>
 #include <scalls/ftruncate.h>
+#include <scalls/getcwd.h>
 #include <scalls/kill.h>
 #include <scalls/mkdir.h>
 #include <scalls/mmap.h>
@@ -169,6 +170,7 @@ void (*syscall_functions[])() = {
     (void(*))syscall_mkdir,     (void(*))syscall_recvfrom,
     (void(*))syscall_sendto,    (void(*))syscall_kill,
     (void(*))syscall_sigaction, (void(*))syscall_chdir,
+    (void(*))syscall_getcwd,
 };
 
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
