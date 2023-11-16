@@ -125,25 +125,61 @@ vfs_inode_t *vfs_internal_open(const char *file) {
   return ret;
 }
 
-char *vfs_clean_path(const char *path, char *resolved_path) {
-  char *clean = resolved_path;
-  int prev_slash = 0;
-  char *ptr = clean;
+// Does canonicalization of absolute paths
+int vfs_clean_path(const char *path, char *result) {
+  // It has to be a absolute path
+  if ('/' != *path)
+    return 0;
+  const char *result_start = result;
+  int start_directory = 0;
+  int should_insert_slash = 0;
   for (; *path; path++) {
-    if (prev_slash && '/' == *path) {
-      continue;
+    if (start_directory) {
+      start_directory = 0;
+      if ('/' == *path) {
+        path++;
+      } else if (0 == memcmp(path, "./", 2) || 0 == memcmp(path, ".\0", 2)) {
+        path++;
+      } else if (0 == memcmp(path, "../", 3) || 0 == memcmp(path, "..\0", 3)) {
+        path += 2;
+        if (result_start + 2 > result) {
+          // The path is probably something like "/.." or
+          // "/../foo". A "/.." should become a "/"
+          // Therefore it skips going back to the parent
+          if (*path == '/') {
+            if (result_start == result)
+              return 0;
+            result--;
+          }
+        } else {
+          if ('/' != *path) {
+            should_insert_slash = 1;
+          }
+          result--;
+          result--;
+          for (; result_start <= result && '/' != *result; result--)
+            ;
+        }
+      }
     }
-    prev_slash = ('/' == *path);
-    *ptr = *path;
-    ptr++;
+    start_directory = ('/' == *path);
+    if ('\0' == *path)
+      break;
+    *result = *path;
+    result++;
   }
-  *ptr = '\0';
-  return clean;
+  if (should_insert_slash) {
+    *result = '/';
+    result++;
+  }
+  *result = '\0';
+  return 1;
 }
 
 char *vfs_resolve_path(const char *file, char *resolved_path) {
   if ('/' == *file) {
-    return vfs_clean_path(file, resolved_path);
+    assert(vfs_clean_path(file, resolved_path));
+    return resolved_path;
   }
   const char *cwd = get_current_task()->current_working_directory;
   size_t l = strlen(cwd);
@@ -152,8 +188,8 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
   char r[256];
   strcpy(r, cwd);
   strcat(r, file);
-  char *final = vfs_clean_path(r, resolved_path);
-  return final;
+  assert(vfs_clean_path(r, resolved_path));
+  return resolved_path;
 }
 
 int vfs_fstat(int fd, struct stat *buf) {
