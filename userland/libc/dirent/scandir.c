@@ -22,6 +22,8 @@ int scandir(const char *dir, struct dirent ***namelist,
     compar = nop_compar;
 
   DIR *d = opendir(dir);
+  if (!d)
+    return -1;
   struct dirent **list = NULL;
   struct dirent *e;
   int rc = 0;
@@ -34,10 +36,7 @@ int scandir(const char *dir, struct dirent ***namelist,
     list[rc] = p;
     rc++;
   }
-  //  struct dirent **new_list;
-  //  compar((const struct dirent **)list, (const struct dirent **)new_list);
-  //  *namelist = new_list;
   *namelist = list;
-  // closedir(d);
+  closedir(d);
   return rc;
 }
