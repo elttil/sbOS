@@ -95,7 +95,6 @@ int vfs_create_file(const char *file) {
             file);
     return 0;
   }
-  //  ext2_create_file("/etc/oscreated", 0);
   assert(file_mount->local_root->create_file);
   return file_mount->local_root->create_file(file, 0);
 }
@@ -127,7 +126,6 @@ vfs_inode_t *vfs_internal_open(const char *file) {
 }
 
 char *vfs_clean_path(const char *path, char *resolved_path) {
-  //  char *const clean = kmalloc(strlen(path) + 1);
   char *clean = resolved_path;
   int prev_slash = 0;
   char *ptr = clean;
@@ -151,12 +149,10 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
   size_t l = strlen(cwd);
   assert(l > 0);
   assert('/' == cwd[l - 1]);
-  //  char *r = kmalloc(l + strlen(file) + 1);
   char r[256];
   strcpy(r, cwd);
   strcat(r, file);
   char *final = vfs_clean_path(r, resolved_path);
-  //  kfree(r);
   return final;
 }
 

@@ -168,6 +168,9 @@ void ext2_write_inode(int inode_index, inode_t *data) {
 
 int ext2_get_inode_in_directory(int dir_inode, char *file,
                                 direntry_header_t *entry) {
+  if ('\0' == *file) {
+    return dir_inode;
+  }
   u64 file_size;
   ASSERT_BUT_FIXME_PROPOGATE(-1 !=
                              read_inode(dir_inode, NULL, 0, 0, &file_size));
@@ -500,18 +503,19 @@ int ext2_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 int ext2_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  u64 file_size;
-  int rc;
   int inode_num = fd->inode->inode_num;
-  if (fd->inode->type == FS_TYPE_DIRECTORY) {
-    rc = ext2_read_dir(inode_num, buffer, len, offset);
-    return rc;
-  }
   if (fd->inode->type == FS_TYPE_LINK) {
     inode_num = resolve_link(inode_num);
   }
-  rc = read_inode(inode_num, buffer, len, offset, &file_size);
-  return rc;
+  u8 inode_buffer[inode_size];
+  ext2_get_inode_header(inode_num, (inode_t *)inode_buffer);
+  inode_t *inode = (inode_t *)inode_buffer;
+
+  if (DIRECTORY & inode->types_permissions) {
+    return ext2_read_dir(inode_num, buffer, len, offset);
+  }
+
+  return read_inode(inode_num, buffer, len, offset, NULL);
 }
 
 int ext2_stat(vfs_fd_t *fd, struct stat *buf) {
