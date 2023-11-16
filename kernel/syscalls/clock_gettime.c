@@ -1,4 +1,4 @@
-#include <scalls/clock_gettime.h>
+#include <syscalls.h>
 
 int syscall_clock_gettime(SYS_CLOCK_GETTIME_PARAMS *args) {
   // FIXME: Actually implement this

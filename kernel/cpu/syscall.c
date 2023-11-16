@@ -7,23 +7,7 @@
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
 #include <kmalloc.h>
-#include <scalls/accept.h>
-#include <scalls/bind.h>
-#include <scalls/chdir.h>
-#include <scalls/ftruncate.h>
-#include <scalls/getcwd.h>
-#include <scalls/kill.h>
-#include <scalls/mkdir.h>
-#include <scalls/mmap.h>
-#include <scalls/msleep.h>
-#include <scalls/ppoll.h>
-#include <scalls/recvfrom.h>
-#include <scalls/sendto.h>
-#include <scalls/shm.h>
-#include <scalls/sigaction.h>
-#include <scalls/socket.h>
-#include <scalls/stat.h>
-#include <scalls/uptime.h>
+#include <syscalls.h>
 #include <string.h>
 #include <typedefs.h>
 

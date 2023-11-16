@@ -1,6 +1,6 @@
 #include <errno.h>
 #include <fs/vfs.h>
-#include <scalls/stat.h>
+#include <syscalls.h>
 
 int syscall_stat(SYS_STAT_PARAMS *args) {
   const char *pathname = copy_and_allocate_user_string(args->pathname);

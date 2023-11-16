@@ -1,5 +1,5 @@
 #include <math.h>
-#include <scalls/getcwd.h>
+#include <syscalls.h>
 #include <sched/scheduler.h>
 
 char *syscall_getcwd(char *buf, size_t size) {

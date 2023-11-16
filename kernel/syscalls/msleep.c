@@ -1,5 +1,5 @@
 #include <drivers/pit.h>
-#include <scalls/msleep.h>
+#include <syscalls.h>
 #include <sched/scheduler.h>
 #include <stdio.h>
 

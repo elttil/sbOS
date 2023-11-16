@@ -1,4 +1,4 @@
-#include <scalls/mmap.h>
+#include <syscalls.h>
 #include <sched/scheduler.h>
 
 void *syscall_mmap(SYS_MMAP_PARAMS *args) {

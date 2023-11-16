@@ -2,7 +2,7 @@
 #include <fs/vfs.h>
 #include <math.h>
 #include <poll.h>
-#include <scalls/recvfrom.h>
+#include <syscalls.h>
 
 size_t syscall_recvfrom(
     int socket, void *buffer, size_t length, int flags,

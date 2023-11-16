@@ -1,4 +1,4 @@
-#include <scalls/ppoll.h>
+#include <syscalls.h>
 #include <fs/vfs.h>
 #include <poll.h>
 #include <sched/scheduler.h>

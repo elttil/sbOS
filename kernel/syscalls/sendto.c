@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <network/bytes.h>
 #include <network/udp.h>
-#include <scalls/sendto.h>
+#include <syscalls.h>
 
 size_t syscall_sendto(int socket, const void *message, size_t length,
            int flags, struct t_two_args *extra_args /*

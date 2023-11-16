@@ -1,4 +1,4 @@
-#include <scalls/sigaction.h>
+#include <syscalls.h>
 #include <signal.h>
 #include <sched/scheduler.h>
 

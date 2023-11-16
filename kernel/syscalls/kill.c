@@ -1,4 +1,4 @@
-#include <scalls/kill.h>
+#include <syscalls.h>
 #include <sched/scheduler.h>
 #include <signal.h>
 
