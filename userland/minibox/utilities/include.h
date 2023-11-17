@@ -37,5 +37,6 @@ int wc_main(int argc, char **argv);
 int ls_main(int argc, char **argv);
 int touch_main(int argc, char **argv);
 int ed_main(int argc, char **argv);
+int sh_main(int argc, char **argv);
 
 int init_main(void);

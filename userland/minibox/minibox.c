@@ -22,7 +22,7 @@ typedef struct Command {
 Command utilities[] = {COMMAND(minibox), COMMAND(ascii), COMMAND(echo),
                        COMMAND(cat),     COMMAND(yes),   COMMAND(wc),
                        COMMAND(init),    COMMAND(ls),    COMMAND(touch),
-                       COMMAND(ed)};
+                       COMMAND(ed), COMMAND(sh)};
 
 char *parse_filename(char *str) {
   char *tmp = NULL, *is = str;
