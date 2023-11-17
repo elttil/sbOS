@@ -91,7 +91,7 @@ void setup(void) {
 
   main_display.width = disp_info.width;
   main_display.height = disp_info.height;
-  main_display.bpp = disp_info.bpp/8;
+  main_display.bpp = disp_info.bpp / 8;
 
   setup_display(&main_display, "/dev/vbe", 0xBB8000);
   draw_wallpaper(&main_display);
@@ -169,8 +169,8 @@ void create_window(WINDOW *w, int fd, int x, int y, int sx, int sy) {
   w->bitmap_ptr = mmap(NULL, sx * sy * sizeof(uint32_t), 0, 0, fd, 0);
   w->x = x;
   w->y = y;
-  w->sx = sx;
-  w->sy = sy;
+  w->buffer_sx = w->sx = sx;
+  w->buffer_sy = w->sy = sy;
 }
 
 typedef struct {
@@ -312,6 +312,7 @@ void parse_mouse_event(int fd) {
   int16_t xc = 0;
   int16_t yc = 0;
   int middle_button = 0;
+  int right_button = 0;
   int left_button = 0;
   for (;;) {
     struct mouse_event e[100];
@@ -324,6 +325,7 @@ void parse_mouse_event(int fd) {
       uint8_t xs = e[i].buttons & (1 << 4);
       uint8_t ys = e[i].buttons & (1 << 5);
       middle_button = e[i].buttons & (1 << 2);
+      right_button = e[i].buttons & (1 << 1);
       left_button = e[i].buttons & (1 << 0);
       int16_t x = e[i].x;
       int16_t y = e[i].y;
@@ -350,6 +352,12 @@ void parse_mouse_event(int fd) {
       main_display.active_window->y -= yc;
       clamp_screen_position(&main_display.active_window->x,
                             &main_display.active_window->y);
+    }
+  }
+  if (right_button) {
+    if (main_display.active_window) {
+      main_display.active_window->sx += xc;
+      main_display.active_window->sy -= yc;
     }
   }
   update_mouse();

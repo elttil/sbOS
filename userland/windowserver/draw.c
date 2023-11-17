@@ -81,6 +81,8 @@ void draw_window(DISPLAY *disp, const WINDOW *w) {
   const int py = w->y;
   const int sx = w->sx;
   const int sy = w->sy;
+  const int b_sx = w->buffer_sx;
+  const int b_sy = w->buffer_sy;
   x = px;
   y = py;
   // Draw a border around the current selected window
@@ -102,9 +104,19 @@ void draw_window(DISPLAY *disp, const WINDOW *w) {
                     px * disp->bpp;
     if (i * sx > disp->height * disp->width)
       break;
-    uint32_t *bm = &w->bitmap_ptr[i * sx];
-    for (int j = 0; j < sx; j++) {
-      ptr[j] = bm[j];
+    if (i < b_sy) {
+      uint32_t *bm = &w->bitmap_ptr[i * b_sx];
+      int j = 0;
+      for (; j < b_sx && j < sx; j++) {
+        ptr[j] = bm[j];
+      }
+      for (; j < sx; j++) {
+        ptr[j] = 0;
+      }
+    } else {
+      for (int j = 0; j < sx; j++) {
+        ptr[j] = 0;
+      }
     }
   }
 }

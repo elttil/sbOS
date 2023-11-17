@@ -14,6 +14,8 @@ typedef struct {
   int y;
   int sx;
   int sy;
+  int buffer_sx;
+  int buffer_sy;
 } WINDOW;
 
 typedef struct {
