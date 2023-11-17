@@ -23,4 +23,5 @@ void msleep(uint32_t ms); // not standard
 uint32_t uptime(void);    // not standard
 int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
+int isatty(int fd);
 #endif
