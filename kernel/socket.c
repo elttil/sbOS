@@ -90,7 +90,7 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
       NULL /*stat*/);
 
   vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);
+  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
 
   fd->reference_count++;
   s->incoming_fd = fd;
@@ -282,7 +282,7 @@ int socket(int domain, int type, int protocol) {
       NULL /*truncate*/, NULL /*stat*/);
 
   vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd);
+  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0/*is_tty*/, inode, &fd);
 
   new_socket->domain = domain;
   new_socket->type = type;

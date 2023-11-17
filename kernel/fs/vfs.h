@@ -47,6 +47,7 @@ struct vfs_fd {
   size_t offset;
   int flags;
   int mode;
+  int is_tty;
   int reference_count; // Number of usages of this file descriptor,
                        // once it reaches zero then the contents can
                        // be freed.
@@ -84,7 +85,8 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset);
 int vfs_dup2(int org_fd, int new_fd);
 vfs_inode_t *vfs_internal_open(const char *file);
 int vfs_mkdir(const char *path, int mode);
-int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd);
+int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
+                  vfs_fd_t **fd);
 int vfs_ftruncate(int fd, size_t length);
 int vfs_chdir(const char *path);
 int vfs_fstat(int fd, struct stat *buf);

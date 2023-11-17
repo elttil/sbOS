@@ -81,7 +81,7 @@ int shm_open(const char *name, int oflag, mode_t mode) {
       NULL /*stat*/);
 
   vfs_fd_t *fd_ptr;
-  int fd = vfs_create_fd(oflag, mode, inode, &fd_ptr);
+  int fd = vfs_create_fd(oflag, mode, 0/*is_tty*/, inode, &fd_ptr);
   if (-1 == fd) {
     kfree(inode);
     return -EMFILE;

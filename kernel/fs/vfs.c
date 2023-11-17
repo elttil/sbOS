@@ -54,7 +54,8 @@ vfs_inode_t *vfs_create_inode(
   return r;
 }
 
-int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd) {
+int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
+                  vfs_fd_t **fd) {
   process_t *p = (process_t *)get_current_task();
   int i;
   for (i = 0; i < 100; i++)
@@ -67,6 +68,7 @@ int vfs_create_fd(int flags, int mode, vfs_inode_t *inode, vfs_fd_t **fd) {
   r->mode = mode;
   r->inode = inode;
   r->reference_count = 1;
+  r->is_tty = is_tty;
   r->offset = 0;
   p->file_descriptors[i] = r;
   if (fd)
@@ -266,7 +268,8 @@ int vfs_open(const char *file, int flags, int mode) {
     return uds_open(resolved_path);
   }
 
-  return vfs_create_fd(flags, mode, inode, NULL);
+  // FIXME: Maybe it is sometimes a TTY?
+  return vfs_create_fd(flags, mode, 0 /*is_tty*/, inode, NULL);
 }
 
 int vfs_close(int fd) {

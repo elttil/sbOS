@@ -52,7 +52,7 @@ void dual_pipe(int fd[2]) {
     assert(inode);
 
     vfs_fd_t *fd_ptr;
-    fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, inode, &fd_ptr);
+    fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0/*is_tty*/, inode, &fd_ptr);
     assert(-1 != fd[i]);
   }
   vfs_inode_t *f_inode = get_current_task()->file_descriptors[fd[0]]->inode;
@@ -78,11 +78,11 @@ void pipe(int fd[2]) {
         0 /*inode_num*/, 0 /*type*/, has_data, can_write, is_open,
         internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tmp_read, tmp_write, tmp_close, NULL /*create_directory*/,
-        NULL /*get_vm_object*/, NULL /*truncate*/, NULL/*stat*/);
+        NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/);
     assert(inode);
 
     vfs_fd_t *fd_ptr;
-    fd[i] = vfs_create_fd(O_RDWR, 0, inode, &fd_ptr);
+    fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptr);
     assert(-1 != fd[i]);
   }
   vfs_inode_t *f_inode = get_current_task()->file_descriptors[fd[0]]->inode;

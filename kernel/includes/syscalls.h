@@ -107,3 +107,4 @@ typedef struct SYS_STAT_PARAMS {
 
 int syscall_stat(SYS_STAT_PARAMS *args);
 u32 syscall_uptime(void);
+int syscall_isatty(int fd);

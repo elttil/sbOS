@@ -7,8 +7,8 @@
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
 #include <kmalloc.h>
-#include <syscalls.h>
 #include <string.h>
+#include <syscalls.h>
 #include <typedefs.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -154,7 +154,7 @@ void (*syscall_functions[])() = {
     (void(*))syscall_mkdir,     (void(*))syscall_recvfrom,
     (void(*))syscall_sendto,    (void(*))syscall_kill,
     (void(*))syscall_sigaction, (void(*))syscall_chdir,
-    (void(*))syscall_getcwd,
+    (void(*))syscall_getcwd,    (void(*))syscall_isatty,
 };
 
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
