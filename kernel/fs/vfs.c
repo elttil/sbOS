@@ -218,7 +218,7 @@ int vfs_chdir(const char *path) {
     vfs_close(tmp_fd);
   }
   strcpy(get_current_task()->current_working_directory, resolved_path);
-  if ('/' != resolved_path[strlen(resolved_path)])
+  if ('/' != resolved_path[strlen(resolved_path)] && strlen(resolved_path) != 1)
     strcat(get_current_task()->current_working_directory, "/");
   return 0;
 }
