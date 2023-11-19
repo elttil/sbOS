@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <syscall.h>
@@ -181,7 +182,15 @@ void perror(const char *s) {
   printf("%s\n", strerror(errno));
 }
 
-int open(const char *file, int flags, int mode) {
+int open(const char *file, int flags, ...) {
+  mode_t mode = 0;
+
+  if (flags & O_CREAT) {
+    va_list ap;
+    va_start(ap, flags);
+    mode = va_arg(ap, mode_t);
+    va_end(ap);
+  }
   struct SYS_OPEN_PARAMS args = {
       .file = file,
       .flags = flags,
