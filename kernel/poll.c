@@ -5,6 +5,7 @@
 
 int poll(struct pollfd *fds, size_t nfds, int timeout) {
   (void)timeout;
+  int rc = 0;
   int read_locks[nfds];
   int write_locks[nfds];
   int disconnect_locks[nfds];
@@ -48,7 +49,9 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
         fds[i].revents |= POLLOUT;
       if (!(f->inode->is_open) && fds[i].events & POLLHUP)
         fds[i].revents |= POLLHUP;
+      if (fds[i].revents)
+        rc++;
     }
   }
-  return 0;
+  return rc;
 }
