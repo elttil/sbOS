@@ -291,8 +291,7 @@ int vfs_close(int fd) {
   return 0;
 }
 
-int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count,
-                  u64 offset) {
+int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   if (!(vfs_fd->flags & O_READ))
     return -EBADF;
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
@@ -325,8 +324,7 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   return rc;
 }
 
-int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count,
-                   u64 offset) {
+int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   assert(vfs_fd);
   assert(vfs_fd->inode);
   assert(vfs_fd->inode->write);

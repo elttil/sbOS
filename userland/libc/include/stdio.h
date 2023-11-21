@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 // FIXME: Most of these should probably not be here. But I am too lazy
 // to fix it right now. This is futures mees problem to deal wth.
@@ -55,8 +56,6 @@ extern FILE *__stderr_FILE;
 #define stdin __stdin_FILE
 #define stdout __stdout_FILE
 #define stderr __stderr_FILE
-
-typedef int mode_t;
 
 void perror(const char *s);
 

@@ -50,10 +50,6 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
   packet += sizeof(struct ETHERNET_HEADER);
   const u8 *payload = packet;
   packet += packet_length - sizeof(struct ETHERNET_HEADER);
-  u32 crc = *((u32 *)packet - 1);
-  kprintf("PACKET crc: %x\n", crc);
-  kprintf("OUR OWN CALCULATED crc: %x\n",
-          crc32((const char *)eth_header, (packet_length - 4)));
 
   u16 type = ntohs(eth_header->type);
   switch (type) {
@@ -84,10 +80,8 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
   memcpy(eth_header->mac_dst, mac_dst, sizeof(u8[6]));
   get_mac_address(eth_header->mac_src);
   eth_header->type = htons(type);
-  *(u32 *)(buffer) =
-      htonl(crc32((const char *)buffer_start, buffer_size - 4));
+  *(u32 *)(buffer) = htonl(crc32((const char *)buffer_start, buffer_size - 4));
 
   assert(rtl8139_send_data(buffer_start, buffer_size));
   kfree(buffer_start);
-  kprintf("sent data\n");
 }

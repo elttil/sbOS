@@ -85,8 +85,7 @@ int socket(int domain, int type, int protocol);
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 struct INCOMING_TCP_CONNECTION *
-handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
-                               u16 dst_port);
+handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port);
 struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
                                                             u16 n_port);
 #endif

@@ -14,8 +14,7 @@ OPEN_INET_SOCKET *inet_sockets[100] = {0};
 
 struct INCOMING_TCP_CONNECTION tcp_connections[100] = {0};
 
-int tcp_socket_write(u8 *buffer, u64 offset, u64 len,
-                     vfs_fd_t *fd) {
+int tcp_socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
   if (s->connection_closed)
@@ -24,8 +23,7 @@ int tcp_socket_write(u8 *buffer, u64 offset, u64 len,
   return len;
 }
 
-int tcp_socket_read(u8 *buffer, u64 offset, u64 len,
-                    vfs_fd_t *fd) {
+int tcp_socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
   if (s->connection_closed)
@@ -60,8 +58,7 @@ struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
 }
 
 struct INCOMING_TCP_CONNECTION *
-handle_incoming_tcp_connection(u8 ip[4], u16 n_port,
-                               u16 dst_port) {
+handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
   OPEN_INET_SOCKET *in = find_open_tcp_port(htons(dst_port));
   if (!in) {
     kprintf("TCP SYN to unopened port: %d\n", dst_port);
@@ -282,7 +279,7 @@ int socket(int domain, int type, int protocol) {
       NULL /*truncate*/, NULL /*stat*/);
 
   vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0/*is_tty*/, inode, &fd);
+  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
 
   new_socket->domain = domain;
   new_socket->type = type;

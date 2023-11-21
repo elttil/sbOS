@@ -29,4 +29,5 @@ int system(const char *command);
 double atof(const char *str);
 double strtod(const char *restrict nptr, char **restrict endptr);
 int atoi(const char *str);
+char *realpath(const char *filename, char *resolvedname);
 #endif

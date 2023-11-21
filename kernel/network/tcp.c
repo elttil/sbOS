@@ -60,9 +60,8 @@ u16 tcp_checksum(u16 *buffer, int size) {
   return (u16)(~cksum);
 }
 
-void tcp_calculate_checksum(u8 src_ip[4], u8 dst_ip[4],
-                            const u8 *payload, u16 payload_length,
-                            struct TCP_HEADER *header) {
+void tcp_calculate_checksum(u8 src_ip[4], u8 dst_ip[4], const u8 *payload,
+                            u16 payload_length, struct TCP_HEADER *header) {
   struct PSEUDO_TCP_HEADER ps = {0};
   memcpy(&ps.src_addr, src_ip, sizeof(u32));
   memcpy(&ps.dst_addr, dst_ip, sizeof(u32));
@@ -135,8 +134,7 @@ void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, u8 *payload,
 }
 
 void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, u8 flags,
-                            u32 inc_seq_num, u16 n_dst_port,
-                            u16 n_src_port) {
+                            u32 inc_seq_num, u16 n_dst_port, u16 n_src_port) {
   struct TCP_HEADER header = {0};
   header.src_port = n_dst_port;
   header.dst_port = n_src_port;
@@ -148,15 +146,13 @@ void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, u8 flags,
   header.window_size = htons(512); // TODO: What does this actually mean?
   header.urgent_pointer = 0;
   char payload[0];
-  tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload, 0,
-                         &header);
+  tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload, 0, &header);
   u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
   send_ipv4_packet(dst_ip, 6, (const u8 *)&header, sizeof(header));
 }
 
-void handle_tcp(u8 src_ip[4], const u8 *payload,
-                u32 payload_length) {
+void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
   const struct TCP_HEADER *inc_header = (const struct TCP_HEADER *)payload;
   u16 n_src_port = *(u16 *)(payload);
   u16 n_dst_port = *(u16 *)(payload + 2);
@@ -225,12 +221,10 @@ void handle_tcp(u8 src_ip[4], const u8 *payload,
     header.window_size = htons(512); // TODO: What does this actually mean?
     header.urgent_pointer = 0;
     char payload[0];
-    tcp_calculate_checksum(ip_address, src_ip, (const u8 *)payload, 0,
-                           &header);
+    tcp_calculate_checksum(ip_address, src_ip, (const u8 *)payload, 0, &header);
     u32 dst_ip;
     memcpy(&dst_ip, src_ip, sizeof(dst_ip));
     send_ipv4_packet(dst_ip, 6, (const u8 *)&header, sizeof(header));
-    kprintf("after ipv4 packet: %x\n", pit_num_ms());
     return;
   }
 }

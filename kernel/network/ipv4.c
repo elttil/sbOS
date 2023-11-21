@@ -63,9 +63,7 @@ void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload,
   memcpy(ip_copy, &ip, sizeof(u8[4]));
   for (; !get_mac_from_ip(ip_copy, mac);)
     ;
-  kprintf("pre send_ethernet: %x\n", pit_num_ms());
   send_ethernet_packet(mac, 0x0800, packet, packet_length);
-  kprintf("after send_ethernet: %x\n", pit_num_ms());
   kfree(packet);
 }
 
@@ -80,7 +78,6 @@ void handle_ipv4(const u8 *payload, u32 packet_length) {
 
   u8 version = (*payload & 0xF0) >> 4;
   u8 IHL = (*payload & 0xF);
-  kprintf("version: %x\n", version);
   assert(4 == version);
   assert(5 == IHL);
   u16 ipv4_total_length = ntohs(*(u16 *)(payload + 2));

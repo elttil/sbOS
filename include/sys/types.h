@@ -12,4 +12,5 @@ typedef i32 gid_t;
 typedef u64 off_t;
 typedef i64 blksize_t;
 typedef i64 blkcnt_t;
+typedef u32 suseconds_t;
 #endif

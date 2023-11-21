@@ -48,9 +48,7 @@ void handle_packet(void) {
   struct PACKET_HEADER packet_header;
   packet_header.raw = *buf;
   assert(packet_header.data.ROK);
-  kprintf("packet_header.raw: %x\n", packet_header.raw);
   u16 packet_length = *(buf + 1);
-  kprintf("packet_length: %x\n", packet_length);
 
   u8 packet_buffer[8192 + 16];
   if (current_packet_read + packet_length >= 8192 + 16) {
@@ -77,14 +75,11 @@ void handle_packet(void) {
 __attribute__((interrupt)) void rtl8139_handler(void *regs) {
   (void)regs;
   u16 status = inw(rtl8139.gen.base_mem_io + 0x3e);
-  kprintf("status: %x\n", status);
 
   outw(rtl8139.gen.base_mem_io + 0x3E, 0x5);
   if (status & (1 << 2)) {
-    kprintf("Packet sent\n");
   }
   if (status & (1 << 0)) {
-    kprintf("Received packet\n");
     handle_packet();
   }
 
@@ -118,7 +113,6 @@ void get_mac_address(u8 mac[6]) {
     u16 high_mac = inw(base_address + 0x4);
     mac_address = ((u64)high_mac << 32) | low_mac;
   }
-  kprintf("mac_address: %x\n", mac_address);
   memcpy(mac, &mac_address, sizeof(u8[6]));
 }
 

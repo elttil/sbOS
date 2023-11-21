@@ -55,8 +55,6 @@ extern int errno;
     return c;                                                                  \
   }
 
-typedef int mode_t;
-
 typedef struct SYS_OPEN_PARAMS {
   const char *file;
   int flags;

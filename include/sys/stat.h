@@ -33,4 +33,7 @@ struct stat {
 
   blkcnt_t st_blocks; // Number of blocks allocated for this object.
 };
+#ifndef KERNEL
+int stat(const char *path, struct stat *buf);
+#endif
 #endif

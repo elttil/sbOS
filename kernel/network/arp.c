@@ -114,12 +114,6 @@ void handle_arp(const u8 *payload) {
   assert(4 == data->plen);
   // Assert it is a request
   if (0x0001 /*arp_request*/ == ntohs(data->opcode)) {
-    print_mac("srchw: ", data->srchw);
-    print_ip("srcpr: ", data->srcpr);
-
-    print_mac("dsthw: ", data->dsthw);
-    print_ip("dstpr: ", data->dstpr);
-
     struct ARP_TABLE_ENTRY *entry = find_arp_entry_to_use();
     entry->is_used = 1;
     memcpy(entry->mac, data->srchw, sizeof(uint8_t[6]));
@@ -148,7 +142,6 @@ void handle_arp(const u8 *payload) {
     entry->is_used = 1;
     memcpy(entry->mac, data->srchw, sizeof(u8[6]));
     memcpy(entry->ip, data->srcpr, sizeof(u8[4]));
-    print_ip("Added ip: ", entry->ip);
   } else {
     kprintf("GOT A ARP REQEUST WITH TYPE: %x\n", ntohs(data->opcode));
     assert(0);
