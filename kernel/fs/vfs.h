@@ -10,6 +10,7 @@ typedef struct vfs_mounts vfs_mounts_t;
 #include <stddef.h>
 #include <sys/stat.h>
 #include <typedefs.h>
+#include <dirent.h>
 
 // FIXME: Is there some standard value for this?
 #define O_NONBLOCK (1 << 0)
@@ -36,11 +37,6 @@ struct vfs_vm_object {
 struct vfs_mounts {
   char *path;
   vfs_inode_t *local_root;
-};
-
-struct dirent {
-  unsigned int d_ino;    // File serial number.
-  char d_name[PATH_MAX]; // Filename string of entry.
 };
 
 struct vfs_fd {

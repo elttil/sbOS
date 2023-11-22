@@ -5,7 +5,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#ifndef KERNEL
 #include <unistd.h>
+#endif
 
 #define S_ISREG(_m) (_m & (STAT_REG))
 #define S_ISDIR(_m) (_m & (STAT_DIR))
