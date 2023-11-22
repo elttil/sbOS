@@ -3,8 +3,8 @@
 #include <sys/types.h>
 #include <time.h>
 
-#define STAT_REG 0
-#define STAT_DIR 1
+#define STAT_REG (1 << 0)
+#define STAT_DIR (1 << 1)
 
 struct stat {
   dev_t st_dev;     // Device ID of device containing file.
