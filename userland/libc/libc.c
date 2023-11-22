@@ -105,7 +105,7 @@ FILE *__stderr_FILE;
 #define stderr __stderr_FILE
 
 void _libc_setup(void) {
-  __stdin_FILE = malloc(sizeof(FILE));
+  __stdin_FILE = calloc(1, sizeof(FILE));
   __stdin_FILE->write = write_fd;
   __stdin_FILE->read = read_fd;
   __stdin_FILE->seek = NULL;
@@ -113,8 +113,9 @@ void _libc_setup(void) {
   __stdin_FILE->has_error = 0;
   __stdin_FILE->cookie = NULL;
   __stdin_FILE->fd = 0;
+  __stdin_FILE->fflush = fflush_fd;
 
-  __stdout_FILE = malloc(sizeof(FILE));
+  __stdout_FILE = calloc(1, sizeof(FILE));
   __stdout_FILE->write = write_fd;
   __stdout_FILE->read = read_fd;
   __stdout_FILE->is_eof = 0;
@@ -122,14 +123,16 @@ void _libc_setup(void) {
   __stdout_FILE->seek = NULL;
   __stdout_FILE->cookie = NULL;
   __stdout_FILE->fd = 1;
+  __stdout_FILE->fflush = fflush_fd;
 
-  __stderr_FILE = malloc(sizeof(FILE));
+  __stderr_FILE = calloc(1, sizeof(FILE));
   __stderr_FILE->write = write_fd;
   __stderr_FILE->read = read_fd;
   __stderr_FILE->is_eof = 0;
   __stderr_FILE->has_error = 0;
   __stderr_FILE->cookie = NULL;
   __stderr_FILE->fd = 2;
+  __stderr_FILE->fflush = fflush_fd;
 }
 
 // Functions preserve the registers ebx, esi, edi, ebp, and esp; while

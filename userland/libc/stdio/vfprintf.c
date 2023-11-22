@@ -249,5 +249,6 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       precision = -1;
     }
   }
+  fflush(f);
   return rc;
 }

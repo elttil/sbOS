@@ -2,6 +2,7 @@
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/fflush.html
 int fflush(FILE *stream) {
-  // FIXME: Implement
+  if (stream->fflush)
+    stream->fflush(stream);
   return 0;
 }

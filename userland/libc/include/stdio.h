@@ -28,6 +28,7 @@ struct __IO_FILE {
   size_t (*write)(FILE *, const unsigned char *, size_t);
   size_t (*read)(FILE *, unsigned char *, size_t);
   int (*seek)(FILE *, long, int);
+  void (*fflush)(FILE *);
   long offset_in_file;
   int buffered_char;
   int has_buffered_char;
@@ -35,6 +36,8 @@ struct __IO_FILE {
   uint8_t is_eof;
   uint8_t has_error;
   uint64_t file_size;
+  uint8_t *write_buffer;
+  uint32_t write_buffer_stored;
   uint8_t *read_buffer;
   uint32_t read_buffer_stored;
   uint32_t read_buffer_has_read;
@@ -44,6 +47,7 @@ struct __IO_FILE {
 size_t write_fd(FILE *f, const unsigned char *s, size_t l);
 size_t read_fd(FILE *f, unsigned char *s, size_t l);
 int seek_fd(FILE *stream, long offset, int whence);
+void fflush_fd(FILE *f);
 
 typedef struct {
   int fd;
@@ -114,8 +118,6 @@ int fsetpos(FILE *stream, const fpos_t *pos);
 int fgetpos(FILE *restrict stream, fpos_t *restrict pos);
 char *tmpnam(char *s);
 int rename(const char *old, const char *new);
-size_t getdelim(char ** lineptr, size_t * n,
-       int delimiter, FILE * stream);
-size_t getline(char ** lineptr, size_t * n,
-       FILE * stream);
+size_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
+size_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif

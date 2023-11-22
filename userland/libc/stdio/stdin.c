@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-size_t write_fd(FILE *f, const unsigned char *s, size_t l) {
+size_t raw_write_fd(FILE *f, const unsigned char *s, size_t l) {
   int rc = pwrite(f->fd, s, l, f->offset_in_file);
   if (rc == -1) {
     f->has_error = 1;
@@ -10,6 +10,27 @@ size_t write_fd(FILE *f, const unsigned char *s, size_t l) {
   }
   f->offset_in_file += rc;
   return rc;
+}
+
+void fflush_fd(FILE *f) {
+  raw_write_fd(f, f->write_buffer, f->write_buffer_stored);
+  f->write_buffer_stored = 0;
+}
+
+size_t write_fd(FILE *f, const unsigned char *s, size_t l) {
+  if (!f->write_buffer) {
+    f->write_buffer = malloc(4096);
+    f->write_buffer_stored = 0;
+  }
+  if (l > 4096) {
+    return raw_write_fd(f, s, l);
+  }
+  if (f->write_buffer_stored + l > 4096) {
+    fflush_fd(f);
+  }
+  memcpy(f->write_buffer + f->write_buffer_stored, s, l);
+  f->write_buffer_stored += l;
+  return l;
 }
 
 size_t non_cache_read_fd(FILE *f, unsigned char *s, size_t l) {
@@ -32,7 +53,7 @@ size_t read_fd(FILE *f, unsigned char *s, size_t l) {
   // syscalls
   if (l >= 4096) {
     // Invalidate the cache
-f->read_buffer_stored = 0;
+    f->read_buffer_stored = 0;
 
     size_t rc = non_cache_read_fd(f, s, l);
     f->offset_in_file += rc;
