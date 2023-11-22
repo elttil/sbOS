@@ -113,6 +113,12 @@ void tcp_close_connection(struct INCOMING_TCP_CONNECTION *inc) {
 
 void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, u8 *payload,
                      u16 payload_length) {
+  if (payload_length > 1500 - 20 - sizeof(struct TCP_HEADER)) {
+    send_tcp_packet(inc, payload, 1500 - 20 - sizeof(struct TCP_HEADER));
+    payload_length -= 1500 - 20 - sizeof(struct TCP_HEADER);
+    payload += 1500 - 20 - sizeof(struct TCP_HEADER);
+    return  send_tcp_packet(inc, payload, payload_length);
+  }
   struct TCP_HEADER header = {0};
   header.src_port = htons(inc->dst_port);
   header.dst_port = inc->n_port;

@@ -67,6 +67,7 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
 
 void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
                           u64 payload_length) {
+  assert(payload_length <= 1500);
   // FIXME: Janky allocation, do this better
   u64 buffer_size =
       sizeof(struct ETHERNET_HEADER) + payload_length + sizeof(u32);
@@ -82,6 +83,6 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
   eth_header->type = htons(type);
   *(u32 *)(buffer) = htonl(crc32((const char *)buffer_start, buffer_size - 4));
 
-  assert(rtl8139_send_data(buffer_start, buffer_size));
+  rtl8139_send_data(buffer_start, buffer_size);
   kfree(buffer_start);
 }
