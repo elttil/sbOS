@@ -15,6 +15,9 @@ extern u8 ip_address[4];
 #define SYN (1 << 1)
 #define FIN (1 << 0)
 
+// FIXME: This should be dynamic
+#define WINDOW_SIZE 4096
+
 struct __attribute__((__packed__)) TCP_HEADER {
   u16 src_port;
   u16 dst_port;
@@ -93,7 +96,7 @@ void tcp_close_connection(struct INCOMING_TCP_CONNECTION *inc) {
   header.data_offset = 5;
   header.reserved = 0;
   header.flags = FIN | ACK;
-  header.window_size = htons(512);
+  header.window_size = htons(WINDOW_SIZE);
   header.urgent_pointer = 0;
   u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
@@ -118,7 +121,7 @@ void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, u8 *payload,
   header.data_offset = 5;
   header.reserved = 0;
   header.flags = PSH | ACK;
-  header.window_size = htons(512);
+  header.window_size = htons(WINDOW_SIZE);
   header.urgent_pointer = 0;
   u32 dst_ip;
   memcpy(&dst_ip, inc->ip, sizeof(dst_ip));
@@ -143,7 +146,7 @@ void send_empty_tcp_message(struct INCOMING_TCP_CONNECTION *inc, u8 flags,
   header.data_offset = 5;
   header.reserved = 0;
   header.flags = flags;
-  header.window_size = htons(512); // TODO: What does this actually mean?
+  header.window_size = htons(WINDOW_SIZE);
   header.urgent_pointer = 0;
   char payload[0];
   tcp_calculate_checksum(ip_address, inc->ip, (const u8 *)payload, 0, &header);
@@ -201,12 +204,11 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
     // inc->seq_num = ack_num;
   }
   if (flags & PSH) {
-    kprintf("send ipv4 packet: %x\n", pit_num_ms());
     u16 tcp_payload_length =
         payload_length - inc_header->data_offset * sizeof(u32);
-    fifo_object_write(
-        (u8 *)(payload + inc_header->data_offset * sizeof(u32)), 0,
-        tcp_payload_length, inc->data_file);
+    fifo_object_write((u8 *)(payload + inc_header->data_offset * sizeof(u32)),
+                      0, tcp_payload_length, inc->data_file);
+    *inc->has_data_ptr = 1;
 
     // Send back a ACK
     struct TCP_HEADER header = {0};
@@ -218,7 +220,7 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
     header.data_offset = 5;
     header.reserved = 0;
     header.flags = ACK;
-    header.window_size = htons(512); // TODO: What does this actually mean?
+    header.window_size = htons(WINDOW_SIZE);
     header.urgent_pointer = 0;
     char payload[0];
     tcp_calculate_checksum(ip_address, src_ip, (const u8 *)payload, 0, &header);

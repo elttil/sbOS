@@ -83,7 +83,6 @@ void send_arp_request(const u8 ip[4]) {
 }
 
 int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
-  print_ip("ARP GETTING MAC FROM IP: ", ip);
   for (int i = 0; i < 10; i++) {
     if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4])))
       continue;

@@ -46,6 +46,7 @@ struct INCOMING_TCP_CONNECTION {
   u16 n_port;
   u16 dst_port;
   FIFO_FILE *data_file;
+  u8 *has_data_ptr;
   u8 is_used;
   u32 ack_num;
   u32 seq_num;

@@ -41,8 +41,7 @@ u16 ip_checksum(void *vdata, size_t length) {
 }
 
 extern u8 ip_address[4];
-void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload,
-                      u16 length) {
+void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload, u16 length) {
   u8 header[20] = {0};
   header[0] = (4 /*version*/ << 4) | (5 /*IHL*/);
   *((u16 *)(header + 2)) = htons(length + 20);
@@ -74,7 +73,8 @@ void handle_ipv4(const u8 *payload, u32 packet_length) {
   *(u16 *)(payload + 10) = 0;
   u16 calc_checksum = ip_checksum((u8 *)payload, 20);
   *(u16 *)(payload + 10) = saved_checksum;
-  assert(calc_checksum == saved_checksum);
+  if(calc_checksum != saved_checksum)
+	  return;
 
   u8 version = (*payload & 0xF0) >> 4;
   u8 IHL = (*payload & 0xF);

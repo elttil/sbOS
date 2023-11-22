@@ -86,6 +86,8 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
       NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
       NULL /*stat*/);
 
+  tcp_connections[i].has_data_ptr = &inode->has_data;
+
   vfs_fd_t *fd;
   int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
 
@@ -102,7 +104,6 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
                 // But it does not get freed since the reference count
                 // is still over zero.
   fd->reference_count--;
-  kprintf("connection sent to server\n");
   return &tcp_connections[i];
 }
 
