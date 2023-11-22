@@ -718,6 +718,23 @@ void getline_test(void) {
   dbgln("getline TEST PASSED");
 }
 
+void realpath_test(void) {
+  dbgln("realpath TEST");
+  {
+    chdir("/");
+    char path[256];
+    realpath(".", path);
+    assert(0 == strcmp(path, "/"));
+
+    realpath("..", path);
+    assert(0 == strcmp(path, "/"));
+
+    realpath("test", path);
+    assert(0 == strcmp(path, "/test"));
+  }
+  dbgln("realpath TEST PASSED");
+}
+
 int main(void) {
   dbgln("START");
   malloc_test();
@@ -756,6 +773,7 @@ int main(void) {
   basename_test();
   dirname_test();
   getline_test();
+  realpath_test();
   // TODO: Add mkstemp
   return 0;
 }
