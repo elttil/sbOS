@@ -16,6 +16,7 @@
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/localtime.html
 struct tm *localtime(const time_t *timer) {
+	(void)timer;
   // TODO: Implement
   return &localtime_r;
 }

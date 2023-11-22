@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 int system(const char *command) {
   if (!command)
@@ -7,7 +9,7 @@ int system(const char *command) {
   if (0 == pid) {
     char *argv[2];
     argv[0] = "/sh";
-    argv[1] = command;
+    argv[1] = (char *)command;
     execv("/sh", argv);
   }
   // FIXME: Use waitpid

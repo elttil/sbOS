@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 // FIXME: This is nowhere near complete
 char *realpath(const char *filename, char *resolvedname) {

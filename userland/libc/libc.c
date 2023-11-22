@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <syscall.h>
 
@@ -141,7 +142,8 @@ void _libc_setup(void) {
 // Syscall: eax ebx ecx edx esi edi
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi) {
-  asm volatile("push %edi\n"
+  asm volatile(
+               "push %edi\n"
                "push %esi\n"
                "push %ebx\n"
                "mov 0x1C(%ebp), %edi\n"
@@ -156,7 +158,7 @@ int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
                "pop %edi\n");
 }
 
-int pipe(int fd[2]) { return syscall(SYS_PIPE, fd, 0, 0, 0, 0); }
+int pipe(int fd[2]) { return syscall(SYS_PIPE, (u32)fd, 0, 0, 0, 0); }
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strerror.html
 char *strerror(int errnum) {
@@ -199,14 +201,14 @@ int open(const char *file, int flags, ...) {
       .flags = flags,
       .mode = mode,
   };
-  RC_ERRNO(syscall(SYS_OPEN, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_OPEN, (u32)&args, 0, 0, 0, 0));
 }
 
-int close(int fd) { return syscall(SYS_CLOSE, (void *)fd, 0, 0, 0, 0); }
+int close(int fd) { return syscall(SYS_CLOSE, (u32)fd, 0, 0, 0, 0); }
 
 int execv(char *path, char **argv) {
   struct SYS_EXEC_PARAMS args = {.path = path, .argv = argv};
-  return syscall(SYS_EXEC, &args, 0, 0, 0, 0);
+  return syscall(SYS_EXEC, (u32)&args, 0, 0, 0, 0);
 }
 /*
 int syscall(int sys, void *args) {
@@ -239,12 +241,12 @@ int pwrite(int fd, const char *buf, size_t count, size_t offset) {
       .count = count,
       .offset = offset,
   };
-  return syscall(SYS_PWRITE, &args, 0, 0, 0, 0);
+  return syscall(SYS_PWRITE, (u32)&args, 0, 0, 0, 0);
 }
 
-int wait(int *stat_loc) { return syscall(SYS_WAIT, stat_loc, 0, 0, 0, 0); }
+int wait(int *stat_loc) { return syscall(SYS_WAIT, (u32)stat_loc, 0, 0, 0, 0); }
 
-void exit(int status) { syscall(SYS_EXIT, (void *)status, 0, 0, 0, 0); }
+void exit(int status) { syscall(SYS_EXIT, (u32)status, 0, 0, 0, 0); }
 
 int pread(int fd, void *buf, size_t count, size_t offset) {
   struct SYS_PREAD_PARAMS args = {
@@ -253,7 +255,7 @@ int pread(int fd, void *buf, size_t count, size_t offset) {
       .count = count,
       .offset = offset,
   };
-  RC_ERRNO(syscall(SYS_PREAD, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_PREAD, (u32)&args, 0, 0, 0, 0));
 }
 
 int read(int fd, void *buf, size_t count) {
@@ -262,7 +264,7 @@ int read(int fd, void *buf, size_t count) {
       .buf = buf,
       .count = count,
   };
-  RC_ERRNO(syscall(SYS_READ, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_READ, (u32)&args, 0, 0, 0, 0));
 }
 
 int dup2(int org_fd, int new_fd) {
@@ -270,7 +272,7 @@ int dup2(int org_fd, int new_fd) {
       .org_fd = org_fd,
       .new_fd = new_fd,
   };
-  RC_ERRNO(syscall(SYS_DUP2, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_DUP2, (u32)&args, 0, 0, 0, 0));
 }
 
 int fork(void) { return s_syscall(SYS_FORK); }
@@ -289,7 +291,7 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
       .nfds = nfds,
       .timeout = timeout,
   };
-  RC_ERRNO(syscall(SYS_POLL, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_POLL, (u32)&args, 0, 0, 0, 0));
 }
 
 int socket(int domain, int type, int protocol) {
@@ -298,7 +300,7 @@ int socket(int domain, int type, int protocol) {
       .type = type,
       .protocol = protocol,
   };
-  RC_ERRNO(syscall(SYS_SOCKET, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_SOCKET, (u32)&args, 0, 0, 0, 0));
 }
 
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
@@ -307,7 +309,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
       .address = address,
       .address_len = address_len,
   };
-  RC_ERRNO(syscall(SYS_ACCEPT, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_ACCEPT, (u32)&args, 0, 0, 0, 0));
 }
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
@@ -316,7 +318,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
       .addr = addr,
       .addrlen = addrlen,
   };
-  RC_ERRNO(syscall(SYS_BIND, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_BIND, (u32)&args, 0, 0, 0, 0));
 }
 
 int shm_open(const char *name, int oflag, mode_t mode) {
@@ -325,5 +327,5 @@ int shm_open(const char *name, int oflag, mode_t mode) {
       .oflag = oflag,
       .mode = mode,
   };
-  RC_ERRNO(syscall(SYS_SHM_OPEN, &args, 0, 0, 0, 0));
+  RC_ERRNO(syscall(SYS_SHM_OPEN, (u32)&args, 0, 0, 0, 0));
 }

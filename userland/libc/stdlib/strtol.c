@@ -1,7 +1,8 @@
+#include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <assert.h>
 
 extern int errno;
 extern int get_value(char c, long base);
@@ -10,17 +11,17 @@ extern int get_value(char c, long base);
 long strtol(const char *str, char **restrict endptr, int base) {
   long ret_value = 0;
   if (endptr)
-    *endptr = str;
+    *endptr = (char *)str;
   // Ignore inital white-space sequence
   for (; *str && isspace(*str); str++)
     ;
   if (!*str)
     return ret_value;
 
-  int sign = 0;
+  //  int sign = 0;
   if ('-' == *str) {
     // FIXME
-    sign = 1;
+    //    sign = 1;
     str++;
     assert(0);
   } else if ('+' == *str) {
@@ -47,6 +48,6 @@ long strtol(const char *str, char **restrict endptr, int base) {
     return 0;
   }
   if (endptr)
-    *endptr = str;
+    *endptr = (char*)str;
   return ret_value;
 }

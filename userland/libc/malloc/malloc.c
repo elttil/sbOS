@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <malloc/malloc.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,10 +21,6 @@ typedef struct MallocHeader {
   uint8_t flags;
   struct MallocHeader *n;
 } MallocHeader;
-
-size_t max(size_t a, size_t b) { return (a > b) ? a : b; }
-
-//;size_t min(size_t a, size_t b) { return (a < b) ? a : b; }
 
 uint64_t delta_page(uint64_t a) { return 0x1000 - (a % 0x1000); }
 
@@ -117,12 +114,6 @@ void merge_headers(MallocHeader *b) {
   if (!n)
     return;
 
-  if (n > 0xf58c0820 - 0x8 && n < 0xf58c0820 + 0x8) {
-    printf("b: %x\n", b);
-    printf("b->n: %x\n", b->n);
-    asm("hlt");
-    assert(0);
-  }
   if (!(n->flags & IS_FREE))
     return;
 
@@ -199,7 +190,7 @@ void *calloc(size_t nelem, size_t elsize) {
 size_t get_mem_size(void *ptr) {
   if (!ptr)
     return 0;
-  return ((MallocHeader *)(ptr - sizeof(MallocHeader)))->size;
+  return ((MallocHeader *)((u32)ptr - sizeof(MallocHeader)))->size;
 }
 
 void *realloc(void *ptr, size_t size) {

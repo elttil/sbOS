@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +35,7 @@ size_t memstream_write(FILE *fp, const unsigned char *buf, size_t n) {
 
   memcpy(c->buffer + fp->offset_in_file, buf, n);
   fp->offset_in_file += n;
-  if (fp->offset_in_file > c->buffer_usage)
+  if (fp->offset_in_file > (long)c->buffer_usage)
     c->buffer_usage = fp->offset_in_file;
   return n;
 }

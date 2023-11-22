@@ -1,9 +1,11 @@
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 size_t raw_write_fd(FILE *f, const unsigned char *s, size_t l) {
-  int rc = pwrite(f->fd, s, l, f->offset_in_file);
+  int rc = pwrite(f->fd, (char *)s, l, f->offset_in_file);
   if (rc == -1) {
     f->has_error = 1;
     return 0;
@@ -84,6 +86,7 @@ size_t read_fd(FILE *f, unsigned char *s, size_t l) {
     return read_fd(f, s, l);
   }
   assert(0);
+  return 0;
 }
 
 int seek_fd(FILE *stream, long offset, int whence) {

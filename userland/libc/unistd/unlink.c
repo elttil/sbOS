@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdio.h>
 
 int unlink(const char *path) {
   // TODO

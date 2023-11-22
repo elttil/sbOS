@@ -11,5 +11,5 @@ int openpty(int *amaster, int *aslave, char *name,
     .termp = termp,
     .winp = winp,
  };
- syscall(SYS_OPENPTY, &args, 0, 0, 0, 0);
+ return syscall(SYS_OPENPTY, &args, 0, 0, 0, 0);
 }

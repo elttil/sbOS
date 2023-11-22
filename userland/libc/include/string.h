@@ -26,4 +26,5 @@ int strncasecmp(const char *s1, const char *s2, size_t n);
 int strcasecmp(const char *s1, const char *s2);
 char *strtok(char *restrict s, const char *restrict sep);
 char *strcat(char *restrict s1, const char *restrict s2);
+int memcmp(const void *s1, const void *s2, size_t n);
 #endif

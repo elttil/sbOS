@@ -26,4 +26,6 @@ uint32_t uptime(void);    // not standard
 int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 int isatty(int fd);
+int pread(int fd, void *buf, size_t count, size_t offset);
+int fork(void);
 #endif

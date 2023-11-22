@@ -6,6 +6,9 @@ char *optarg;
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/getopt.html
 int getopt(int argc, char *const argv[], const char *optstring) {
+  (void)argc;
+  (void)argv;
+  (void)optstring;
   // TODO
   optind = 1;
   optarg = NULL;

@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 
 // FIXME: All modes not implemented
@@ -8,7 +9,7 @@
 FILE *fopen(const char *pathname, const char *mode) {
   uint8_t read = 0;
   uint8_t write = 0;
-  uint8_t append = 0;
+//  uint8_t append = 0;
   // FIXME: Not parsed correctly
   for (; *mode; mode++) {
     // r or rb
@@ -26,7 +27,7 @@ FILE *fopen(const char *pathname, const char *mode) {
       write = 1;
       break;
     case 'a':
-      append = 1;
+//      append = 1;
       break;
     }
   }

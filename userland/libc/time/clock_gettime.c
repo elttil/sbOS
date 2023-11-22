@@ -2,6 +2,7 @@
 #include <time.h>
 
 int clock_gettime(clockid_t clock_id, struct timespec *tp) {
+	(void)clock_id;
   tp->tv_sec = 0;
   tp->tv_nsec = 0;
   return 0;

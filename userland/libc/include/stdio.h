@@ -120,4 +120,5 @@ char *tmpnam(char *s);
 int rename(const char *old, const char *new);
 size_t getdelim(char **lineptr, size_t *n, int delimiter, FILE *stream);
 size_t getline(char **lineptr, size_t *n, FILE *stream);
+int vfscanf(FILE *stream, const char *format, va_list ap);
 #endif

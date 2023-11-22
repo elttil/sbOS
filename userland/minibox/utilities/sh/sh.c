@@ -49,6 +49,7 @@ int execute_binary(struct AST *ast, int input_fd) {
       dup2(file_out_fd, ast->file_out_fd_to_use);
 
     execvp(program, argv);
+    perror("execvp");
     exit(1);
   }
   if (ast->file_out)

@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 // The strndup() function shall be equivalent to the strdup() function,
 // duplicating the provided s in a new block of memory allocated as if
