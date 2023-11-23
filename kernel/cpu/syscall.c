@@ -155,6 +155,7 @@ void (*syscall_functions[])() = {
     (void(*))syscall_sendto,    (void(*))syscall_kill,
     (void(*))syscall_sigaction, (void(*))syscall_chdir,
     (void(*))syscall_getcwd,    (void(*))syscall_isatty,
+    (void(*))syscall_randomfill,
 };
 
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,

@@ -735,6 +735,26 @@ void realpath_test(void) {
   dbgln("realpath TEST PASSED");
 }
 
+void randomfill_test(void) {
+  dbgln("randomfill TEST");
+  {
+    char buffer[4096];
+    memset(buffer, 0, 4096);
+    randomfill(buffer, 4096);
+    int i;
+    for (i = 0; i < 4096; i++) {
+      if (0 != buffer[i])
+        break;
+    }
+    assert(4096 != i);
+    char buffer2[4096];
+    memcpy(buffer2, buffer, 4096);
+    randomfill(buffer, 4096);
+    assert(0 != memcmp(buffer, buffer2, 4096));
+  }
+  dbgln("randomfill TEST PASSED");
+}
+
 int main(void) {
   dbgln("START");
   malloc_test();
@@ -774,6 +794,7 @@ int main(void) {
   dirname_test();
   getline_test();
   realpath_test();
+  randomfill_test();
   // TODO: Add mkstemp
   return 0;
 }

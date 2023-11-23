@@ -16,6 +16,8 @@ typedef struct SYS_ACCEPT_PARAMS {
 
 int syscall_accept(SYS_ACCEPT_PARAMS *args);
 
+void syscall_randomfill(void *buffer, u32 size);
+
 typedef struct SYS_BIND_PARAMS {
   int sockfd;
   const struct sockaddr *addr;
