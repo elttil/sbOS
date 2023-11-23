@@ -141,22 +141,7 @@ void _libc_setup(void) {
 
 // Syscall: eax ebx ecx edx esi edi
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
-            uint32_t esi, uint32_t edi) {
-  asm volatile(
-               "push %edi\n"
-               "push %esi\n"
-               "push %ebx\n"
-               "mov 0x1C(%ebp), %edi\n"
-               "mov 0x18(%ebp), %esi\n"
-               "mov 0x14(%ebp), %edx\n"
-               "mov 0x10(%ebp), %ecx\n"
-               "mov 0xc(%ebp), %ebx\n"
-               "mov 0x8(%ebp), %eax\n"
-               "int $0x80\n"
-               "pop %ebx\n"
-               "pop %esi\n"
-               "pop %edi\n");
-}
+            uint32_t esi, uint32_t edi);
 
 int pipe(int fd[2]) { return syscall(SYS_PIPE, (u32)fd, 0, 0, 0, 0); }
 
@@ -210,27 +195,10 @@ int execv(char *path, char **argv) {
   struct SYS_EXEC_PARAMS args = {.path = path, .argv = argv};
   return syscall(SYS_EXEC, (u32)&args, 0, 0, 0, 0);
 }
-/*
-int syscall(int sys, void *args) {
-  asm volatile("push %ebx\n"
-               "mov 0xc(%ebp), %ebx\n"
-               "mov 0x8(%ebp), %eax\n"
-               "int $0x80\n"
-               "pop %ebx\n");
-}*/
 
-int s_syscall(int sys) {
-  asm volatile("movl %0, %%eax\n"
-               "int $0x80\n" ::"r"((uint32_t)sys));
-}
+int s_syscall(int sys);
 
 int write(int fd, const char *buf, size_t count) {
-  /*
-struct SYS_WRITE_PARAMS args = {
-.fd = fd,
-.buf = buf,
-.count = count,
-};*/
   return syscall(SYS_WRITE, fd, buf, count, 0, 0);
 }
 
