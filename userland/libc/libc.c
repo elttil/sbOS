@@ -172,23 +172,6 @@ void perror(const char *s) {
   printf("%s\n", strerror(errno));
 }
 
-int open(const char *file, int flags, ...) {
-  mode_t mode = 0;
-
-  if (flags & O_CREAT) {
-    va_list ap;
-    va_start(ap, flags);
-    mode = va_arg(ap, mode_t);
-    va_end(ap);
-  }
-  struct SYS_OPEN_PARAMS args = {
-      .file = file,
-      .flags = flags,
-      .mode = mode,
-  };
-  RC_ERRNO(syscall(SYS_OPEN, (u32)&args, 0, 0, 0, 0));
-}
-
 int close(int fd) { return syscall(SYS_CLOSE, (u32)fd, 0, 0, 0, 0); }
 
 int execv(char *path, char **argv) {

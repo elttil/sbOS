@@ -13,17 +13,6 @@
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 
-int syscall_open(SYS_OPEN_PARAMS *args) {
-  char file[256];
-  strcpy(file, args->file);
-  //  const char *file = copy_and_allocate_user_string(args->file);
-  int flags = args->flags;
-  int mode = args->mode;
-  int rc = vfs_open(file, flags, mode);
-  //  kfree((void *)file);
-  return rc;
-}
-
 int syscall_exec(SYS_EXEC_PARAMS *args) {
   const char *filename = copy_and_allocate_user_string(args->path);
 
