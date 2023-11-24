@@ -44,7 +44,7 @@ FILE *fopen(const char *pathname, const char *mode) {
   struct stat s;
   stat(pathname, &s);
 
-  FILE *r = malloc(sizeof(FILE));
+  FILE *r = calloc(1, sizeof(FILE));
   r->read = read_fd;
   r->write = write_fd;
   r->seek = seek_fd;

@@ -171,6 +171,7 @@ void *int_malloc(size_t s, int align) {
     rc = c;
     return rc;
   }
+  randomfill(rc, s);
   return rc;
 }
 
@@ -221,6 +222,7 @@ void free(void *p) {
   if (h->flags & IS_FREE)
     return;
 
+  randomfill(p, h->size);
   h->flags |= IS_FREE;
   merge_headers(h);
 }
