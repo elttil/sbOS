@@ -53,19 +53,6 @@ int syscall_read(SYS_READ_PARAMS *args) {
   return rc;
 }
 
-int syscall_pwrite(SYS_PWRITE_PARAMS *args) {
-  return vfs_pwrite(args->fd, args->buf, args->count, args->offset);
-}
-
-int syscall_write(int fd, const char *buf, size_t count) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
-  if (!fd_ptr)
-    return -EBADF;
-  int rc = vfs_pwrite(fd, (char *)buf, count, fd_ptr->offset);
-  fd_ptr->offset += rc;
-  return rc;
-}
-
 int syscall_dup2(SYS_DUP2_PARAMS *args) {
   return vfs_dup2(args->org_fd, args->new_fd);
 }
@@ -127,23 +114,23 @@ int syscall_openpty(SYS_OPENPTY_PARAMS *args) {
 }
 
 void (*syscall_functions[])() = {
-    (void(*))syscall_open,      (void(*))syscall_read,
-    (void(*))syscall_write,     (void(*))syscall_pread,
-    (void(*))syscall_pwrite,    (void(*))syscall_fork,
-    (void(*))syscall_exec,      (void(*))syscall_getpid,
-    (void(*))syscall_exit,      (void(*))syscall_wait,
-    (void(*))syscall_brk,       (void(*))syscall_sbrk,
-    (void(*))syscall_pipe,      (void(*))syscall_dup2,
-    (void(*))syscall_close,     (void(*))syscall_openpty,
-    (void(*))syscall_poll,      (void(*))syscall_mmap,
-    (void(*))syscall_accept,    (void(*))syscall_bind,
-    (void(*))syscall_socket,    (void(*))syscall_shm_open,
-    (void(*))syscall_ftruncate, (void(*))syscall_stat,
-    (void(*))syscall_msleep,    (void(*))syscall_uptime,
-    (void(*))syscall_mkdir,     (void(*))syscall_recvfrom,
-    (void(*))syscall_sendto,    (void(*))syscall_kill,
-    (void(*))syscall_sigaction, (void(*))syscall_chdir,
-    (void(*))syscall_getcwd,    (void(*))syscall_isatty,
+    (void(*))syscall_open,       (void(*))syscall_read,
+    (void(*))syscall_write,      (void(*))syscall_pread,
+    (void(*))syscall_pwrite,     (void(*))syscall_fork,
+    (void(*))syscall_exec,       (void(*))syscall_getpid,
+    (void(*))syscall_exit,       (void(*))syscall_wait,
+    (void(*))syscall_brk,        (void(*))syscall_sbrk,
+    (void(*))syscall_pipe,       (void(*))syscall_dup2,
+    (void(*))syscall_close,      (void(*))syscall_openpty,
+    (void(*))syscall_poll,       (void(*))syscall_mmap,
+    (void(*))syscall_accept,     (void(*))syscall_bind,
+    (void(*))syscall_socket,     (void(*))syscall_shm_open,
+    (void(*))syscall_ftruncate,  (void(*))syscall_stat,
+    (void(*))syscall_msleep,     (void(*))syscall_uptime,
+    (void(*))syscall_mkdir,      (void(*))syscall_recvfrom,
+    (void(*))syscall_sendto,     (void(*))syscall_kill,
+    (void(*))syscall_sigaction,  (void(*))syscall_chdir,
+    (void(*))syscall_getcwd,     (void(*))syscall_isatty,
     (void(*))syscall_randomfill,
 };
 

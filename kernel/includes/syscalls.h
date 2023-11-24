@@ -16,6 +16,8 @@ typedef struct SYS_ACCEPT_PARAMS {
 
 int syscall_accept(SYS_ACCEPT_PARAMS *args);
 int syscall_open(const char *file, int flags, mode_t mode);
+int syscall_write(int fd, const char *buf, size_t count);
+int syscall_pwrite(int fd, const char *buf, size_t count, size_t offset);
 
 void syscall_randomfill(void *buffer, u32 size);
 

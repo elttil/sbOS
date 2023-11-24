@@ -67,8 +67,6 @@ int putchar(int c);
 int puts(const char *s);
 int brk(void *addr);
 void *sbrk(intptr_t increment);
-int write(int fd, const char *buf, size_t count);
-int pwrite(int fd, const char *buf, size_t count, size_t offset);
 int printf(const char *format, ...);
 int pread(int fd, void *buf, size_t count, size_t offset);
 int read(int fd, void *buf, size_t count);

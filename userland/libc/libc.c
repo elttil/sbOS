@@ -181,20 +181,6 @@ int execv(char *path, char **argv) {
 
 int s_syscall(int sys);
 
-int write(int fd, const char *buf, size_t count) {
-  return syscall(SYS_WRITE, fd, buf, count, 0, 0);
-}
-
-int pwrite(int fd, const char *buf, size_t count, size_t offset) {
-  struct SYS_PWRITE_PARAMS args = {
-      .fd = fd,
-      .buf = buf,
-      .count = count,
-      .offset = offset,
-  };
-  return syscall(SYS_PWRITE, (u32)&args, 0, 0, 0, 0);
-}
-
 int wait(int *stat_loc) { return syscall(SYS_WAIT, (u32)stat_loc, 0, 0, 0, 0); }
 
 void exit(int status) { syscall(SYS_EXIT, (u32)status, 0, 0, 0, 0); }

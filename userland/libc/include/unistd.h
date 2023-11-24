@@ -28,4 +28,6 @@ char *getcwd(char *buf, size_t size);
 int isatty(int fd);
 int pread(int fd, void *buf, size_t count, size_t offset);
 int fork(void);
+int write(int fd, const char *buf, size_t count);
+int pwrite(int fd, const char *buf, size_t count, size_t offset);
 #endif
