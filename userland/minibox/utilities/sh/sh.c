@@ -141,7 +141,8 @@ int sh_main(int argc, char **argv) {
   (void)argc;
   (void)argv;
   for (;;) {
-    printf("/ : ");
+    char buffer[256];
+    printf("%s : ", getcwd(buffer, 256));
     char *line = get_line();
     {
       struct TOKEN *h = lex(line);
