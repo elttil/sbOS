@@ -108,7 +108,9 @@ int get_free_fd(process_t *p, int allocate) {
   return i;
 }
 
-void tasking_init(void) { current_task = ready_queue = create_process(NULL); }
+void tasking_init(void) {
+  current_task = ready_queue = create_process(NULL);
+}
 
 int i = 0;
 void free_process(void) {

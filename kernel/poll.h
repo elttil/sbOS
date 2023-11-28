@@ -1,5 +1,5 @@
-#include <typedefs.h>
 #include <stddef.h>
+#include <typedefs.h>
 
 #define POLLIN (1 << 0)
 #define POLLPRI (1 << 1)
@@ -7,9 +7,9 @@
 #define POLLHUP (1 << 3)
 
 struct pollfd {
-    int fd;
-    short events;
-    short revents;
+  int fd;
+  short events;
+  short revents;
 };
 
 int poll(struct pollfd *fds, size_t nfds, int timeout);

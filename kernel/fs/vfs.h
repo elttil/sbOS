@@ -4,13 +4,13 @@ typedef struct vfs_vm_object vfs_vm_object_t;
 typedef struct vfs_mounts vfs_mounts_t;
 #ifndef VFS_H
 #define VFS_H
+#include <dirent.h>
 #include <limits.h>
 #include <sched/scheduler.h>
 #include <socket.h>
 #include <stddef.h>
 #include <sys/stat.h>
 #include <typedefs.h>
-#include <dirent.h>
 
 // FIXME: Is there some standard value for this?
 #define O_NONBLOCK (1 << 0)

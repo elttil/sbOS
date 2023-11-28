@@ -7,7 +7,9 @@ u64 clock_num_ms_ticks = 0;
 u64 pit_counter = 0;
 u16 hertz;
 
-u64 pit_num_ms(void) { return clock_num_ms_ticks; }
+u64 pit_num_ms(void) {
+  return clock_num_ms_ticks;
+}
 
 u16 read_pit_count(void) {
   u16 count = 0;

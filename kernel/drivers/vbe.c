@@ -43,8 +43,7 @@ void display_driver_init(multiboot_info_t *mbi) {
   vbe_info.bpp = mbi->framebuffer_bpp;
 }
 
-vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset,
-                                   vfs_fd_t *fd) {
+vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {
   (void)fd;
   (void)length;
   (void)offset;
@@ -57,8 +56,7 @@ vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset,
   return &vbe_vm_object;
 }
 
-int display_info_read(u8 *buffer, u64 offset, u64 len,
-                      vfs_fd_t *fd) {
+int display_info_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   int read_len = min(sizeof(struct DISPLAY_INFO), len);
   memcpy(buffer, &vbe_info, read_len);

@@ -5,8 +5,8 @@ typedef struct registers registers_t;
 #include <cpu/gdt.h>
 #include <cpu/io.h>
 #include <log.h>
-#include <typedefs.h>
 #include <stdio.h>
+#include <typedefs.h>
 
 /*
  * the type_attribute in the IDT_Entry struct
@@ -65,6 +65,5 @@ struct registers {
 
 void idt_init(void);
 __attribute__((no_caller_saved_registers)) void EOI(unsigned char irq);
-void install_handler(void (*handler_function)(), u16 type_attribute,
-                     u8 entry);
+void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry);
 #endif

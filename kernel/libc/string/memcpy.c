@@ -1,7 +1,6 @@
 #include "../include/string.h"
 
-void *
-memcpy(void *dest, const void *src, u32 n) {
+void *memcpy(void *dest, const void *src, u32 n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 

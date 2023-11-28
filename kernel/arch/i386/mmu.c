@@ -70,7 +70,9 @@ void *ksbrk_physical(size_t s, void **physical) {
   return r;
 }
 
-u32 mmu_get_number_of_allocated_frames(void) { return num_allocated_frames; }
+u32 mmu_get_number_of_allocated_frames(void) {
+  return num_allocated_frames;
+}
 
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user) {
@@ -158,7 +160,9 @@ void write_to_frame(u32 frame_address, u8 on) {
   frames[INDEX_FROM_BIT(frame)] &= ~((u32)0x1 << OFFSET_FROM_BIT(frame));
 }
 
-PageDirectory *get_active_pagedirectory(void) { return active_directory; }
+PageDirectory *get_active_pagedirectory(void) {
+  return active_directory;
+}
 
 PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
                        u32 *physical_address) {

@@ -1,1 +1,2 @@
 BasedOnStyle: llvm
+AllowShortFunctionsOnASingleLine: None

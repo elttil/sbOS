@@ -5,10 +5,10 @@
 #include <fs/vfs.h>
 #include <typedefs.h>
 
-u8 mouse_cycle = 0;  // unsigned char
-u8 mouse_u8[3]; // signed char
-u8 mouse_x = 0;      // signed char
-u8 mouse_y = 0;      // signed char
+u8 mouse_cycle = 0; // unsigned char
+u8 mouse_u8[3];     // signed char
+u8 mouse_x = 0;     // signed char
+u8 mouse_y = 0;     // signed char
 vfs_inode_t *mouse_inode;
 vfs_fd_t *mouse_fd;
 
@@ -18,16 +18,14 @@ struct mouse_event {
   u8 y;
 };
 
-int fs_mouse_write(u8 *buffer, u64 offset, u64 len,
-                   vfs_fd_t *fd) {
+int fs_mouse_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   int rc = fifo_object_write(buffer, offset, len, fd->inode->internal_object);
   FIFO_FILE *f = fd->inode->internal_object;
   mouse_inode->has_data = f->has_data;
   return rc;
 }
 
-int fs_mouse_read(u8 *buffer, u64 offset, u64 len,
-                  vfs_fd_t *fd) {
+int fs_mouse_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   FIFO_FILE *f = fd->inode->internal_object;
   if (!mouse_inode->has_data)
     return 0;
@@ -46,7 +44,9 @@ void add_mouse(void) {
   get_current_task()->file_descriptors[fd] = NULL;
 }
 
-__attribute__((interrupt)) void what(registers_t *r) { EOI(0xe); }
+__attribute__((interrupt)) void what(registers_t *r) {
+  EOI(0xe);
+}
 
 __attribute__((interrupt)) void int_mouse(registers_t *r) {
   (void)r;
@@ -54,9 +54,9 @@ __attribute__((interrupt)) void int_mouse(registers_t *r) {
   switch (mouse_cycle) {
   case 0:
     mouse_u8[0] = inb(0x60);
-    if(!(mouse_u8[0] & (1 << 3))) {
-	mouse_cycle = 0;
-    return;
+    if (!(mouse_u8[0] & (1 << 3))) {
+      mouse_cycle = 0;
+      return;
     }
     mouse_cycle++;
     break;

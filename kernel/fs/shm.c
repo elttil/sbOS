@@ -9,7 +9,9 @@
 
 HashMap *shared_memory_objects;
 
-void shm_init(void) { shared_memory_objects = hashmap_create(10); }
+void shm_init(void) {
+  shared_memory_objects = hashmap_create(10);
+}
 
 int shm_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_vm_object_t *p = fd->inode->internal_object;
@@ -39,8 +41,7 @@ int shm_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return len;
 }
 
-vfs_vm_object_t *shm_get_vm_object(u64 length, u64 offset,
-                                   vfs_fd_t *fd) {
+vfs_vm_object_t *shm_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {
   (void)length;
   (void)offset;
   vfs_vm_object_t *p = fd->inode->internal_object;
@@ -81,7 +82,7 @@ int shm_open(const char *name, int oflag, mode_t mode) {
       NULL /*stat*/);
 
   vfs_fd_t *fd_ptr;
-  int fd = vfs_create_fd(oflag, mode, 0/*is_tty*/, inode, &fd_ptr);
+  int fd = vfs_create_fd(oflag, mode, 0 /*is_tty*/, inode, &fd_ptr);
   if (-1 == fd) {
     kfree(inode);
     return -EMFILE;

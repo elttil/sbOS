@@ -16,12 +16,8 @@ struct S_FIFO_FILE {
 
 int create_fifo(void);
 FIFO_FILE *create_fifo_object(void);
-int fifo_object_write(u8 *buffer, u64 offset, u64 len,
-                      FIFO_FILE *file);
-int fifo_object_read(u8 *buffer, u64 offset, u64 len,
-                     FIFO_FILE *file);
-int fifo_write(u8 *buffer, u64 offset, u64 len,
-               vfs_fd_t *fd);
-int fifo_read(u8 *buffer, u64 offset, u64 len,
-              vfs_fd_t *fd);
+int fifo_object_write(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file);
+int fifo_object_read(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file);
+int fifo_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd);
+int fifo_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd);
 #endif

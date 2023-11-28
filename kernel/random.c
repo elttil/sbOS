@@ -57,7 +57,7 @@ void get_fast_insecure_random(u8 *buffer, u64 len) {
   }
 }
 
-void get_random(u8* buffer, u64 len) {
+void get_random(u8 *buffer, u64 len) {
   u8 rand_data[BLOCK_SIZE];
   for (; len > 0;) {
     if (COUNT_MAX - 1 == internal_chacha_block[COUNT]) {

@@ -14,10 +14,10 @@ struct ARP_DATA {
   u16 opcode;  // ARP Operation Code
   u8 srchw[6]; // Source hardware address - hlen bytes (see above)
   u8 srcpr[4]; // Source protocol address - plen bytes (see above).
-                    // If IPv4 can just be a "u32" type.
+               // If IPv4 can just be a "u32" type.
   u8 dsthw[6]; // Destination hardware address - hlen bytes (see above)
   u8 dstpr[4]; // Destination protocol address - plen bytes (see
-                    // above). If IPv4 can just be a "u32" type.
+               // above). If IPv4 can just be a "u32" type.
 };
 
 struct ARP_TABLE_ENTRY {

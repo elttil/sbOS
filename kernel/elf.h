@@ -1,9 +1,9 @@
 #ifndef ELF_H
 #define ELF_H
-#include <typedefs.h>
-#include <mmu.h>
-#include <fs/vfs.h>
 #include <assert.h>
+#include <fs/vfs.h>
+#include <mmu.h>
+#include <typedefs.h>
 
 #define ET_NONE 0        // No file type
 #define ET_REL 1         // Relocatable file
@@ -93,7 +93,6 @@ typedef struct {
   Elf32_Word p_flags;
   Elf32_Word p_align;
 } __attribute__((packed)) Elf32_Phdr;
-
 
 void *load_elf_file(const char *f, u32 *ds);
 #endif

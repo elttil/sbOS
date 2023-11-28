@@ -52,7 +52,7 @@ void dual_pipe(int fd[2]) {
     assert(inode);
 
     vfs_fd_t *fd_ptr;
-    fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0/*is_tty*/, inode, &fd_ptr);
+    fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd_ptr);
     assert(-1 != fd[i]);
   }
   vfs_inode_t *f_inode = get_current_task()->file_descriptors[fd[0]]->inode;

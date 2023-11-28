@@ -1,7 +1,7 @@
-#include <syscalls.h>
 #include <fs/vfs.h>
 #include <poll.h>
 #include <sched/scheduler.h>
+#include <syscalls.h>
 
 int syscall_poll(SYS_POLL_PARAMS *args) {
   struct pollfd *fds = args->fds;

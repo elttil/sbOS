@@ -117,7 +117,7 @@ void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, u8 *payload,
     send_tcp_packet(inc, payload, 1500 - 20 - sizeof(struct TCP_HEADER));
     payload_length -= 1500 - 20 - sizeof(struct TCP_HEADER);
     payload += 1500 - 20 - sizeof(struct TCP_HEADER);
-    return  send_tcp_packet(inc, payload, payload_length);
+    return send_tcp_packet(inc, payload, payload_length);
   }
   struct TCP_HEADER header = {0};
   header.src_port = htons(inc->dst_port);

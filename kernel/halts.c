@@ -61,7 +61,9 @@ int create_write_fdhalt(vfs_fd_t *fd) {
   return create_write_inode_halt(fd->inode);
 }
 
-void unset_read_fdhalt(int i) { get_current_task()->read_halt_inode[i] = NULL; }
+void unset_read_fdhalt(int i) {
+  get_current_task()->read_halt_inode[i] = NULL;
+}
 
 void unset_write_fdhalt(int i) {
   get_current_task()->write_halt_inode[i] = NULL;

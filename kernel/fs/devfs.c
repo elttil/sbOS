@@ -8,11 +8,9 @@ devfs_file files[20];
 int num_files = 0;
 
 vfs_inode_t *devfs_add_file(
-    char *path,
-    int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
+    char *path, int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
-    vfs_vm_object_t *(get_vm_object)(u64 length, u64 offset,
-                                     vfs_fd_t *fd),
+    vfs_vm_object_t *(get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
     u8 has_data, u8 can_write, int type) {
   files[num_files].name = copy_and_allocate_string(path);
 
@@ -46,8 +44,7 @@ int devfs_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return fd->inode->write(buffer, offset, len, fd);
 }
 
-vfs_vm_object_t *devfs_get_vm_object(u64 length, u64 offset,
-                                     vfs_fd_t *fd) {
+vfs_vm_object_t *devfs_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {
   return fd->inode->get_vm_object(length, offset, fd);
 }
 

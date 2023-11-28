@@ -3,8 +3,8 @@
 #include <cpu/idt.h>
 #include <cpu/io.h>
 #include <sched/scheduler.h>
-#include <typedefs.h>
 #include <stdio.h>
+#include <typedefs.h>
 
 void pit_install(void);
 void set_pit_count(u16 hertz);

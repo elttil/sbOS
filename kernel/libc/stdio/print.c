@@ -8,7 +8,9 @@
 const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
                             '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-inline void putc(const char c) { write_serial(c); }
+inline void putc(const char c) {
+  write_serial(c);
+}
 
 int kprint_hex(u64 num) {
   int c = 2;
@@ -94,4 +96,6 @@ int kprintf(const char *format, ...) {
   return c;
 }
 
-int puts(char *str) { return kprintf("%s\n", str); }
+int puts(char *str) {
+  return kprintf("%s\n", str);
+}

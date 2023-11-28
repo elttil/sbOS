@@ -15,7 +15,9 @@ typedef struct MallocHeader {
   struct MallocHeader *n;
 } MallocHeader;
 
-u64 delta_page(u64 a) { return 0x1000 - (a % 0x1000); }
+u64 delta_page(u64 a) {
+  return 0x1000 - (a % 0x1000);
+}
 
 MallocHeader *head = NULL;
 MallocHeader *final = NULL;

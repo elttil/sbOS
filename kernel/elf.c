@@ -42,8 +42,7 @@ void *load_elf_file(const char *f, u32 *ds) {
     u32 p_memsz = program_header.p_memsz;
     u32 p_vaddr = program_header.p_vaddr;
 
-    u32 pages_to_allocate =
-        (u32)align_page((void *)(p_vaddr + p_memsz));
+    u32 pages_to_allocate = (u32)align_page((void *)(p_vaddr + p_memsz));
     pages_to_allocate -= p_vaddr - (p_vaddr % 0x1000);
     pages_to_allocate /= 0x1000;
 

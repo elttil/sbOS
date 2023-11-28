@@ -1,6 +1,6 @@
+#include <errno.h>
 #include <fs/vfs.h>
 #include <syscalls.h>
-#include <errno.h>
 
 int syscall_isatty(int fd) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd);

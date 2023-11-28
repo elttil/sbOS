@@ -26,7 +26,9 @@ static inline uint64_t rotl(const uint64_t x, int k) {
 
 static uint64_t s[4];
 
-void seed_xoshiro_256_pp(uint64_t input[4]) { memcpy(s, input, sizeof(s)); }
+void seed_xoshiro_256_pp(uint64_t input[4]) {
+  memcpy(s, input, sizeof(s));
+}
 
 uint64_t xoshiro_256_pp(void) {
   const uint64_t result = rotl(s[0] + s[3], 23) + s[0];

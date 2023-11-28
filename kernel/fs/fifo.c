@@ -9,8 +9,7 @@ void fifo_close(vfs_fd_t *fd) {
   return;
 }
 
-int fifo_object_write(u8 *buffer, u64 offset, u64 len,
-                      FIFO_FILE *file) {
+int fifo_object_write(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file) {
   (void)offset;
   file->has_data = 1;
   if (file->write_len + len >= file->buffer_len) {
@@ -22,8 +21,7 @@ int fifo_object_write(u8 *buffer, u64 offset, u64 len,
   return len;
 }
 
-int fifo_object_read(u8 *buffer, u64 offset, u64 len,
-                     FIFO_FILE *file) {
+int fifo_object_read(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file) {
   (void)offset;
   if (file->write_len == 0) {
     file->has_data = 0;

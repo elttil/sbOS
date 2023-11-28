@@ -28,10 +28,10 @@
  */
 #include "hashmap.h"
 
+#include <kmalloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <kmalloc.h>
 
 #define CONSTANT 0x031b5515
 
@@ -67,7 +67,9 @@ char *copy_c_string(const char *str) {
   return ret_string;
 }
 
-u32 limit_hash(HashMap *m, u32 hash) { return hash % m->size; }
+u32 limit_hash(HashMap *m, u32 hash) {
+  return hash % m->size;
+}
 
 void free_linkedlist_entry(LinkedList *entry) {
   if (entry->key_allocated) {

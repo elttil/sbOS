@@ -30,8 +30,8 @@ struct IDT_Pointer idtr;
 
 extern void load_idtr(void *idtr);
 
-void format_descriptor(u32 offset, u16 code_segment,
-                       u8 type_attribute, struct IDT_Descriptor *descriptor) {
+void format_descriptor(u32 offset, u16 code_segment, u8 type_attribute,
+                       struct IDT_Descriptor *descriptor) {
   descriptor->low_offset = offset & 0xFFFF;
   descriptor->high_offset = offset >> 16;
   descriptor->type_attribute = type_attribute;
@@ -39,8 +39,7 @@ void format_descriptor(u32 offset, u16 code_segment,
   descriptor->zero = 0;
 }
 
-void install_handler(void (*handler_function)(), u16 type_attribute,
-                     u8 entry) {
+void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry) {
   format_descriptor((u32)handler_function, KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
 }
@@ -110,7 +109,9 @@ __attribute__((interrupt)) void page_fault(registers_t *regs) {
     ;
 }
 
-static inline void io_wait(void) { outb(0x80, 0); }
+static inline void io_wait(void) {
+  outb(0x80, 0);
+}
 
 #define ICW1_ICW4 0x01      /* ICW4 (not) needed */
 #define ICW1_SINGLE 0x02    /* Single (cascade) mode */

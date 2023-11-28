@@ -52,7 +52,7 @@ void __ubsan_handle_pointer_overflow(struct OutOfBoundsData *data,
 }
 
 void __ubsan_handle_vla_bound_not_positive(struct OutOfBoundsData *data,
-                                     void *index) {
+                                           void *index) {
   (void)index;
   ubsan_log("handle_vla_bound_not_positive", data->location);
 }

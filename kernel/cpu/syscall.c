@@ -80,9 +80,13 @@ void syscall_wait(int *status) {
     *status = get_current_task()->child_rc;
 }
 
-int syscall_fork(void) { return fork(); }
+int syscall_fork(void) {
+  return fork();
+}
 
-int syscall_getpid(void) { return get_current_task()->pid; }
+int syscall_getpid(void) {
+  return get_current_task()->pid;
+}
 
 void *align_page(void *a);
 
@@ -105,7 +109,9 @@ void *syscall_sbrk(uintptr_t increment) {
   return rc;
 }
 
-int syscall_close(int fd) { return vfs_close(fd); }
+int syscall_close(int fd) {
+  return vfs_close(fd);
+}
 
 int syscall_openpty(SYS_OPENPTY_PARAMS *args) {
   assert(is_valid_userpointer(args, sizeof(SYS_OPENPTY_PARAMS)));

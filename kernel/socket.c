@@ -265,7 +265,9 @@ int socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return rc;
 }
 
-void socket_close(vfs_fd_t *fd) { fd->inode->is_open = 0; }
+void socket_close(vfs_fd_t *fd) {
+  fd->inode->is_open = 0;
+}
 
 int socket(int domain, int type, int protocol) {
   if (!(AF_UNIX == domain || AF_INET == domain))

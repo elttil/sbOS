@@ -9,6 +9,6 @@ int syscall_open(const char *file, int flags, mode_t mode) {
   int _flags = flags;
   int _mode = mode;
   int rc = vfs_open(_file, _flags, _mode);
-  kfree((void*)_file);
+  kfree((void *)_file);
   return rc;
 }
