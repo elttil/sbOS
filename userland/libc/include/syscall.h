@@ -41,6 +41,11 @@
 #define SYS_ISATTY 33
 #define SYS_RANDOMFILL 34
 
+#define SYS_IPC_REGISTER_ENDPOINT 35
+#define SYS_IPC_READ 36
+#define SYS_IPC_WRITE 37
+#define SYS_IPC_WRITE_TO_PROCESS 38
+
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);
 int s_syscall(int sys);

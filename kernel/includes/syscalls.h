@@ -8,6 +8,11 @@
 #include <typedefs.h>
 #include <types.h>
 
+int syscall_ipc_register_endpoint(u32 endpoint);
+int syscall_ipc_read(u8 *buffer, u32 length, u32 *sender_pid);
+int syscall_ipc_write(int ipc_id, u8 *buffer, u32 length);
+int syscall_ipc_write_to_process(int pid, u8 *buffer, u32 length);
+
 typedef struct SYS_ACCEPT_PARAMS {
   int socket;
   struct sockaddr *address;

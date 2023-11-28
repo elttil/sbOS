@@ -1,10 +1,16 @@
 #include <log.h>
 #include <stdio.h>
 
+// This infinite loop is needed for GCC to understand that
+// aFailed does not return. No clue why the attribute does
+// help solve the issue.
 #define assert(expr)                                                           \
   {                                                                            \
-    if (!(expr))                                                               \
+    if (!(expr)) {                                                             \
       aFailed(__FILE__, __LINE__);                                             \
+      for (;;)                                                                 \
+        ;                                                                      \
+    }                                                                          \
   }
 
 #define ASSERT_BUT_FIXME_PROPOGATE(expr)                                       \

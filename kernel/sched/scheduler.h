@@ -3,8 +3,10 @@
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <halts.h>
+#include <ipc.h>
 #include <mmu.h>
 #include <signal.h>
+#include <stdbool.h>
 
 #define MAX_PATH 256
 #define KEYBOARD_HALT 0
@@ -41,6 +43,7 @@ struct Process {
   u32 signal_handler_stack;
   void *signal_handlers[20];
   PageDirectory *cr3;
+  struct IpcMailbox ipc_mailbox;
   vfs_fd_t *file_descriptors[100];
   vfs_inode_t *read_halt_inode[100];
   vfs_inode_t *write_halt_inode[100];
@@ -59,6 +62,7 @@ struct Process {
   int dead;
 };
 
+bool get_task_from_pid(u32 pid, process_t **out);
 process_t *get_current_task(void);
 int get_free_fd(process_t *p, int allocate);
 void free_process(void);

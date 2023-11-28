@@ -17,7 +17,19 @@ u32 next_pid = 0;
 
 extern u32 read_eip(void);
 
-process_t *get_current_task(void) { return current_task; }
+process_t *get_current_task(void) {
+  return current_task;
+}
+
+bool get_task_from_pid(u32 pid, process_t **out) {
+  for (process_t *tmp = ready_queue; tmp; tmp = tmp->next) {
+    if (tmp->pid == pid) {
+      *out = tmp;
+      return true;
+    }
+  }
+  return false;
+}
 
 void set_signal_handler(int sig, void (*handler)(int)) {
   if (sig >= 20 || sig < 0)
