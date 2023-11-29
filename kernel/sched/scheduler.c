@@ -41,7 +41,7 @@ void set_signal_handler(int sig, void (*handler)(int)) {
 
 process_t *create_process(process_t *p) {
   process_t *r;
-  r = ksbrk(sizeof(process_t));
+  r = kcalloc(1, sizeof(process_t));
   r->dead = 0;
   r->pid = next_pid++;
   r->esp = r->ebp = 0;
