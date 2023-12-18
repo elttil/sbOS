@@ -1,2 +1,2 @@
-int max(int a, int b);
-int min(int a, int b);
+#define max(_a, _b) ((_a) > (_b) ? (_a) : (_b))
+#define min(_a, _b) ((_a) < (_b) ? (_a) : (_b))
