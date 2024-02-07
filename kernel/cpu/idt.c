@@ -69,11 +69,36 @@ __attribute__((interrupt)) void double_fault(registers_t *regs) {
   for (;;)
     ;
 }
+
+void tmp_jump_process(u32, u32, u32, u32);
+void jump_process(const process_t *p) {
+  //  tmp_jump_process(p->eip, p->cr3->physical_address, p->ebp, p->esp);
+}
+
+void none_save_switch(void);
+extern PageDirectory *active_directory;
 __attribute__((interrupt)) void page_fault(registers_t *regs) {
-  if (0xFFFFDEAD == regs->eip) {
-    asm("sti");
-    for (;;)
-      switch_task();
+  volatile uint32_t cr2;
+  asm volatile("mov %%cr2, %0" : "=r"(cr2));
+  kprintf("CR2: %x\n", cr2);
+  if (0xFFFFDEAD == cr2) {
+    /*
+    process_t *current = get_current_task();
+    if (!current) {
+      kprintf("WHYYYYYY!\n");
+      for (;;)
+        asm("cli");
+    }
+    current->useresp = regs->esp;*/
+    //    active_directory = current->cr3;
+//    get_current_task()->esp = get_current_task()->saved_esp;
+//    get_current_task()->ebp = get_current_task()->saved_ebp;
+//    get_current_task()->eip = get_current_task()->saved_eip;
+    for (;;) {
+      switch_task(0);
+    }
+    //    jump_process(current);
+    return;
   }
   klog("Page Fault", LOG_ERROR);
   if (get_current_task()) {
@@ -82,10 +107,6 @@ __attribute__((interrupt)) void page_fault(registers_t *regs) {
   }
   kprintf("Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
-
-  volatile uint32_t cr2;
-  asm volatile("mov %%cr2, %0" : "=r"(cr2));
-  kprintf("CR2: %x\n", cr2);
 
   if (regs->error_code & (1 << 0))
     kprintf("page-protection violation\n");

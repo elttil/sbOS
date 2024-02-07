@@ -44,6 +44,7 @@ void *mmu_map_frames(void *ptr, size_t s);
 void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
                       size_t length);
 void mmu_free_pages(void *a, u32 n);
+void *mmu_map_user_frames(void *const ptr, size_t s);
 
 void flush_tlb(void);
 void paging_init(u64 memsize);

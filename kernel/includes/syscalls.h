@@ -7,10 +7,17 @@
 #include <typedefs.h>
 #include <types.h>
 
+void syscall_outw(u16 port, u16 word);
+u32 syscall_inl(u16 port);
+void syscall_outl(u16 port, u32 l);
+
 int syscall_ipc_register_endpoint(u32 endpoint);
 int syscall_ipc_read(u8 *buffer, u32 length, u32 *sender_pid);
 int syscall_ipc_write(int ipc_id, u8 *buffer, u32 length);
 int syscall_ipc_write_to_process(int pid, u8 *buffer, u32 length);
+u32 syscall_map_frames(u32 address, u32 size);
+u32 syscall_virtual_to_physical(u32 virtual);
+int syscall_install_irq(void (*irq_handler)(), u8 irq);
 
 typedef struct SYS_ACCEPT_PARAMS {
   int socket;

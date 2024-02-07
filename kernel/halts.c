@@ -13,7 +13,6 @@ int create_disconnect_inode_halt(vfs_inode_t *inode) {
     return -1;
 
   p->disconnect_halt_inode[i] = inode;
-
   return i;
 }
 
@@ -53,7 +52,6 @@ int create_write_inode_halt(vfs_inode_t *inode) {
     return -1;
 
   p->write_halt_inode[i] = inode;
-
   return i;
 }
 

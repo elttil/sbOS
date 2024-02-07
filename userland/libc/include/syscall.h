@@ -45,6 +45,13 @@
 #define SYS_IPC_READ 36
 #define SYS_IPC_WRITE 37
 #define SYS_IPC_WRITE_TO_PROCESS 38
+#define SYS_OUTW 39
+#define SYS_INL 40
+#define SYS_OUTL 41
+#define SYS_MAP_FRAMES 42
+#define SYS_VIRTUAL_TO_PHYSICAL 43
+#define SYS_INSTALL_IRQ 44
+#define SYS_TMP_KERNEL_HANDLE_PACKET 45
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

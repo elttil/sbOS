@@ -15,8 +15,10 @@ make -C ./userland/windowserver
 make -C ./userland/test
 make -C ./userland/minibox
 make -C ./userland/libppm
+make -C ./userland/rtl8139
 
 mkdir sysroot
+sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
 sudo cp ./userland/libppm/ppm ./sysroot/ppm
 sudo cp ./userland/sh/sh ./sysroot/sh
 sudo cp ./userland/terminal/term ./sysroot/term

@@ -94,7 +94,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
 
   add_keyboard();
   add_mouse();
-  rtl8139_init();
+  // rtl8139_init();
 
   display_driver_init(mb);
   add_vbe_device();
@@ -105,6 +105,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
       kprintf("exec() failed\n");
     }
   }
-  for (;;)
-    ;
+  for (;;) {
+    asm("sti");
+    switch_task(0);
+  }
 }

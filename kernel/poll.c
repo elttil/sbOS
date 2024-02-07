@@ -21,7 +21,7 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
       disconnect_locks[i] = create_disconnect_fdhalt(f);
   }
 
-  switch_task();
+  switch_task(1);
 
   for (size_t i = 0; i < nfds; i++) {
     if (fds[i].fd < 0)

@@ -7,6 +7,7 @@
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
 #include <kmalloc.h>
+#include <network/ethernet.h>
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
@@ -33,6 +34,11 @@ int syscall_exec(SYS_EXEC_PARAMS *args) {
     kfree(new_argv[i]);
   kfree(new_argv);
   return -1;
+}
+
+void syscall_tmp_handle_packet(void *packet, u32 len) {
+  kprintf("syscall tmp handle packet\n");
+  handle_ethernet((u8 *)packet, len);
 }
 
 int syscall_pipe(int fd[2]) {
@@ -75,7 +81,7 @@ void syscall_wait(int *status) {
     return;
   }
   get_current_task()->halts[WAIT_CHILD_HALT] = 1;
-  switch_task();
+  switch_task(1);
   if (status)
     *status = get_current_task()->child_rc;
 }
@@ -159,10 +165,20 @@ void (*syscall_functions[])() = {
     (void(*))syscall_ipc_read,
     (void(*))syscall_ipc_write,
     (void(*))syscall_ipc_write_to_process,
+    (void(*))syscall_outw,
+    (void(*))syscall_inl,
+    (void(*))syscall_outl,
+    (void(*))syscall_map_frames,
+    (void(*))syscall_virtual_to_physical,
+    (void(*))syscall_install_irq,
+    (void(*))syscall_tmp_handle_packet,
 };
 
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
-                              u32 arg5) {
+                              u32 arg5, u32 ebp, u32 esp) {
+  if (esp <= 0x90000000) {
+    get_current_task()->useresp = esp;
+  }
   assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
   syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
 }

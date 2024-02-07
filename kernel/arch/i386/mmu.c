@@ -332,6 +332,24 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
   return 1;
 }
 
+void *mmu_map_user_frames(void *const ptr, size_t s) {
+  void *const r = get_free_virtual_memory(s);
+  size_t num_pages = s / 0x1000;
+  for (size_t i = 0; i <= num_pages; i++) {
+    Page *p = get_page((void *)(r + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
+    assert(p);
+    int rw = 1;
+    int is_kernel = 0;
+    p->present = 1;
+    p->rw = rw;
+    p->user = !is_kernel;
+    p->frame = (uintptr_t)(ptr + i * 0x1000) / 0x1000;
+    kprintf("mapped user frame: %x\n", p->frame);
+    write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
+  }
+  return r;
+}
+
 void *mmu_map_frames(void *const ptr, size_t s) {
   void *const r = mmu_find_unallocated_virtual_range((void *)0xEF000000, s);
   size_t num_pages = s / 0x1000;
@@ -457,10 +475,8 @@ void *physical_to_virtual(void *address) {
 void *virtual_to_physical(void *address, PageDirectory *directory) {
   if (0 == directory)
     directory = get_active_pagedirectory();
-  return (void *)((get_page((void *)address, directory, PAGE_NO_ALLOCATE, 0)
-                       ->frame *
-                   0x1000) +
-                  (((uintptr_t)address) & 0xFFF));
+  Page *p = get_page((void *)address, directory, PAGE_NO_ALLOCATE, 0);
+  return (void *)((u32)p->frame * 0x1000) + (((uintptr_t)address) & 0xFFF);
 }
 
 extern u32 inital_esp;
@@ -595,7 +611,7 @@ void paging_init(u64 memsize) {
   switch_page_directory(kernel_directory);
   // Make null dereferences crash.
   get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 25; i++)
     create_table(770 + i);
   kernel_directory = clone_directory(kernel_directory);
 

@@ -2,6 +2,7 @@
 .global int_syscall
 .extern syscall_function_handler
 int_syscall:
+	push esp
 	push ebp
 	push edi
 	push esi
@@ -10,7 +11,7 @@ int_syscall:
 	push ebx
 	push eax
         call syscall_function_handler
-	add esp, 4
+	add esp, 8
 	pop ebx
 	pop ecx
 	pop edx

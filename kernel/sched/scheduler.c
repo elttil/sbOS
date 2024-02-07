@@ -6,6 +6,11 @@
 #include <errno.h>
 #include <fs/vfs.h>
 
+// FIXME: Use the process_t struct instead or keep this contained in it.
+TCB *current_task_TCB;
+
+void switch_to_task(TCB *next_thread);
+
 #define STACK_LOCATION ((void *)0x90000000)
 #define STACK_SIZE 0x80000
 #define HEAP_SIZE 0x400000
@@ -39,7 +44,10 @@ void set_signal_handler(int sig, void (*handler)(int)) {
   current_task->signal_handlers[sig] = handler;
 }
 
-process_t *create_process(process_t *p) {
+void insert_eip_on_stack(u32 cr3, u32 address, u32 value);
+
+process_t *create_process(process_t *p, u32 esp, u32 eip) {
+  kprintf("CREATE_PROCESS\n");
   process_t *r;
   r = kcalloc(1, sizeof(process_t));
   r->dead = 0;
@@ -61,8 +69,31 @@ process_t *create_process(process_t *p) {
   r->parent = p;
   r->child = NULL;
   r->halt_list = NULL;
+  r->interrupt_handler = NULL;
 
-  mmu_allocate_region((void *)(0x80000000 - 0x1000), 0x1000, MMU_FLAG_RW,
+  r->tcb = kcalloc(1, sizeof(struct TCB));
+  kprintf("r->tcb: %x\n", r->tcb);
+  kprintf("r->cr3: %x\n", r->cr3);
+  kprintf("p: %x\n", p);
+  r->tcb->CR3 = r->cr3->physical_address;
+
+  // Temporarily switch to the page directory to be able to place the
+  // "entry_instruction_pointer" onto the stack.
+
+  if (esp) {
+    esp -= 4;
+    insert_eip_on_stack(r->cr3->physical_address, esp, eip);
+    esp -= 4;
+    insert_eip_on_stack(r->cr3->physical_address, esp, 0x1337);
+    esp -= 4;
+    insert_eip_on_stack(r->cr3->physical_address, esp, 0x1488);
+    esp -= 4;
+    esp -= 4;
+    insert_eip_on_stack(r->cr3->physical_address, esp, 0xF00DBABE);
+    r->tcb->ESP = esp;
+  }
+
+  mmu_allocate_region((void *)(0x80000000 - 0x8000), 0x8000, MMU_FLAG_RW,
                       r->cr3);
   r->signal_handler_stack = 0x80000000;
 
@@ -109,7 +140,11 @@ int get_free_fd(process_t *p, int allocate) {
 }
 
 void tasking_init(void) {
-  current_task = ready_queue = create_process(NULL);
+  current_task = ready_queue = create_process(NULL, 0, 0);
+  current_task_TCB = current_task->tcb;
+  current_task->tcb->CR3 = current_task->cr3->physical_address;
+  //  // Switch to itself to update the internal values
+  //  switch_task(0);
 }
 
 int i = 0;
@@ -164,7 +199,7 @@ void exit(int status) {
   }
   current_task->dead = 1;
   // This function will enable interrupts
-  switch_task();
+  switch_task(1);
 }
 
 u32 setup_stack(u32 stack_pointer, int argc, char **argv) {
@@ -231,7 +266,7 @@ int exec(const char *filename, char **argv) {
   ASSERT_NOT_REACHED;
   return 0;
 }
-
+/*
 int fork(void) {
   process_t *parent_task = (process_t *)current_task;
 
@@ -255,10 +290,34 @@ int fork(void) {
 
   new_task->eip = eip;
   asm("\
-	mov %%esp, %0;\
-	mov %%ebp, %1;"
+        mov %%esp, %0;\
+        mov %%ebp, %1;"
       : "=r"(new_task->esp), "=r"(new_task->ebp));
+  asm("\
+        mov %%esp, %0;"
+      : "=r"(new_task->tcb->ESP));
   asm("sti");
+  return new_task->pid;
+}
+*/
+
+process_t *internal_fork(process_t *parent);
+int fork(void) {
+  process_t *new_task;
+  new_task = internal_fork(current_task);
+  if (NULL == new_task) {
+    return 0;
+  }
+
+  process_t *tmp_task = (process_t *)ready_queue;
+  for (; tmp_task->next;)
+    tmp_task = tmp_task->next;
+
+  tmp_task->next = new_task;
+
+  new_task->child_rc = -1;
+  new_task->parent = current_task;
+  current_task->child = new_task;
   return new_task->pid;
 }
 
@@ -292,7 +351,7 @@ process_t *next_task(process_t *c) {
   return c;
 }
 
-int task_save_state(void) {
+int task_save_state() {
   asm("mov %%esp, %0" : "=r"(current_task->esp));
   asm("mov %%ebp, %0" : "=r"(current_task->ebp));
 
@@ -329,44 +388,19 @@ int kill(pid_t pid, int sig) {
 }
 
 void jump_signal_handler(void *func, u32 esp);
-void switch_task() {
-  if (!current_task)
-    return;
 
-  if (0 == task_save_state()) {
+void none_save_switch() {
+}
+
+void switch_task(int save) {
+  if (!current_task) {
     return;
   }
 
   current_task = next_task((process_t *)current_task);
-
   active_directory = current_task->cr3;
 
-  if (current_task->incoming_signal) {
-    u8 sig = current_task->incoming_signal;
-    current_task->incoming_signal = 0;
-    asm("mov %0, %%cr3" ::"r"(current_task->cr3->physical_address));
-
-    void *handler = current_task->signal_handlers[sig];
-    if (9 == sig) {
-      klog("Task recieved SIGKILL", LOG_NOTE);
-      exit(0);
-    }
-    if (!handler) {
-      klog("Task recieved unhandeled signal. Killing process.", LOG_WARN);
-      exit(1);
-    }
-    jump_signal_handler(handler, current_task->signal_handler_stack);
-  } else {
-    asm("			\
-        mov %0, %%esp;		\
-        mov %1, %%ebp;		\
-        mov %2, %%ecx;		\
-        mov %3, %%cr3;		\
-        mov $0x1, %%eax;	\
-        jmp *%%ecx" ::"r"(current_task->esp),
-        "r"(current_task->ebp), "r"(current_task->eip),
-        "r"(current_task->cr3->physical_address));
-  }
+  switch_to_task(current_task->tcb);
 }
 
 MemoryMap **get_free_map(void) {
@@ -378,8 +412,8 @@ MemoryMap **get_free_map(void) {
 }
 
 void *get_free_virtual_memory(size_t length) {
-  void *n =
-      (void *)((uintptr_t)(get_current_task()->data_segment_end) + length);
+  void *n = (void *)((uintptr_t)(get_current_task()->data_segment_end) +
+                     length + 0x1000);
 
   void *rc = get_current_task()->data_segment_end;
   get_current_task()->data_segment_end = align_page(n);

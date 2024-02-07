@@ -55,13 +55,9 @@ typedef struct registers registers_t;
 struct interrupt_frame;
 
 struct registers {
-  u32 error_code;
-  u32 eip;
-  u32 cs;
-  u32 eflags;
-  u32 esp;
-  u32 ss;
-};
+  uintptr_t error_code;
+  uintptr_t eip, cs, eflags, esp, ss;
+} __attribute__((packed));
 
 void idt_init(void);
 __attribute__((no_caller_saved_registers)) void EOI(unsigned char irq);

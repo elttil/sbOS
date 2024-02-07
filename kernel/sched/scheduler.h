@@ -14,7 +14,7 @@
 
 int fork(void);
 int exec(const char *filename, char **argv);
-void switch_task();
+void switch_task(int save);
 void tasking_init(void);
 void exit(int status);
 
@@ -34,14 +34,23 @@ typedef struct {
 
 typedef struct Process process_t;
 
+typedef struct TCB {
+  uint32_t ESP;
+  uint32_t CR3;
+  uint32_t ESP0;
+} __attribute__((packed)) TCB;
+
 struct Process {
   u32 pid;
   char program_name[100];
   char current_working_directory[MAX_PATH];
   u32 eip, esp, ebp;
+  u32 saved_eip, saved_esp, saved_ebp;
+  u32 useresp;
   u8 incoming_signal;
   u32 signal_handler_stack;
   void *signal_handlers[20];
+  void *interrupt_handler;
   PageDirectory *cr3;
   struct IpcMailbox ipc_mailbox;
   vfs_fd_t *file_descriptors[100];
@@ -53,6 +62,9 @@ struct Process {
   void *data_segment_end;
   process_t *next;
   process_t *parent;
+
+  TCB *tcb;
+
   // TODO: Create a linkedlist of childs so that the parent process
   // can do stuff such as reap zombies and get status.
   process_t *child;
@@ -66,4 +78,5 @@ bool get_task_from_pid(u32 pid, process_t **out);
 process_t *get_current_task(void);
 int get_free_fd(process_t *p, int allocate);
 void free_process(void);
+void *get_free_virtual_memory(size_t length);
 #endif

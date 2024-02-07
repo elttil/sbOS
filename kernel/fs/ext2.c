@@ -30,30 +30,39 @@ void get_inode_data_size(int inode_num, u64 *file_size) {
 }
 
 struct BLOCK_CACHE {
+  u32 usage;
   u32 block_num;
   u8 block[1024];
 };
 
-#define NUM_BLOCK_CACHE 30
-struct BLOCK_CACHE cache[NUM_BLOCK_CACHE] = {0};
-u8 last_taken_cache = 0;
+#define NUM_BLOCK_CACHE 3000
+struct BLOCK_CACHE *cache;
+
+u32 cold_cache_hits = 0;
 
 void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
+      cache[i].usage += 1;
       memcpy(address, cache[i].block + offset, size);
       return;
     }
-    if (0 == cache[i].block_num)
+    if (0 == cache[i].block_num) {
       free_found = i;
+    }
   }
 
   if (-1 == free_found) {
-    free_found = last_taken_cache;
-    last_taken_cache++;
-    if (last_taken_cache >= NUM_BLOCK_CACHE)
-      last_taken_cache = 0;
+    u32 min_usage_value = U32_MAX;
+    int min_index = 0;
+    for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+      if (cache[i].usage < min_usage_value) {
+        min_usage_value = cache[i].usage;
+        min_index = i;
+      }
+    }
+    free_found = min_index;
   }
 
   struct BLOCK_CACHE *c = &cache[free_found];
@@ -763,6 +772,7 @@ int ext2_create_file(const char *path, int mode) {
 
 vfs_inode_t *ext2_mount(void) {
   int fd = vfs_open("/dev/sda", O_RDWR, 0);
+  cache = kcalloc(3000, sizeof(struct BLOCK_CACHE));
   // TODO: Can this be done better? Maybe create a seperate function in
   // the VFS?
   mount_fd = get_current_task()->file_descriptors[fd];

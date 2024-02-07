@@ -64,36 +64,47 @@ int load_ppm6_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
   printf("end malloc\n");
 
   printf("fread");
-  int rc = fread(rgb, 3, n_pixels, fp);
+  const int rc = fread(rgb, 3, n_pixels, fp);
   if (0 == rc)
     return 0;
   printf("end fread");
 
   uint32_t *p = rgb;
+  u32 buf_size = buf_height * buf_width;
   if (1 == modifier) {
-    for (; rc--; p = ((uint8_t *)p) + 3) {
-      uint32_t v = *p;
-      buffer[cy * buf_width + cx] =
-          ((v & 0xFF) << 16) | ((v & 0xFF00)) | ((v & 0xFF0000) >> 16);
+    for (int i = 0; i < rc && i < buf_size; i++, p = ((uint8_t *)p) + 3) {
+      if (cx > buf_width) {
+        i--;
+      } else {
+        uint32_t v = *p;
+        buffer[cy * buf_width + cx] =
+            ((v & 0xFF) << 16) | ((v & 0xFF00)) | ((v & 0xFF0000) >> 16);
+      }
       cx++;
       if (cx == img->width) {
         cx = 0;
         cy++;
+        i--;
         continue;
       }
     }
   } else {
-    for (; rc--; p = ((uint8_t *)p) + 3) {
+    for (int i = 0; i < rc && i < buf_size; i++, p = ((uint8_t *)p) + 3) {
       ((uint8_t *)p)[0] *= modifier;
       ((uint8_t *)p)[1] *= modifier;
       ((uint8_t *)p)[2] *= modifier;
-      uint32_t v = *p;
-      buffer[cy * buf_width + cx] =
-          ((v & 0xFF) << 16) | ((v & 0xFF00)) | ((v & 0xFF0000) >> 16);
+      if (cx > buf_width) {
+        i--;
+      } else {
+        uint32_t v = *p;
+        buffer[cy * buf_width + cx] =
+            ((v & 0xFF) << 16) | ((v & 0xFF00)) | ((v & 0xFF0000) >> 16);
+      }
       cx++;
       if (cx == img->width) {
         cx = 0;
         cy++;
+        i--;
         continue;
       }
     }

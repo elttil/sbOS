@@ -41,17 +41,24 @@ void set_pit_count(u16 hertz) {
   outb(PIT_IO_CHANNEL_0, (divisor & 0xFF00) >> 8);
 }
 
-__attribute__((interrupt)) void
-int_clock(__attribute__((unused)) struct interrupt_frame *frame) {
+__attribute__((interrupt)) void int_clock(registers_t *regs) {
+  process_t *p = get_current_task();
+  if (p) {
+    // FIXME: For some reason eflags is the esp? I have read the
+    // manual multilpe times and still can't figure out why.
+    if (regs->eflags <= 0x90000000 && regs->eflags) {
+      p->useresp = regs->eflags;
+    }
+  }
   outb(0x20, 0x20);
   pit_counter++;
   if (pit_counter >= hertz / 1000) {
     pit_counter = 0;
     clock_num_ms_ticks++;
   }
-  switch_task();
+  switch_task(1);
 }
 
 void pit_install(void) {
-  install_handler(int_clock, INT_32_INTERRUPT_GATE(0x0), 0x20);
+  install_handler(int_clock, INT_32_INTERRUPT_GATE(0x3), 0x20);
 }
