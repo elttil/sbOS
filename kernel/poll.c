@@ -13,6 +13,9 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     if (fds[i].fd < 0)
       continue;
     vfs_fd_t *f = get_vfs_fd(fds[i].fd);
+    if (NULL == f) {
+      continue;
+    }
     if (fds[i].events & POLLIN)
       read_locks[i] = create_read_fdhalt(f);
     if (fds[i].events & POLLOUT)
