@@ -1,4 +1,5 @@
 #include "gdt.h"
+#include <interrupts.h>
 
 extern void flush_tss(void);
 extern void load_gdt(void *);
@@ -66,7 +67,7 @@ void gdt_init() {
   gdtr.offset = (u32)&gdt_entries;
   gdtr.size = sizeof(gdt_entries) - 1;
 
-  asm("cli");
+  disable_interrupts();
   load_gdt(&gdtr);
   flush_tss();
 }

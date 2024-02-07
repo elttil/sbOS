@@ -11,6 +11,7 @@
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
+#include <interrupts.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -69,7 +70,7 @@ void syscall_exit(int status) {
 }
 
 void syscall_wait(int *status) {
-  asm("cli");
+  disable_interrupts();
   if (!get_current_task()->child) {
     if (status)
       *status = -1;
@@ -105,7 +106,7 @@ int syscall_brk(void *addr) {
 }
 
 void *syscall_sbrk(uintptr_t increment) {
-  asm("cli");
+  disable_interrupts();
   void *rc = get_current_task()->data_segment_end;
   void *n =
       (void *)((uintptr_t)(get_current_task()->data_segment_end) + increment);

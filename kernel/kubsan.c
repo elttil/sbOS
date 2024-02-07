@@ -1,11 +1,12 @@
 #include <kubsan.h>
 #include <log.h>
 #include <stdio.h>
+#include <interrupts.h>
 
 void ubsan_log(const char *cause, struct source_location source) {
   kprintf("%s: %s : %d\n", cause, source.file_name, source.line);
   dump_backtrace(5);
-  asm("cli");
+  disable_interrupts();
   asm volatile("1: jmp 1b");
   asm("hlt");
   for (;;)

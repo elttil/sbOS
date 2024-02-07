@@ -4,6 +4,7 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <typedefs.h>
+#include <interrupts.h>
 
 u8 mouse_cycle = 0; // unsigned char
 u8 mouse_u8[3];     // signed char
@@ -116,7 +117,7 @@ u8 mouse_read() {
 
 void install_mouse(void) {
   u8 _status; // unsigned char
-  asm("cli");
+  disable_interrupts();
   // Enable the auxiliary mouse device
   mouse_wait(1);
   outb(0x64, 0xA8);

@@ -16,6 +16,7 @@
 #include <fs/ext2.h>
 #include <fs/shm.h>
 #include <fs/vfs.h>
+#include <interrupts.h>
 #include <log.h>
 #include <mmu.h>
 #include <multiboot.h>
@@ -44,7 +45,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   data_end = 0xc0400000;
   inital_esp = inital_stack;
 
-  asm("cli");
+  disable_interrupts();
   kprintf("If you see this then the serial driver works :D.\n");
   assert(magic == MULTIBOOT_BOOTLOADER_MAGIC);
 
@@ -106,7 +107,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
     }
   }
   for (;;) {
-    asm("sti");
+    enable_interrupts();
     switch_task(0);
   }
 }

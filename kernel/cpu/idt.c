@@ -82,22 +82,9 @@ __attribute__((interrupt)) void page_fault(registers_t *regs) {
   asm volatile("mov %%cr2, %0" : "=r"(cr2));
   kprintf("CR2: %x\n", cr2);
   if (0xFFFFDEAD == cr2) {
-    /*
-    process_t *current = get_current_task();
-    if (!current) {
-      kprintf("WHYYYYYY!\n");
-      for (;;)
-        asm("cli");
-    }
-    current->useresp = regs->esp;*/
-    //    active_directory = current->cr3;
-//    get_current_task()->esp = get_current_task()->saved_esp;
-//    get_current_task()->ebp = get_current_task()->saved_ebp;
-//    get_current_task()->eip = get_current_task()->saved_eip;
     for (;;) {
       switch_task(0);
     }
-    //    jump_process(current);
     return;
   }
   klog("Page Fault", LOG_ERROR);
