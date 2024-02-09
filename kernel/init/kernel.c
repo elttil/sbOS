@@ -107,7 +107,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
     }
   }
   for (;;) {
-    enable_interrupts();
+    asm("sti");
     switch_task(0);
   }
 }

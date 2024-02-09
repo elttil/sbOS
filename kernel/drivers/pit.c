@@ -41,15 +41,7 @@ void set_pit_count(u16 hertz) {
   outb(PIT_IO_CHANNEL_0, (divisor & 0xFF00) >> 8);
 }
 
-__attribute__((interrupt)) void int_clock(registers_t *regs) {
-  process_t *p = get_current_task();
-  if (p) {
-    // FIXME: For some reason eflags is the esp? I have read the
-    // manual multilpe times and still can't figure out why.
-    if (regs->eflags <= 0x90000000 && regs->eflags) {
-      p->useresp = regs->eflags;
-    }
-  }
+void int_clock(reg_t regs) {
   outb(0x20, 0x20);
   pit_counter++;
   if (pit_counter >= hertz / 1000) {

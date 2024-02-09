@@ -6,12 +6,12 @@
 #include <errno.h>
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
+#include <interrupts.h>
 #include <kmalloc.h>
 #include <network/ethernet.h>
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
-#include <interrupts.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -126,7 +126,7 @@ int syscall_openpty(SYS_OPENPTY_PARAMS *args) {
                  args->winp);
 }
 
-void (*syscall_functions[])() = {
+int (*syscall_functions[])() = {
     (void(*))syscall_open,
     (void(*))syscall_read,
     (void(*))syscall_write,
@@ -177,14 +177,15 @@ void (*syscall_functions[])() = {
 
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
                               u32 arg5, u32 ebp, u32 esp) {
-  if (esp <= 0x90000000) {
-    get_current_task()->useresp = esp;
-  }
   assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
   syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
 }
 
-extern void int_syscall(void);
+void int_syscall(reg_t *r) {
+  u32 syscall = r->eax;
+  assert(syscall < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
+  r->eax = syscall_functions[syscall](r->ebx, r->ecx, r->edx, r->esi, r->edi);
+}
 
 void syscalls_init(void) {
   install_handler(int_syscall, INT_32_INTERRUPT_GATE(0x3), 0x80);

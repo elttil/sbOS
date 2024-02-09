@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cpu/idt.h>
 #include <drivers/keyboard.h>
 #include <errno.h>
 #include <fs/devfs.h>
@@ -107,8 +108,8 @@ struct KEY_EVENT {
 };
 
 extern process_t *ready_queue;
-__attribute__((interrupt)) void
-int_keyboard(__attribute__((unused)) struct interrupt_frame *frame) {
+
+void int_keyboard(reg_t *frame) {
   outb(0x20, 0x20);
   u16 c;
   c = inb(PS2_REG_DATA);

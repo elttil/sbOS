@@ -90,7 +90,7 @@ void handle_packet(void) {
   }
 }
 
-__attribute__((interrupt)) void rtl8139_handler(void *regs) {
+void rtl8139_handler(void *regs) {
   (void)regs;
   u16 status = inw(rtl8139.gen.base_mem_io + 0x3e);
 

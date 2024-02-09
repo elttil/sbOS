@@ -3,8 +3,8 @@
 #include <fs/devfs.h>
 #include <fs/fifo.h>
 #include <fs/vfs.h>
-#include <typedefs.h>
 #include <interrupts.h>
+#include <typedefs.h>
 
 u8 mouse_cycle = 0; // unsigned char
 u8 mouse_u8[3];     // signed char
@@ -45,11 +45,11 @@ void add_mouse(void) {
   get_current_task()->file_descriptors[fd] = NULL;
 }
 
-__attribute__((interrupt)) void what(registers_t *r) {
+void what(registers_t *r) {
   EOI(0xe);
 }
 
-__attribute__((interrupt)) void int_mouse(registers_t *r) {
+void int_mouse(reg_t *r) {
   (void)r;
   EOI(12);
   switch (mouse_cycle) {
