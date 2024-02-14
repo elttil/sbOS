@@ -105,6 +105,12 @@ void rtl8139_handler(void *regs) {
 }
 
 void rtl8139_send_data(u8 *data, u16 data_size) {
+  if (data_size > 0x1000) {
+    rtl8139_send_data(data, 0x1000);
+    data += 0x1000;
+    data_size -= 0x1000;
+    return rtl8139_send_data(data, data_size);
+  }
   kprintf("ipc_write\n");
   ipc_write(0, data, data_size);
   /*

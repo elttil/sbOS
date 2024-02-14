@@ -76,10 +76,9 @@ void page_fault(reg_t *regs) {
   volatile uint32_t cr2;
   asm volatile("mov %%cr2, %0" : "=r"(cr2));
   kprintf("CR2: %x\n", cr2);
-  if (0xFFFFDEAD == cr2) {
-    for (;;) {
-      switch_task(0);
-    }
+  if (0xDEADC0DE == cr2) {
+    EOI(0xB);
+    process_pop_restore_context(NULL, regs);
     return;
   }
   klog("Page Fault", LOG_ERROR);
@@ -219,16 +218,42 @@ void *isr_list[] = {
     isr252, isr253, isr254, isr255,
 };
 
-void (*list_of_handlers[256])(reg_t *);
+typedef int (*interrupt_handler)(reg_t *);
+
+interrupt_handler list_of_handlers[256];
 
 void int_handler(reg_t *r) {
-  list_of_handlers[r->int_no](r);
+  interrupt_handler handler = list_of_handlers[r->int_no];
+  if (NULL == handler) {
+    kprintf("[NOTE] Interrupt(0x%x) called but has no interrupt handler",
+            r->int_no);
+    return;
+  }
+
+  handler(r);
+
+  int is_kernel = (r->cs == 0x08);
+  if (!is_kernel) {
+    const signal_t *sig = process_pop_signal(NULL);
+    if (sig) {
+      process_push_restore_context(NULL, *r);
+      r->eip = sig->handler_ip;
+      kprintf("jumping to: %x\n", r->eip);
+      //      kprintf("esp: %x\n", r->esp);
+      //      kprintf("ebp: %x\n", r->ebp);
+
+      // Add magic value to the stack such that the signal handler
+      // returns to 0xDEADC0DE
+      r->useresp -= 4;
+      *(u32 *)r->useresp = 0xDEADC0DE;
+    }
+  }
 }
 
 void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry) {
   format_descriptor((u32)isr_list[entry], KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
-  list_of_handlers[entry] = handler_function;
+  list_of_handlers[entry] = (interrupt_handler)handler_function;
 }
 
 void idt_init(void) {

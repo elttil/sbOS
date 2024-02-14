@@ -47,10 +47,7 @@ int ipc_read(u8 *buffer, u32 length, u32 *sender_pid) {
   for (;;) {
     ipc_message = &handler->data[read_ptr];
     if (!ipc_message->is_used) {
-      return 0;
-//      kprintf("switch\n");
-//      switch_task();
-//      continue;
+       return 0;
     }
     kprintf("breaking out\n");
     break;

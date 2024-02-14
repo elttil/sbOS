@@ -101,7 +101,7 @@ insert_eip_on_stack:
 # WARNING: Caller is expected to disable IRQs before calling, and enable IRQs again after function returns
 
 switch_to_task:
-	cli
+#	cli
  
     # Save previous task's state
  

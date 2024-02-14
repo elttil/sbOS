@@ -4,6 +4,7 @@
 #include <fs/vfs.h>
 #include <halts.h>
 #include <ipc.h>
+#include <lib/stack.h>
 #include <mmu.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -32,6 +33,10 @@ typedef struct {
   int fd;
 } MemoryMap;
 
+typedef struct {
+  uintptr_t handler_ip;
+} signal_t;
+
 typedef struct Process process_t;
 
 typedef struct TCB {
@@ -39,6 +44,11 @@ typedef struct TCB {
   uint32_t CR3;
   uint32_t ESP0;
 } __attribute__((packed)) TCB;
+
+void process_push_restore_context(process_t *p, reg_t r);
+void process_pop_restore_context(process_t *p, reg_t *out_r);
+void process_push_signal(process_t *p, signal_t s);
+const signal_t *process_pop_signal(process_t *p);
 
 struct Process {
   u32 pid;
@@ -57,6 +67,13 @@ struct Process {
   vfs_inode_t *read_halt_inode[100];
   vfs_inode_t *write_halt_inode[100];
   vfs_inode_t *disconnect_halt_inode[100];
+
+  //  // FIXME: Make this a array or circular buffer
+  //  reg_t restore_context;
+  struct stack restore_context_stack;
+
+  signal_t *active_signals[100];
+
   u32 halts[2];
   struct Halt *halt_list;
   void *data_segment_end;

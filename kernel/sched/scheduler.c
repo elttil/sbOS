@@ -26,6 +26,66 @@ process_t *get_current_task(void) {
   return current_task;
 }
 
+void process_push_restore_context(process_t *p, reg_t r) {
+  if (!p) {
+    p = current_task;
+  }
+  reg_t *new_r = kmalloc(sizeof(reg_t));
+  memcpy(new_r, &r, sizeof(reg_t));
+  stack_push(&p->restore_context_stack, new_r);
+  return;
+}
+
+void process_pop_restore_context(process_t *p, reg_t *out_r) {
+  if (!p) {
+    p = current_task;
+  }
+  reg_t *r = stack_pop(&p->restore_context_stack);
+  if (NULL == r) {
+    assert(NULL);
+  }
+  memcpy(out_r, r, sizeof(reg_t));
+  kfree(r);
+}
+
+void process_push_signal(process_t *p, signal_t s) {
+  if (!p) {
+    p = current_task;
+  }
+
+  int index = -1;
+  for (int i = 0; i < 100; i++) {
+    const signal_t *s = p->active_signals[i];
+    if (!s) {
+      index = i;
+      break;
+    }
+  }
+  if (-1 == index) {
+    assert(0);
+    return;
+  }
+  signal_t *new_signal_entry = kmalloc(sizeof(signal_t));
+  memcpy(new_signal_entry, &s, sizeof(signal_t));
+  p->active_signals[index] = new_signal_entry;
+}
+
+const signal_t *process_pop_signal(process_t *p) {
+  if (!p) {
+    p = current_task;
+  }
+
+  for (int i = 0; i < 100; i++) {
+    const signal_t *s = p->active_signals[i];
+    if (!s) {
+      continue;
+    }
+    p->active_signals[i] = NULL;
+    return s;
+  }
+  return NULL;
+}
+
 bool get_task_from_pid(u32 pid, process_t **out) {
   for (process_t *tmp = ready_queue; tmp; tmp = tmp->next) {
     if (tmp->pid == pid) {

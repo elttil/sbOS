@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <typedefs.h>
 
-#define IPC_BUFFER_SIZE 4096
-#define IPC_NUM_DATA 32
+#define IPC_BUFFER_SIZE 0x2000
+#define IPC_NUM_DATA 400
 
 struct IpcMessage {
   u8 is_used;
