@@ -53,37 +53,20 @@ void process_push_signal(process_t *p, signal_t s) {
     p = current_task;
   }
 
-  int index = -1;
-  for (int i = 0; i < 100; i++) {
-    const signal_t *s = p->active_signals[i];
-    if (!s) {
-      index = i;
-      break;
-    }
+  if (p->is_halted) {
+    p->is_interrupted = 1;
   }
-  if (-1 == index) {
-    assert(0);
-    return;
-  }
+
   signal_t *new_signal_entry = kmalloc(sizeof(signal_t));
   memcpy(new_signal_entry, &s, sizeof(signal_t));
-  p->active_signals[index] = new_signal_entry;
+  stack_push(&p->signal_stack, new_signal_entry);
 }
 
 const signal_t *process_pop_signal(process_t *p) {
   if (!p) {
     p = current_task;
   }
-
-  for (int i = 0; i < 100; i++) {
-    const signal_t *s = p->active_signals[i];
-    if (!s) {
-      continue;
-    }
-    p->active_signals[i] = NULL;
-    return s;
-  }
-  return NULL;
+  return stack_pop(&p->signal_stack);
 }
 
 bool get_task_from_pid(u32 pid, process_t **out) {
@@ -107,7 +90,6 @@ void set_signal_handler(int sig, void (*handler)(int)) {
 void insert_eip_on_stack(u32 cr3, u32 address, u32 value);
 
 process_t *create_process(process_t *p, u32 esp, u32 eip) {
-  kprintf("CREATE_PROCESS\n");
   process_t *r;
   r = kcalloc(1, sizeof(process_t));
   r->dead = 0;
@@ -115,6 +97,8 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   r->esp = r->ebp = 0;
   r->eip = 0;
   r->sleep_until = 0;
+  r->is_interrupted = 0;
+  r->is_halted = 0;
   if (!p) {
     assert(1 == next_pid);
     strncpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
@@ -132,9 +116,6 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   r->interrupt_handler = NULL;
 
   r->tcb = kcalloc(1, sizeof(struct TCB));
-  kprintf("r->tcb: %x\n", r->tcb);
-  kprintf("r->cr3: %x\n", r->cr3);
-  kprintf("p: %x\n", p);
   r->tcb->CR3 = r->cr3->physical_address;
 
   // Temporarily switch to the page directory to be able to place the
@@ -209,6 +190,7 @@ void tasking_init(void) {
 
 int i = 0;
 void free_process(void) {
+  kprintf("pid: %x\n", get_current_task()->pid);
   kprintf("Exiting process: %s\n", get_current_task()->program_name);
   // free_process() will purge all contents such as allocated frames
   // out of the current process. This will be called by exit() and

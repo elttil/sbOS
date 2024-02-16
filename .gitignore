@@ -5,8 +5,11 @@
 *.bin
 *.iso
 *.img
-*.tar.xz
-*.tar.xz.sig
+*.tar.xz*
+*.tar.xz.sig*
+*.png
+*.jpg
+*.ppm
 .cache/
 logs/
 sysroot/*

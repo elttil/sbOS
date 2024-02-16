@@ -38,7 +38,6 @@ int syscall_exec(SYS_EXEC_PARAMS *args) {
 }
 
 void syscall_tmp_handle_packet(void *packet, u32 len) {
-  kprintf("syscall tmp handle packet\n");
   handle_ethernet((u8 *)packet, len);
 }
 

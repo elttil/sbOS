@@ -16,6 +16,7 @@ make -C ./userland/test
 make -C ./userland/minibox
 make -C ./userland/libppm
 make -C ./userland/rtl8139
+make -C ./userland/smol_http
 
 mkdir sysroot
 sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
@@ -27,6 +28,7 @@ sudo cp ./userland/ante/ante ./sysroot/ante
 sudo cp ./userland/windowserver/ws ./sysroot/ws
 sudo cp ./userland/test/test ./sysroot/test
 sudo cp ./userland/minibox/minibox ./sysroot/minibox
+sudo cp ./userland/smol_http/smol_http ./sysroot/smol_http
 
 cd ./sysroot
 rm ./init

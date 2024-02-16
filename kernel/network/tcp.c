@@ -178,7 +178,6 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
   (void)ack_num;
 
   if (SYN == flags) {
-    kprintf("GOT SYN UPTIME: %d\n", pit_num_ms());
     struct INCOMING_TCP_CONNECTION *inc;
     if (!(inc = handle_incoming_tcp_connection(src_ip, n_src_port, dst_port)))
       return;
@@ -210,10 +209,13 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
     // inc->seq_num = ack_num;
   }
   if (flags & PSH) {
+    kprintf("TCP: Got PSH\n");
     u16 tcp_payload_length =
         payload_length - inc_header->data_offset * sizeof(u32);
-    fifo_object_write((u8 *)(payload + inc_header->data_offset * sizeof(u32)),
-                      0, tcp_payload_length, inc->data_file);
+    int rc = fifo_object_write(
+        (u8 *)(payload + inc_header->data_offset * sizeof(u32)), 0,
+        tcp_payload_length, inc->data_file);
+    kprintf("fifo object write rc: %x\n", rc);
     *inc->has_data_ptr = 1;
 
     // Send back a ACK

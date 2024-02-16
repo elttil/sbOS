@@ -2,6 +2,7 @@
 #define SOCKET_H
 #include <fs/fifo.h>
 #include <fs/vfs.h>
+#include <lib/buffered_write.h>
 #include <stddef.h>
 #include <typedefs.h>
 
@@ -46,6 +47,7 @@ struct INCOMING_TCP_CONNECTION {
   u16 n_port;
   u16 dst_port;
   FIFO_FILE *data_file;
+  struct buffered buffer;
   u8 *has_data_ptr;
   u8 is_used;
   u32 ack_num;

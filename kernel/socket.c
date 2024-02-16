@@ -17,8 +17,25 @@ struct INCOMING_TCP_CONNECTION tcp_connections[100] = {0};
 int tcp_socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
-  if (s->connection_closed)
+  if (s->connection_closed) {
     return -EBADF;
+  }
+
+  if (buffered_write(&s->buffer, buffer, len)) {
+    return len;
+  }
+
+  // Use the current buffered input
+  if (s->buffer.buffer_usage > 0) {
+    send_tcp_packet(s, s->buffer.data, s->buffer.buffer_usage);
+    buffered_clear(&s->buffer);
+
+    // Try to add to the buffer again. If it fails just send the whole
+    // thing immediatley.
+    if (buffered_write(&s->buffer, buffer, len)) {
+      return len;
+    }
+  }
   send_tcp_packet(s, buffer, len);
   return len;
 }
@@ -26,16 +43,23 @@ int tcp_socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 int tcp_socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
-  if (s->connection_closed)
+  if (s->connection_closed) {
     return -EBADF;
+  }
 
   return fifo_object_read(buffer, offset, len, s->data_file);
 }
 
 void tcp_socket_close(vfs_fd_t *fd) {
-  kprintf("TCP SOCKET CLOSE\n");
   struct INCOMING_TCP_CONNECTION *s =
       (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
+
+  // Flush the remaining buffer
+  if (s->buffer.buffer_usage > 0) {
+    send_tcp_packet(s, s->buffer.data, s->buffer.buffer_usage);
+  }
+  buffered_free(&s->buffer);
+
   if (s->connection_closed) {
     s->is_used = 0;
     return;
@@ -48,10 +72,12 @@ void tcp_socket_close(vfs_fd_t *fd) {
 struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
                                                             u16 n_port) {
   for (int i = 0; i < 100; i++) {
-    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(u8[4])))
+    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(u8[4]))) {
       continue;
-    if (n_port != tcp_connections[i].n_port)
+    }
+    if (n_port != tcp_connections[i].n_port) {
       continue;
+    }
     return &tcp_connections[i];
   }
   return NULL;
@@ -77,6 +103,8 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
   tcp_connections[i].dst_port = dst_port;
   tcp_connections[i].data_file = create_fifo_object();
 
+  buffered_init(&tcp_connections[i].buffer, 0x2000);
+
   SOCKET *s = in->s;
 
   vfs_inode_t *inode = vfs_create_inode(
@@ -89,7 +117,7 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
   tcp_connections[i].has_data_ptr = &inode->has_data;
 
   vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
+  int n = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd);
 
   fd->reference_count++;
   s->incoming_fd = fd;
@@ -109,14 +137,15 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
 
 OPEN_INET_SOCKET *find_open_tcp_port(u16 port) {
   for (int i = 0; i < 100; i++) {
-    if (!inet_sockets[i])
+    if (!inet_sockets[i]) {
       continue;
-    kprintf("socket type: %d\n", inet_sockets[i]->s->type);
-    kprintf("socket port: %d\n", inet_sockets[i]->port);
-    if (inet_sockets[i]->port != port)
+    }
+    if (inet_sockets[i]->port != port) {
       continue;
-    if (inet_sockets[i]->s->type != SOCK_STREAM)
+    }
+    if (inet_sockets[i]->s->type != SOCK_STREAM) {
       continue;
+    }
     return inet_sockets[i];
   }
   return NULL;
@@ -124,12 +153,15 @@ OPEN_INET_SOCKET *find_open_tcp_port(u16 port) {
 
 OPEN_INET_SOCKET *find_open_udp_port(u16 port) {
   for (int i = 0; i < 100; i++) {
-    if (!inet_sockets[i])
+    if (!inet_sockets[i]) {
       continue;
-    if (inet_sockets[i]->port != port)
+    }
+    if (inet_sockets[i]->port != port) {
       continue;
-    if (inet_sockets[i]->s->type != SOCK_DGRAM)
+    }
+    if (inet_sockets[i]->s->type != SOCK_DGRAM) {
       continue;
+    }
     return inet_sockets[i];
   }
   return NULL;
@@ -141,8 +173,9 @@ int uds_open(const char *path) {
   // Find the socket that path belongs to
   SOCKET *s = NULL;
   for (int i = 0; i < 100; i++) {
-    if (!un_sockets[i])
+    if (!un_sockets[i]) {
       continue;
+    }
     const char *p = path;
     const char *e = p;
     for (; *e; e++)
@@ -203,11 +236,13 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   (void)addrlen;
   vfs_fd_t *fd = get_vfs_fd(sockfd);
-  if (!fd)
+  if (!fd) {
     return -EBADF;
+  }
   vfs_inode_t *inode = fd->inode;
-  if (!inode)
+  if (!inode) {
     return -EBADF;
+  }
   SOCKET *s = (SOCKET *)inode->internal_object;
   if (AF_UNIX == s->domain) {
     struct sockaddr_un *un = (struct sockaddr_un *)addr;
@@ -218,9 +253,11 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
     OPEN_UNIX_SOCKET *us;
     int i = 0;
-    for (; i < 100; i++)
-      if (!un_sockets[i])
+    for (; i < 100; i++) {
+      if (!un_sockets[i]) {
         break;
+      }
+    }
 
     us = un_sockets[i] = kmalloc(sizeof(OPEN_UNIX_SOCKET));
 
@@ -235,9 +272,11 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     assert(in->sin_family == AF_INET); // FIXME: Figure out error value
     OPEN_INET_SOCKET *inet;
     int i = 0;
-    for (; i < 100; i++)
-      if (!inet_sockets[i])
+    for (; i < 100; i++) {
+      if (!inet_sockets[i]) {
         break;
+      }
+    }
 
     inet = inet_sockets[i] = kmalloc(sizeof(OPEN_INET_SOCKET));
     inet->address = in->sin_addr.s_addr;
@@ -270,8 +309,9 @@ void socket_close(vfs_fd_t *fd) {
 }
 
 int socket(int domain, int type, int protocol) {
-  if (!(AF_UNIX == domain || AF_INET == domain))
+  if (!(AF_UNIX == domain || AF_INET == domain)) {
     return -EINVAL;
+  }
 
   SOCKET *new_socket = kmalloc(sizeof(SOCKET));
   vfs_inode_t *inode = vfs_create_inode(

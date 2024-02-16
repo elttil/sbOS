@@ -111,7 +111,6 @@ void rtl8139_send_data(u8 *data, u16 data_size) {
     data_size -= 0x1000;
     return rtl8139_send_data(data, data_size);
   }
-  kprintf("ipc_write\n");
   ipc_write(0, data, data_size);
   /*
   const struct PCI_DEVICE *device = &rtl8139;

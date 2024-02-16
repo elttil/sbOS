@@ -65,23 +65,17 @@ void double_fault(registers_t *regs) {
     ;
 }
 
-void tmp_jump_process(u32, u32, u32, u32);
-void jump_process(const process_t *p) {
-  //  tmp_jump_process(p->eip, p->cr3->physical_address, p->ebp, p->esp);
-}
-
-void none_save_switch(void);
-extern PageDirectory *active_directory;
 void page_fault(reg_t *regs) {
   volatile uint32_t cr2;
   asm volatile("mov %%cr2, %0" : "=r"(cr2));
-  kprintf("CR2: %x\n", cr2);
   if (0xDEADC0DE == cr2) {
+    asm("cli");
     EOI(0xB);
     process_pop_restore_context(NULL, regs);
     return;
   }
   klog("Page Fault", LOG_ERROR);
+  kprintf("CR2: %x\n", cr2);
   if (get_current_task()) {
     kprintf("PID: %x\n", get_current_task()->pid);
     kprintf("Name: %s\n", get_current_task()->program_name);
@@ -238,9 +232,6 @@ void int_handler(reg_t *r) {
     if (sig) {
       process_push_restore_context(NULL, *r);
       r->eip = sig->handler_ip;
-      kprintf("jumping to: %x\n", r->eip);
-      //      kprintf("esp: %x\n", r->esp);
-      //      kprintf("ebp: %x\n", r->ebp);
 
       // Add magic value to the stack such that the signal handler
       // returns to 0xDEADC0DE

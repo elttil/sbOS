@@ -68,11 +68,8 @@ struct Process {
   vfs_inode_t *write_halt_inode[100];
   vfs_inode_t *disconnect_halt_inode[100];
 
-  //  // FIXME: Make this a array or circular buffer
-  //  reg_t restore_context;
   struct stack restore_context_stack;
-
-  signal_t *active_signals[100];
+  struct stack signal_stack;
 
   u32 halts[2];
   struct Halt *halt_list;
@@ -81,6 +78,9 @@ struct Process {
   process_t *parent;
 
   TCB *tcb;
+
+  int is_interrupted;
+  int is_halted;
 
   // TODO: Create a linkedlist of childs so that the parent process
   // can do stuff such as reap zombies and get status.
