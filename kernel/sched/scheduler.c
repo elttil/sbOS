@@ -5,6 +5,7 @@
 #include <elf.h>
 #include <errno.h>
 #include <fs/vfs.h>
+#include <interrupts.h>
 
 // FIXME: Use the process_t struct instead or keep this contained in it.
 TCB *current_task_TCB;
@@ -184,8 +185,6 @@ void tasking_init(void) {
   current_task = ready_queue = create_process(NULL, 0, 0);
   current_task_TCB = current_task->tcb;
   current_task->tcb->CR3 = current_task->cr3->physical_address;
-  //  // Switch to itself to update the internal values
-  //  switch_task(0);
 }
 
 int i = 0;
@@ -240,8 +239,7 @@ void exit(int status) {
     tmp = tmp->next;
   }
   current_task->dead = 1;
-  // This function will enable interrupts
-  switch_task(1);
+  switch_task();
 }
 
 u32 setup_stack(u32 stack_pointer, int argc, char **argv) {
@@ -308,40 +306,6 @@ int exec(const char *filename, char **argv) {
   ASSERT_NOT_REACHED;
   return 0;
 }
-/*
-int fork(void) {
-  process_t *parent_task = (process_t *)current_task;
-
-  process_t *new_task = create_process(parent_task);
-
-  process_t *tmp_task = (process_t *)ready_queue;
-  for (; tmp_task->next;)
-    tmp_task = tmp_task->next;
-
-  tmp_task->next = new_task;
-
-  u32 eip = read_eip();
-
-  if (current_task != parent_task) {
-    return 0;
-  }
-
-  new_task->child_rc = -1;
-  new_task->parent = current_task;
-  current_task->child = new_task;
-
-  new_task->eip = eip;
-  asm("\
-        mov %%esp, %0;\
-        mov %%ebp, %1;"
-      : "=r"(new_task->esp), "=r"(new_task->ebp));
-  asm("\
-        mov %%esp, %0;"
-      : "=r"(new_task->tcb->ESP));
-  asm("sti");
-  return new_task->pid;
-}
-*/
 
 process_t *internal_fork(process_t *parent);
 int fork(void) {
@@ -378,7 +342,15 @@ int is_halted(process_t *process) {
 extern PageDirectory *active_directory;
 
 process_t *next_task(process_t *c) {
+  process_t *s = c;
+  int loop = 0;
   for (;;) {
+    if (s == c) {
+      if (1 == loop) {
+        return s;
+      }
+      loop = 1;
+    }
     c = c->next;
     if (!c)
       c = ready_queue;
@@ -391,24 +363,6 @@ process_t *next_task(process_t *c) {
     break;
   }
   return c;
-}
-
-int task_save_state() {
-  asm("mov %%esp, %0" : "=r"(current_task->esp));
-  asm("mov %%ebp, %0" : "=r"(current_task->ebp));
-
-  u32 eip = read_eip();
-
-  if (0x1 == eip) {
-    // Should the returned value from read_eip be equal to one it
-    // means that we have just switched over to this task after we
-    // saved the state(since the switch_task() function changes the
-    // eax register to 1).
-    return 0;
-  }
-
-  current_task->eip = eip;
-  return 1;
 }
 
 int kill(pid_t pid, int sig) {
@@ -429,15 +383,11 @@ int kill(pid_t pid, int sig) {
   return 0;
 }
 
-void jump_signal_handler(void *func, u32 esp);
-
-void none_save_switch() {
-}
-
-void switch_task(int save) {
+void switch_task() {
   if (!current_task) {
     return;
   }
+  disable_interrupts();
 
   current_task = next_task((process_t *)current_task);
   active_directory = current_task->cr3;

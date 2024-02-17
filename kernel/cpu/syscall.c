@@ -81,7 +81,7 @@ void syscall_wait(int *status) {
     return;
   }
   get_current_task()->halts[WAIT_CHILD_HALT] = 1;
-  switch_task(1);
+  switch_task();
   if (status)
     *status = get_current_task()->child_rc;
 }

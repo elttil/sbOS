@@ -107,7 +107,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
     }
   }
   for (;;) {
-    asm("sti");
-    switch_task(0);
+    get_current_task()->sleep_until = pit_num_ms() + 100000000;
+    switch_task();
   }
 }

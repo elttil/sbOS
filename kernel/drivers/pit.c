@@ -48,7 +48,7 @@ void int_clock(reg_t regs) {
     pit_counter = 0;
     clock_num_ms_ticks++;
   }
-  switch_task(1);
+  switch_task();
 }
 
 void pit_install(void) {

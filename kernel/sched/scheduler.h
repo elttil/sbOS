@@ -15,7 +15,7 @@
 
 int fork(void);
 int exec(const char *filename, char **argv);
-void switch_task(int save);
+void switch_task(void);
 void tasking_init(void);
 void exit(int status);
 

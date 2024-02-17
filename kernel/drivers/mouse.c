@@ -6,10 +6,10 @@
 #include <interrupts.h>
 #include <typedefs.h>
 
-u8 mouse_cycle = 0; // unsigned char
-u8 mouse_u8[3];     // signed char
-u8 mouse_x = 0;     // signed char
-u8 mouse_y = 0;     // signed char
+u8 mouse_cycle = 0;
+u8 mouse_u8[3];
+u8 mouse_x = 0;
+u8 mouse_y = 0;
 vfs_inode_t *mouse_inode;
 vfs_fd_t *mouse_fd;
 
@@ -110,13 +110,12 @@ void mouse_write(u8 a_write) {
 }
 
 u8 mouse_read() {
-  // Get's response from mouse
   mouse_wait(0);
   return inb(0x60);
 }
 
 void install_mouse(void) {
-  u8 _status; // unsigned char
+  u8 _status;
   disable_interrupts();
   // Enable the auxiliary mouse device
   mouse_wait(1);
