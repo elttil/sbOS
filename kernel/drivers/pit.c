@@ -4,7 +4,8 @@
 #define PIT_IO_MODE_COMMAND 0x43
 
 u64 clock_num_ms_ticks = 0;
-u64 pit_counter = 0;
+u32 pit_counter = 0;
+u32 switch_counter = 0;
 u16 hertz;
 
 u64 pit_num_ms(void) {
@@ -22,7 +23,8 @@ u16 read_pit_count(void) {
   return count;
 }
 
-void set_pit_count(u16 hertz) {
+void set_pit_count(u16 _hertz) {
+  hertz = _hertz;
   u16 divisor = 1193180 / hertz;
 
   /*
@@ -44,9 +46,13 @@ void set_pit_count(u16 hertz) {
 void int_clock(reg_t regs) {
   outb(0x20, 0x20);
   pit_counter++;
-  if (pit_counter*1000 >= hertz) {
+  if (pit_counter * 1000 >= hertz) {
     pit_counter = 0;
-    clock_num_ms_ticks++;
+    clock_num_ms_ticks += 1000 / hertz;
+  }
+  switch_counter++;
+  if (switch_counter * 500 >= hertz) {
+    switch_counter = 0;
     switch_task();
   }
 }
