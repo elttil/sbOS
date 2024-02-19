@@ -1,14 +1,19 @@
 #include <fs/vfs.h>
 #include <halts.h>
+#include <interrupts.h>
+#include <lib/list.h>
 #include <poll.h>
 #include <sched/scheduler.h>
 
 int poll(struct pollfd *fds, size_t nfds, int timeout) {
   (void)timeout;
   int rc = 0;
-  int read_locks[nfds];
-  int write_locks[nfds];
-  int disconnect_locks[nfds];
+
+  disable_interrupts();
+
+  struct list *read_list = &get_current_task()->read_list;
+  struct list *write_list = &get_current_task()->write_list;
+  struct list *disconnect_list = &get_current_task()->disconnect_list;
   for (size_t i = 0; i < nfds; i++) {
     if (fds[i].fd < 0)
       continue;
@@ -16,26 +21,25 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     if (NULL == f) {
       continue;
     }
-    if (fds[i].events & POLLIN)
-      read_locks[i] = create_read_fdhalt(f);
-    if (fds[i].events & POLLOUT)
-      write_locks[i] = create_write_fdhalt(f);
-    if (fds[i].events & POLLHUP)
-      disconnect_locks[i] = create_disconnect_fdhalt(f);
+
+    if (fds[i].events & POLLIN) {
+      list_add(read_list, f->inode);
+    }
+    if (fds[i].events & POLLOUT) {
+      list_add(write_list, f->inode);
+    }
+    if (fds[i].events & POLLHUP) {
+      list_add(disconnect_list, f->inode);
+    }
   }
 
   switch_task();
+  disable_interrupts();
 
-  for (size_t i = 0; i < nfds; i++) {
-    if (fds[i].fd < 0)
-      continue;
-    if (fds[i].events & POLLIN)
-      unset_read_fdhalt(read_locks[i]);
-    if (fds[i].events & POLLOUT)
-      unset_write_fdhalt(write_locks[i]);
-    if (fds[i].events & POLLHUP)
-      unset_disconnect_fdhalt(disconnect_locks[i]);
-  }
+  list_reset(read_list);
+  list_reset(write_list);
+  list_reset(disconnect_list);
+
   for (size_t i = 0; i < nfds; i++) {
     if (0 > fds[i].fd) {
       fds[i].revents = 0;
@@ -56,5 +60,6 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
         rc++;
     }
   }
+  enable_interrupts();
   return rc;
 }

@@ -44,11 +44,11 @@ void set_pit_count(u16 hertz) {
 void int_clock(reg_t regs) {
   outb(0x20, 0x20);
   pit_counter++;
-  if (pit_counter >= hertz / 1000) {
+  if (pit_counter*1000 >= hertz) {
     pit_counter = 0;
     clock_num_ms_ticks++;
+    switch_task();
   }
-  switch_task();
 }
 
 void pit_install(void) {

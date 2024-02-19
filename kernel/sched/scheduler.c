@@ -119,6 +119,10 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   r->tcb = kcalloc(1, sizeof(struct TCB));
   r->tcb->CR3 = r->cr3->physical_address;
 
+  list_init(&r->read_list);
+  list_init(&r->write_list);
+  list_init(&r->disconnect_list);
+
   // Temporarily switch to the page directory to be able to place the
   // "entry_instruction_pointer" onto the stack.
 
@@ -155,12 +159,6 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     } else {
       r->file_descriptors[i] = NULL;
     }
-    if (i < 20)
-      r->signal_handlers[i] = NULL;
-    r->read_halt_inode[i] = NULL;
-    r->write_halt_inode[i] = NULL;
-    r->disconnect_halt_inode[i] = NULL;
-    r->maps[i] = NULL;
   }
   return r;
 }
@@ -332,8 +330,7 @@ int is_halted(process_t *process) {
     if (process->halts[i])
       return 1;
 
-  if (isset_fdhalt(process->read_halt_inode, process->write_halt_inode,
-                   process->disconnect_halt_inode)) {
+  if (isset_fdhalt(process)) {
     return 1;
   }
   return 0;
@@ -349,7 +346,7 @@ process_t *next_task(process_t *c) {
       if (1 == loop) {
         return s;
       }
-      loop = 1;
+      //      loop = 1;
     }
     c = c->next;
     if (!c)
@@ -387,8 +384,8 @@ void switch_task() {
   if (!current_task) {
     return;
   }
-  disable_interrupts();
 
+  disable_interrupts();
   current_task = next_task((process_t *)current_task);
   active_directory = current_task->cr3;
 

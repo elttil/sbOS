@@ -1,9 +1,11 @@
+typedef struct Process process_t;
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <halts.h>
 #include <ipc.h>
+#include <lib/list.h>
 #include <lib/stack.h>
 #include <mmu.h>
 #include <signal.h>
@@ -37,8 +39,6 @@ typedef struct {
   uintptr_t handler_ip;
 } signal_t;
 
-typedef struct Process process_t;
-
 typedef struct TCB {
   uint32_t ESP;
   uint32_t CR3;
@@ -64,9 +64,10 @@ struct Process {
   PageDirectory *cr3;
   struct IpcMailbox ipc_mailbox;
   vfs_fd_t *file_descriptors[100];
-  vfs_inode_t *read_halt_inode[100];
-  vfs_inode_t *write_halt_inode[100];
-  vfs_inode_t *disconnect_halt_inode[100];
+
+  struct list read_list;
+  struct list write_list;
+  struct list disconnect_list;
 
   struct stack restore_context_stack;
   struct stack signal_stack;
