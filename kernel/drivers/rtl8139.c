@@ -146,8 +146,9 @@ void get_mac_address(u8 mac[6]) {
 
 u8 rtl8139_get_transmit_status(u32 base_address) {
   u32 status_register = inl(base_address + 0x3E);
-  if ((status_register >> 3) & 0x1)
+  if ((status_register >> 3) & 0x1) {
     kprintf("transmit error :(\n");
+  }
   u8 status = (status_register >> 2) & 0x1;
   outl(base_address + 0x3E, 0x5);
   return status;
@@ -200,6 +201,7 @@ void rtl8139_init(void) {
 
   // ksbrk() seems to have the magical ability of disabling interrupts?
   // I have no fucking clue why that happens and it was a pain to debug.
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 4; i++) {
     send_buffers[i] = ksbrk(0x1000);
+  }
 }

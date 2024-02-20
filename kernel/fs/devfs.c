@@ -29,9 +29,11 @@ vfs_inode_t *devfs_add_file(
 }
 
 vfs_inode_t *devfs_open(const char *file) {
-  for (int i = 0; i < num_files; i++)
-    if (isequal_n(files[i].name, file, strlen(files[i].name)))
+  for (int i = 0; i < num_files; i++) {
+    if (isequal_n(files[i].name, file, strlen(files[i].name))) {
       return files[i].inode;
+    }
+  }
 
   return 0;
 }
@@ -53,8 +55,9 @@ int stdout_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)fd;
 
   int rc = len;
-  for (; len--;)
+  for (; len--;) {
     putc(*buffer++);
+  }
   return rc;
 }
 
@@ -63,8 +66,9 @@ int serial_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)fd;
 
   int rc = len;
-  for (; len--;)
+  for (; len--;) {
     write_serial(*buffer++);
+  }
   return rc;
 }
 

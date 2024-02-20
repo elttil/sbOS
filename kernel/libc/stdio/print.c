@@ -23,12 +23,14 @@ int kprint_hex(u64 num) {
 
   char str[16] = {0};
   int i = 0;
-  for (; num != 0 && i < 16; i++, num /= 16)
+  for (; num != 0 && i < 16; i++, num /= 16) {
     str[i] = HEX_SET[(num % 16)];
+  }
 
   c += i;
-  for (i--; i >= 0; i--)
+  for (i--; i >= 0; i--) {
     putc(str[i]);
+  }
 
   return c;
 }
@@ -42,12 +44,14 @@ int kprint_int(int num) {
   }
   char str[10];
   int i = 0;
-  for (; num != 0 && i < 10; i++, num /= 10)
+  for (; num != 0 && i < 10; i++, num /= 10) {
     str[i] = (num % 10) + '0';
+  }
 
   c += i;
-  for (i--; i >= 0; i--)
+  for (i--; i >= 0; i--) {
     putc(str[i]);
+  }
   return c;
 }
 
@@ -65,8 +69,9 @@ int kprintf(const char *format, ...) {
     }
 
     char flag = *(s + 1);
-    if ('\0' == flag)
+    if ('\0' == flag) {
       break;
+    }
 
     switch (flag) {
     case 'c':

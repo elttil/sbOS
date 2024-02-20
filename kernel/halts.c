@@ -5,6 +5,9 @@
 int isset_fdhalt(process_t *p) {
   int blocked = 0;
   struct list *read_list = &p->read_list;
+  struct list *write_list = &p->write_list;
+  struct list *disconnect_list = &p->disconnect_list;
+
   for (int i = 0;; i++) {
     vfs_inode_t *inode;
     if (!list_get(read_list, i, (void **)&inode)) {
@@ -15,7 +18,6 @@ int isset_fdhalt(process_t *p) {
     }
     blocked = 1;
   }
-  struct list *write_list = &p->write_list;
   for (int i = 0;; i++) {
     vfs_inode_t *inode;
     if (!list_get(write_list, i, (void **)&inode)) {
@@ -26,7 +28,6 @@ int isset_fdhalt(process_t *p) {
     }
     blocked = 1;
   }
-  struct list *disconnect_list = &p->disconnect_list;
   for (int i = 0;; i++) {
     vfs_inode_t *inode;
     if (!list_get(disconnect_list, i, (void **)&inode)) {

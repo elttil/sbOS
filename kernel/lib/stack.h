@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-//struct entry;
-//struct stack;
+// struct entry;
+// struct stack;
 
 struct entry {
   void *ptr;

@@ -24,15 +24,17 @@ int syscall_exec(SYS_EXEC_PARAMS *args) {
   }
 
   char **new_argv = kallocarray(argc + 1, sizeof(char *));
-  for (int i = 0; i < argc; i++)
+  for (int i = 0; i < argc; i++) {
     new_argv[i] = copy_and_allocate_user_string(args->argv[i]);
+  }
 
   new_argv[argc] = NULL;
 
   exec(filename, new_argv);
   kfree((void *)filename);
-  for (int i = 0; i < argc; i++)
+  for (int i = 0; i < argc; i++) {
     kfree(new_argv[i]);
+  }
   kfree(new_argv);
   return -1;
 }
@@ -52,8 +54,9 @@ int syscall_pread(SYS_PREAD_PARAMS *args) {
 
 int syscall_read(SYS_READ_PARAMS *args) {
   vfs_fd_t *fd = get_vfs_fd(args->fd);
-  if (!fd)
+  if (!fd) {
     return -EBADF;
+  }
   int rc = vfs_pread(args->fd, args->buf, args->count, fd->offset);
   fd->offset += rc;
   return rc;
@@ -71,19 +74,22 @@ void syscall_exit(int status) {
 void syscall_wait(int *status) {
   disable_interrupts();
   if (!get_current_task()->child) {
-    if (status)
+    if (status) {
       *status = -1;
+    }
     return;
   }
   if (get_current_task()->child->dead) {
-    if (status)
+    if (status) {
       *status = get_current_task()->child_rc;
+    }
     return;
   }
   get_current_task()->halts[WAIT_CHILD_HALT] = 1;
   switch_task();
-  if (status)
+  if (status) {
     *status = get_current_task()->child_rc;
+  }
 }
 
 int syscall_fork(void) {
@@ -98,8 +104,9 @@ void *align_page(void *a);
 
 int syscall_brk(void *addr) {
   void *end = get_current_task()->data_segment_end;
-  if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW, NULL))
+  if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW, NULL)) {
     return -ENOMEM;
+  }
   get_current_task()->data_segment_end = align_page(addr);
   return 0;
 }
@@ -110,8 +117,9 @@ void *syscall_sbrk(uintptr_t increment) {
   void *n =
       (void *)((uintptr_t)(get_current_task()->data_segment_end) + increment);
   int rc2;
-  if (0 > (rc2 = syscall_brk(n)))
+  if (0 > (rc2 = syscall_brk(n))) {
     return (void *)rc2;
+  }
   return rc;
 }
 

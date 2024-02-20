@@ -43,8 +43,9 @@ int identify(int master_slave) {
   outb(io_base + LBAmid, 0);
   outb(io_base + LBAhi, 0);
   outb(io_base + COMMAND_PORT, IDENTIFY);
-  if (0 == inb(io_base + STATUS_PORT))
+  if (0 == inb(io_base + STATUS_PORT)) {
     return 0; // Drive does not exist
+  }
 
   for (; 0 != (inb(io_base + STATUS_PORT) & STATUS_BSY);)
     ;
@@ -67,8 +68,9 @@ int identify(int master_slave) {
       return -2;
     }
 
-    if ((status & STATUS_DRQ))
+    if ((status & STATUS_DRQ)) {
       break;
+    }
   }
 
   // The data is ready to read from the Data
@@ -86,8 +88,9 @@ int poll_status(void) {
     // Read the Regular Status port until...
     // We read this 15 times to give some
     // time for the drive to catch up.
-    for (int n = 0; n < 15; n++)
+    for (int n = 0; n < 15; n++) {
       status = inb(io_base + STATUS_PORT);
+    }
 
     // ERR or
     // DF sets
@@ -98,8 +101,9 @@ int poll_status(void) {
 
     // BSY clears
     // DRQ sets
-    if (0 == (status & STATUS_BSY) && 0 != (status & STATUS_DRQ))
+    if (0 == (status & STATUS_BSY) && 0 != (status & STATUS_DRQ)) {
       break;
+    }
   }
   return 1;
 }
@@ -160,8 +164,9 @@ void ata_write_lba28(u32 lba, u32 sector_count, volatile const u8 *buffer) {
   // Wait for BSY to clear
   for (;;) {
     u16 status = inb(io_base + STATUS_PORT);
-    if (!(status & STATUS_BSY))
+    if (!(status & STATUS_BSY)) {
       break;
+    }
   }
 }
 

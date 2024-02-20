@@ -81,10 +81,12 @@ bool get_task_from_pid(u32 pid, process_t **out) {
 }
 
 void set_signal_handler(int sig, void (*handler)(int)) {
-  if (sig >= 20 || sig < 0)
+  if (sig >= 20 || sig < 0) {
     return;
-  if (9 == sig)
+  }
+  if (9 == sig) {
     return;
+  }
   current_task->signal_handlers[sig] = handler;
 }
 
@@ -93,28 +95,18 @@ void insert_eip_on_stack(u32 cr3, u32 address, u32 value);
 process_t *create_process(process_t *p, u32 esp, u32 eip) {
   process_t *r;
   r = kcalloc(1, sizeof(process_t));
-  r->dead = 0;
   r->pid = next_pid++;
-  r->esp = r->ebp = 0;
-  r->eip = 0;
-  r->sleep_until = 0;
-  r->is_interrupted = 0;
-  r->is_halted = 0;
   if (!p) {
     assert(1 == next_pid);
     strncpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
-  } else
+  } else {
     strncpy(r->program_name, "[Not yet named]",
             sizeof(current_task->program_name));
+  }
 
   r->cr3 = (p) ? clone_directory(get_active_pagedirectory())
                : get_active_pagedirectory();
-  r->next = 0;
-  r->incoming_signal = 0;
   r->parent = p;
-  r->child = NULL;
-  r->halt_list = NULL;
-  r->interrupt_handler = NULL;
 
   r->tcb = kcalloc(1, sizeof(struct TCB));
   r->tcb->CR3 = r->cr3->physical_address;
@@ -139,17 +131,12 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     r->tcb->ESP = esp;
   }
 
-  mmu_allocate_region((void *)(0x80000000 - 0x8000), 0x8000, MMU_FLAG_RW,
-                      r->cr3);
-  r->signal_handler_stack = 0x80000000;
-
   if (p) {
     strcpy(r->current_working_directory, p->current_working_directory);
   } else {
     strcpy(r->current_working_directory, "/");
   }
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
-  memset((void *)r->halts, 0, 2 * sizeof(u32));
   for (int i = 0; i < 100; i++) {
     if (p) {
       r->file_descriptors[i] = p->file_descriptors[i];
@@ -164,14 +151,18 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
 }
 
 int get_free_fd(process_t *p, int allocate) {
-  if (!p)
+  if (!p) {
     p = (process_t *)current_task;
+  }
   int i;
-  for (i = 0; i < 100; i++)
-    if (!p->file_descriptors[i])
+  for (i = 0; i < 100; i++) {
+    if (!p->file_descriptors[i]) {
       break;
-  if (p->file_descriptors[i])
+    }
+  }
+  if (p->file_descriptors[i]) {
     return -1;
+  }
   if (allocate) {
     vfs_fd_t *fd = p->file_descriptors[i] = kmalloc(sizeof(vfs_fd_t));
     fd->inode = kmalloc(sizeof(vfs_inode_t));
@@ -187,8 +178,9 @@ void tasking_init(void) {
 
 int i = 0;
 void free_process(void) {
-  kprintf("pid: %x\n", get_current_task()->pid);
-  kprintf("Exiting process: %s\n", get_current_task()->program_name);
+  process_t *p = get_current_task();
+  kprintf("pid: %x\n", p->pid);
+  kprintf("Exiting process: %s\n", p->program_name);
   // free_process() will purge all contents such as allocated frames
   // out of the current process. This will be called by exit() and
   // exec*().
@@ -197,14 +189,19 @@ void free_process(void) {
   // underlying frames as "unused".
   for (int i = 0; i < 100; i++) {
     vfs_close(i);
-    if (!current_task->maps[i])
+    if (!current_task->maps[i]) {
       continue;
+    }
     MemoryMap *m = current_task->maps[i];
     mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
   }
 
   // NOTE: Kernel stuff begins at 0x90000000
   mmu_free_address_range((void *)0x1000, 0x90000000);
+
+  list_free(&p->read_list);
+  list_free(&p->write_list);
+  list_free(&p->disconnect_list);
 }
 
 void exit(int status) {
@@ -215,8 +212,9 @@ void exit(int status) {
   }
   process_t *new_task = current_task;
   for (; new_task == current_task;) {
-    if (!new_task->next)
+    if (!new_task->next) {
       new_task = ready_queue;
+    }
     new_task = new_task->next;
   }
 
@@ -314,8 +312,9 @@ int fork(void) {
   }
 
   process_t *tmp_task = (process_t *)ready_queue;
-  for (; tmp_task->next;)
+  for (; tmp_task->next;) {
     tmp_task = tmp_task->next;
+  }
 
   tmp_task->next = new_task;
 
@@ -326,9 +325,11 @@ int fork(void) {
 }
 
 int is_halted(process_t *process) {
-  for (int i = 0; i < 2; i++)
-    if (process->halts[i])
+  for (int i = 0; i < 2; i++) {
+    if (process->halts[i]) {
       return 1;
+    }
+  }
 
   if (isset_fdhalt(process)) {
     return 1;
@@ -339,24 +340,17 @@ int is_halted(process_t *process) {
 extern PageDirectory *active_directory;
 
 process_t *next_task(process_t *c) {
-  process_t *s = c;
-  int loop = 0;
   for (;;) {
-    if (s == c) {
-      if (1 == loop) {
-        return s;
-      }
-      //      loop = 1;
-    }
     c = c->next;
-    if (!c)
+    if (!c) {
       c = ready_queue;
-    if (c->incoming_signal)
-      break;
-    if (c->sleep_until > pit_num_ms())
+    }
+    if (c->sleep_until > pit_num_ms()) {
       continue;
-    if (is_halted(c) || c->dead)
+    }
+    if (is_halted(c) || c->dead) {
       continue;
+    }
     break;
   }
   return c;
@@ -365,18 +359,21 @@ process_t *next_task(process_t *c) {
 int kill(pid_t pid, int sig) {
   process_t *p = current_task;
   p = p->next;
-  if (!p)
+  if (!p) {
     p = ready_queue;
-  for (; p->pid != pid;) {
-    if (p == current_task)
-      break;
-    p = p->next;
-    if (!p)
-      p = ready_queue;
   }
-  if (p->pid != pid)
+  for (; p->pid != pid;) {
+    if (p == current_task) {
+      break;
+    }
+    p = p->next;
+    if (!p) {
+      p = ready_queue;
+    }
+  }
+  if (p->pid != pid) {
     return -ESRCH;
-  p->incoming_signal = sig;
+  }
   return 0;
 }
 
@@ -393,9 +390,11 @@ void switch_task() {
 }
 
 MemoryMap **get_free_map(void) {
-  for (int i = 0; i < 100; i++)
-    if (!(current_task->maps[i]))
+  for (int i = 0; i < 100; i++) {
+    if (!(current_task->maps[i])) {
       return &(current_task->maps[i]);
+    }
+  }
   assert(0);
   return NULL;
 }
@@ -413,8 +412,9 @@ void *allocate_virtual_user_memory(size_t length, int prot, int flags) {
   (void)prot;
   (void)flags;
   void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc)
+  if ((void *)-1 == rc) {
     return (void *)-1;
+  }
 
   mmu_allocate_region(rc, length, MMU_FLAG_RW, NULL);
   return rc;
@@ -422,8 +422,9 @@ void *allocate_virtual_user_memory(size_t length, int prot, int flags) {
 
 void *user_kernel_mapping(void *kernel_addr, size_t length) {
   void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc)
+  if ((void *)-1 == rc) {
     return (void *)-1;
+  }
 
   mmu_map_directories(rc, NULL, kernel_addr, NULL, length);
   return rc;
@@ -431,8 +432,9 @@ void *user_kernel_mapping(void *kernel_addr, size_t length) {
 
 void *create_physical_mapping(void **physical_addresses, size_t length) {
   void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc)
+  if ((void *)-1 == rc) {
     return (void *)-1;
+  }
   int n = (uintptr_t)align_page((void *)length) / 0x1000;
   for (int i = 0; i < n; i++) {
     mmu_map_physical(rc + (i * 0x1000), NULL, physical_addresses[i], 0x1000);
@@ -481,8 +483,9 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
                                // code.
   }
 
-  if (length > vmobject->size)
+  if (length > vmobject->size) {
     length = vmobject->size;
+  }
   void *rc = create_physical_mapping(vmobject->object, length);
   free_map->u_address = rc;
   free_map->k_address = NULL;

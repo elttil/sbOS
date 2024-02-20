@@ -1,5 +1,5 @@
-#include <lib/buffered_write.h>
 #include <kmalloc.h>
+#include <lib/buffered_write.h>
 
 int buffered_init(struct buffered *ctx, u16 size) {
   ctx->data = kmalloc(size);

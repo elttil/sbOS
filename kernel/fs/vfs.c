@@ -58,11 +58,14 @@ int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
                   vfs_fd_t **fd) {
   process_t *p = (process_t *)get_current_task();
   int i;
-  for (i = 0; i < 100; i++)
-    if (!p->file_descriptors[i])
+  for (i = 0; i < 100; i++) {
+    if (!p->file_descriptors[i]) {
       break;
-  if (p->file_descriptors[i])
+    }
+  }
+  if (p->file_descriptors[i]) {
     return -1;
+  }
   vfs_fd_t *r = kmalloc(sizeof(vfs_fd_t));
   r->flags = flags;
   r->mode = mode;
@@ -71,8 +74,9 @@ int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
   r->is_tty = is_tty;
   r->offset = 0;
   p->file_descriptors[i] = r;
-  if (fd)
+  if (fd) {
     *fd = r;
+  }
   return i;
 }
 
@@ -81,16 +85,18 @@ int vfs_create_file(const char *file) {
   int length = 0;
   for (int i = 0; i < num_mounts; i++) {
     int path_len = strlen(mounts[i].path);
-    if (path_len <= length)
+    if (path_len <= length) {
       continue;
+    }
 
     if (isequal_n(mounts[i].path, file, path_len)) {
       length = path_len;
       file_mount = &mounts[i];
     }
   }
-  if (1 != length)
+  if (1 != length) {
     file += length;
+  }
 
   if (!file_mount) {
     kprintf("vfs_internal_open could not find mounted path for file : %s\n",
@@ -106,16 +112,18 @@ vfs_inode_t *vfs_internal_open(const char *file) {
   int length = 0;
   for (int i = 0; i < num_mounts; i++) {
     int path_len = strlen(mounts[i].path);
-    if (path_len <= length)
+    if (path_len <= length) {
       continue;
+    }
 
     if (isequal_n(mounts[i].path, file, path_len)) {
       length = path_len;
       file_mount = &mounts[i];
     }
   }
-  if (1 != length)
+  if (1 != length) {
     file += length;
+  }
 
   if (!file_mount) {
     kprintf("vfs_internal_open could not find mounted path for file : %s\n",
@@ -130,8 +138,9 @@ vfs_inode_t *vfs_internal_open(const char *file) {
 // Does canonicalization of absolute paths
 int vfs_clean_path(const char *path, char *result) {
   // It has to be a absolute path
-  if ('/' != *path)
+  if ('/' != *path) {
     return 0;
+  }
   const char *result_start = result;
   int start_directory = 0;
   int should_insert_slash = 0;
@@ -149,8 +158,9 @@ int vfs_clean_path(const char *path, char *result) {
           // "/../foo". A "/.." should become a "/"
           // Therefore it skips going back to the parent
           if (*path == '/') {
-            if (result_start == result)
+            if (result_start == result) {
               return 0;
+            }
             result--;
           }
         } else {
@@ -165,8 +175,9 @@ int vfs_clean_path(const char *path, char *result) {
       }
     }
     start_directory = ('/' == *path);
-    if ('\0' == *path)
+    if ('\0' == *path) {
       break;
+    }
     *result = *path;
     result++;
   }
@@ -196,8 +207,9 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
 
 int vfs_fstat(int fd, struct stat *buf) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd);
-  if (!fd_ptr)
+  if (!fd_ptr) {
     return -EBADF;
+  }
   assert(fd_ptr->inode->stat);
   return fd_ptr->inode->stat(fd_ptr, buf);
 }
@@ -207,8 +219,9 @@ int vfs_chdir(const char *path) {
   char *resolved_path = vfs_resolve_path(path, tmp_path);
   {
     int tmp_fd = vfs_open(resolved_path, O_READ, 0);
-    if (0 > tmp_fd)
+    if (0 > tmp_fd) {
       return tmp_fd;
+    }
     struct stat stat_result;
     vfs_fstat(tmp_fd, &stat_result);
     if (STAT_DIR != stat_result.st_mode) {
@@ -218,8 +231,10 @@ int vfs_chdir(const char *path) {
     vfs_close(tmp_fd);
   }
   strcpy(get_current_task()->current_working_directory, resolved_path);
-  if ('/' != resolved_path[strlen(resolved_path)] && strlen(resolved_path) != 1)
+  if ('/' != resolved_path[strlen(resolved_path)] &&
+      strlen(resolved_path) != 1) {
     strcat(get_current_task()->current_working_directory, "/");
+  }
   return 0;
 }
 
@@ -228,16 +243,18 @@ int vfs_mkdir(const char *path, int mode) {
   int length = 0;
   for (int i = 0; i < num_mounts; i++) {
     int path_len = strlen(mounts[i].path);
-    if (path_len <= length)
+    if (path_len <= length) {
       continue;
+    }
 
     if (isequal_n(mounts[i].path, path, path_len)) {
       length = path_len;
       file_mount = &mounts[i];
     }
   }
-  if (1 != length)
+  if (1 != length) {
     path += length;
+  }
 
   if (!file_mount) {
     kprintf("vfs_internal_open could not find mounted path for file : %s\n",
@@ -283,8 +300,9 @@ int vfs_close(int fd) {
   get_current_task()->file_descriptors[fd] = 0;
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
-    if (fd_ptr->inode->close)
+    if (fd_ptr->inode->close) {
       fd_ptr->inode->close(fd_ptr);
+    }
 
     kfree(fd_ptr);
   }
@@ -292,8 +310,9 @@ int vfs_close(int fd) {
 }
 
 int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
-  if (!(vfs_fd->flags & O_READ))
+  if (!(vfs_fd->flags & O_READ)) {
     return -EBADF;
+  }
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
 }
 
@@ -308,8 +327,9 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
     return -EBADF;
   }
   vfs_fd_t *vfs_fd = get_current_task()->file_descriptors[fd];
-  if (!vfs_fd)
+  if (!vfs_fd) {
     return -EBADF;
+  }
   int rc = raw_vfs_pread(vfs_fd, buf, count, offset);
   if (-EAGAIN == rc && count > 0) {
     if (!(vfs_fd->flags & O_NONBLOCK)) {
@@ -333,8 +353,9 @@ int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
 
 int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
   vfs_fd_t *vfs_fd = get_vfs_fd(fd);
-  if (!vfs_fd)
+  if (!vfs_fd) {
     return -EBADF;
+  }
   if (!(vfs_fd->flags & O_WRITE)) {
     return -EBADF;
   }
@@ -343,8 +364,9 @@ int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
 
 vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
   vfs_fd_t *vfs_fd = get_vfs_fd(fd);
-  if (!vfs_fd)
+  if (!vfs_fd) {
     return NULL;
+  }
   vfs_vm_object_t *r = vfs_fd->inode->get_vm_object(length, offset, vfs_fd);
   return r;
 }
@@ -358,15 +380,19 @@ int vfs_dup2(int org_fd, int new_fd) {
 
 int vfs_ftruncate(int fd, size_t length) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd);
-  if (!fd_ptr)
+  if (!fd_ptr) {
     return -EBADF;
-  if (!(fd_ptr->flags & O_READ))
+  }
+  if (!(fd_ptr->flags & O_READ)) {
     return -EINVAL;
+  }
   vfs_inode_t *inode = fd_ptr->inode;
-  if (!inode)
+  if (!inode) {
     return -EINVAL;
-  if (!inode->truncate)
+  }
+  if (!inode->truncate) {
     return -EINVAL;
+  }
 
   return inode->truncate(fd_ptr, length);
 }

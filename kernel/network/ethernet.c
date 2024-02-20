@@ -28,8 +28,9 @@ u32 crc32(const char *buf, size_t len) {
         if (rem & 1) {
           rem >>= 1;
           rem ^= 0xedb88320;
-        } else
+        } else {
           rem >>= 1;
+        }
       }
       table[i] = rem;
     }

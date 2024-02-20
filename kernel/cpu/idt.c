@@ -40,8 +40,9 @@ void format_descriptor(u32 offset, u16 code_segment, u8 type_attribute,
 }
 
 __attribute__((no_caller_saved_registers)) void EOI(u8 irq) {
-  if (irq > 7)
+  if (irq > 7) {
     outb(SLAVE_PIC_COMMAND_PORT, 0x20);
+  }
 
   outb(MASTER_PIC_COMMAND_PORT, 0x20);
 }
@@ -83,23 +84,27 @@ void page_fault(reg_t *regs) {
   kprintf("Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
 
-  if (regs->error_code & (1 << 0))
+  if (regs->error_code & (1 << 0)) {
     kprintf("page-protection violation\n");
-  else
+  } else {
     kprintf("non-present page\n");
+  }
 
-  if (regs->error_code & (1 << 1))
+  if (regs->error_code & (1 << 1)) {
     kprintf("write access\n");
-  else
+  } else {
     kprintf("read access\n");
+  }
 
-  if (regs->error_code & (1 << 2))
+  if (regs->error_code & (1 << 2)) {
     kprintf("CPL = 3\n");
+  }
 
-  if (regs->error_code & (1 << 4))
+  if (regs->error_code & (1 << 4)) {
     kprintf("Attempted instruction fetch\n");
+  }
 
-  dump_backtrace(5);
+  dump_backtrace(12);
   asm("hlt");
   for (;;)
     ;
@@ -161,8 +166,9 @@ void IRQ_set_mask(unsigned char IRQline) {
   u16 port;
   u8 value;
   port = (IRQline < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
-  if (IRQline >= 8)
+  if (IRQline >= 8) {
     IRQline -= 8;
+  }
   value = inb(port) | (1 << IRQline);
   outb(port, value);
 }
@@ -217,7 +223,7 @@ typedef int (*interrupt_handler)(reg_t *);
 interrupt_handler list_of_handlers[256];
 
 void int_handler(reg_t *r) {
-  interrupt_handler handler = list_of_handlers[r->int_no];
+  const interrupt_handler handler = list_of_handlers[r->int_no];
   if (NULL == handler) {
     kprintf("[NOTE] Interrupt(0x%x) called but has no interrupt handler",
             r->int_no);

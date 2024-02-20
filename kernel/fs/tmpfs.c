@@ -14,8 +14,9 @@ void tmp_close(vfs_fd_t *fd) {
 int tmp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   tmp_inode *calling_file = fd->inode->internal_object;
   tmp_inode *child_file = calling_file->read_inode->internal_object;
-  if (child_file->is_closed)
+  if (child_file->is_closed) {
     return -EPIPE;
+  }
 
   int rc = fifo_object_write(buffer, offset, len, child_file->fifo);
   calling_file->read_inode->has_data = child_file->fifo->has_data;
@@ -26,8 +27,9 @@ int tmp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 int tmp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   tmp_inode *calling_file = fd->inode->internal_object;
   tmp_inode *child_file = calling_file->read_inode->internal_object;
-  if (calling_file->is_closed)
+  if (calling_file->is_closed) {
     return -EPIPE;
+  }
 
   int rc = fifo_object_read(buffer, offset, len, calling_file->fifo);
   fd->inode->has_data = calling_file->fifo->has_data;

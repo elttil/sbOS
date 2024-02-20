@@ -10,8 +10,9 @@ void chacha_block(u32 out[16], u32 const in[16]) {
   int i;
   u32 x[16];
 
-  for (i = 0; i < 16; ++i)
+  for (i = 0; i < 16; ++i) {
     x[i] = in[i];
+  }
   for (i = 0; i < ROUNDS; i += 2) {
     QR(x[0], x[4], x[8], x[12]);
     QR(x[1], x[5], x[9], x[13]);
@@ -23,6 +24,7 @@ void chacha_block(u32 out[16], u32 const in[16]) {
     QR(x[2], x[7], x[8], x[13]);
     QR(x[3], x[4], x[9], x[14]);
   }
-  for (i = 0; i < 16; ++i)
+  for (i = 0; i < 16; ++i) {
     out[i] = x[i] + in[i];
+  }
 }

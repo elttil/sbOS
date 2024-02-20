@@ -90,12 +90,14 @@ u8 capital_ascii_table[] = {
 vfs_inode_t *kb_inode;
 
 u8 keyboard_to_ascii(u16 key, u8 capital) {
-  if ((key & 0xFF) > sizeof(ascii_table))
+  if ((key & 0xFF) > sizeof(ascii_table)) {
     return 'U';
-  if (capital)
+  }
+  if (capital) {
     return capital_ascii_table[key & 0xFF];
-  else
+  } else {
     return ascii_table[key & 0xFF];
+  }
 }
 
 u8 is_shift_down = 0;

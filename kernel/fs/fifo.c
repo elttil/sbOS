@@ -28,12 +28,14 @@ int fifo_object_read(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file) {
     return -EAGAIN;
   }
 
-  if (len == 0)
+  if (len == 0) {
     return 0;
+  }
 
   file->can_write = 1;
-  if (len > file->write_len)
+  if (len > file->write_len) {
     len = file->write_len;
+  }
 
   memcpy(buffer, file->buffer, len);
   // Shift bufffer to the left

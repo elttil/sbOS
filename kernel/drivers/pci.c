@@ -13,8 +13,9 @@
 // 0 Failure
 u8 pci_get_bar(const struct PCI_DEVICE *device, u8 bar_index,
                struct PCI_BaseAddressRegister *bar) {
-  if (bar_index > 5)
+  if (bar_index > 5) {
     return 0;
+  }
   u8 offset = 0x10 + bar_index * sizeof(u32);
   u32 physical_bar = pci_config_read32(device, 0, offset);
   u32 original_bar = physical_bar;
@@ -90,10 +91,12 @@ u8 pci_devices_by_id(u8 class_id, u8 subclass_id,
       u16 class_info = pci_config_read32(pci_device, 0, 0x8) >> 16;
       u16 h_classcode = (class_info & 0xFF00) >> 8;
       u16 h_subclass = (class_info & 0x00FF);
-      if (h_classcode != class_id)
+      if (h_classcode != class_id) {
         continue;
-      if (h_subclass != subclass_id)
+      }
+      if (h_subclass != subclass_id) {
         continue;
+      }
 
       u32 device_vendor = pci_config_read32(pci_device, 0, 0);
       pci_device->vendor = (device_vendor & 0xFFFF);
@@ -120,10 +123,12 @@ int pci_populate_device_struct(u16 vendor, u16 device,
       tmp.bus = bus;
       tmp.slot = slot;
       u32 device_vendor = pci_config_read32(&tmp, 0, 0);
-      if (vendor != (device_vendor & 0xFFFF))
+      if (vendor != (device_vendor & 0xFFFF)) {
         continue;
-      if (device != (device_vendor >> 16))
+      }
+      if (device != (device_vendor >> 16)) {
         continue;
+      }
       pci_device->bus = bus;
       pci_device->slot = slot;
       u32 bar0 = pci_config_read32(pci_device, 0, 0x10);

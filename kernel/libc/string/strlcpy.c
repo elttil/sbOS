@@ -8,12 +8,14 @@ size_t strlcpy(char *dst, const char *src, size_t dsize) {
   size_t n = dsize;
   const char *osrc = src;
   for (; n; n--) {
-    if ((*dst++ = *src++) == '\0')
+    if ((*dst++ = *src++) == '\0') {
       break;
+    }
   }
   if (n == 0) {
-    if (dsize != 0)
+    if (dsize != 0) {
       *dst = '\0'; /* NUL-terminate dst */
+    }
     while (*src++)
       ;
   }

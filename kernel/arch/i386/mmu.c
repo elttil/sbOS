@@ -77,14 +77,16 @@ u32 mmu_get_number_of_allocated_frames(void) {
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user) {
   uintptr_t address = (uintptr_t)ptr;
-  if (!directory)
+  if (!directory) {
     directory = get_active_pagedirectory();
+  }
   address /= 0x1000;
 
   u32 table_index = address / 1024;
   if (!directory->tables[table_index]) {
-    if (!create_new_page)
+    if (!create_new_page) {
       return 0;
+    }
 
     u32 physical;
     directory->tables[table_index] =
@@ -121,8 +123,9 @@ void *next_page(void *ptr) {
 }
 
 void *align_page(void *a) {
-  if ((uintptr_t)a & (PAGE_SIZE - 1))
+  if ((uintptr_t)a & (PAGE_SIZE - 1)) {
     return next_page(a);
+  }
 
   return a;
 }
@@ -135,12 +138,15 @@ void flush_tlb(void) {
 
 u32 first_free_frame(void) {
   for (u32 i = 1; i < INDEX_FROM_BIT(num_of_frames); i++) {
-    if (frames[i] == 0xFFFFFFFF)
+    if (frames[i] == 0xFFFFFFFF) {
       continue;
+    }
 
-    for (u32 c = 0; c < 32; c++)
-      if (!(frames[i] & ((u32)1 << c)))
+    for (u32 c = 0; c < 32; c++) {
+      if (!(frames[i] & ((u32)1 << c))) {
         return i * 32 + c;
+      }
+    }
   }
 
   kprintf("ERROR Num frames: %x\n", mmu_get_number_of_allocated_frames());
@@ -192,8 +198,9 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
   // copy data to it.
   for (u32 i = 0; i < 1024; i++) {
     // Find a unused table
-    if (src_directory->tables[i])
+    if (src_directory->tables[i]) {
       continue;
+    }
 
     // Link the table to the new table temporarily
     src_directory->tables[i] = new_table;
@@ -204,8 +211,9 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
     // For each page in the table copy all the data over.
     for (u32 c = 0; c < 1024; c++) {
       // Only copy pages that are used.
-      if (!src->pages[c].frame || !src->pages[c].present)
+      if (!src->pages[c].frame || !src->pages[c].present) {
         continue;
+      }
 
       u32 table_data_pointer = i << 22 | c << 12;
       u32 src_data_pointer = src_index << 22 | c << 12;
@@ -241,8 +249,9 @@ PageTable *copy_table(PageTable *src, u32 *physical_address) {
 }
 
 PageDirectory *clone_directory(PageDirectory *original) {
-  if (!original)
+  if (!original) {
     original = get_active_pagedirectory();
+  }
 
   u32 physical_address;
   PageDirectory *new_directory =
@@ -267,8 +276,9 @@ PageDirectory *clone_directory(PageDirectory *original) {
     }
 
     if (original->tables[i] == kernel_directory->tables[i] || i > 641) {
-      if (original->tables[i])
+      if (original->tables[i]) {
         assert(kernel_directory->tables[i]);
+      }
       new_directory->tables[i] = kernel_directory->tables[i];
       new_directory->physical_tables[i] = kernel_directory->physical_tables[i];
       continue;
@@ -287,8 +297,9 @@ void mmu_allocate_shared_kernel_region(void *rc, size_t n) {
   size_t num_pages = n / PAGE_SIZE;
   for (size_t i = 0; i <= num_pages; i++) {
     Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
-    if (!p->present || !p->frame)
+    if (!p->present || !p->frame) {
       allocate_frame(p, 0, 1);
+    }
   }
 }
 
@@ -296,8 +307,9 @@ void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length) {
   size_t num_pages = (uintptr_t)align_page((void *)length) / PAGE_SIZE;
   for (size_t i = 0; i < num_pages; i++) {
     Page *p = get_page(ptr + (i * PAGE_SIZE), NULL, PAGE_NO_ALLOCATE, 0);
-    if (!p)
+    if (!p) {
       return;
+    }
     p->frame = 0;
     p->present = 0;
   }
@@ -389,12 +401,15 @@ void mmu_free_address_range(void *ptr, size_t length) {
   size_t num_pages = (size_t)align_page((void *)length) / PAGE_SIZE;
   for (size_t i = 0; i < num_pages; i++, ptr += PAGE_SIZE) {
     Page *page = get_page(ptr, NULL, PAGE_NO_ALLOCATE, 0);
-    if (!page)
+    if (!page) {
       continue;
-    if (!page->present)
+    }
+    if (!page->present) {
       continue;
-    if (!page->frame)
+    }
+    if (!page->frame) {
       continue;
+    }
     write_to_frame(((u32)page->frame) * 0x1000, 0);
     page->present = 0;
     page->rw = 0;
@@ -446,8 +461,9 @@ struct PhysVirtMap phys_to_virt_map[256] = {0};
 void create_physical_to_virtual_mapping(void *physical, void *virtual,
                                         u32 length) {
   for (u16 i = 0; i < 256; i++) {
-    if (phys_to_virt_map[i].in_use)
+    if (phys_to_virt_map[i].in_use) {
       continue;
+    }
     phys_to_virt_map[i].physical = (u32)physical;
     phys_to_virt_map[i].virtual = (u32) virtual;
     phys_to_virt_map[i].length = length;
@@ -459,13 +475,16 @@ void create_physical_to_virtual_mapping(void *physical, void *virtual,
 
 void *physical_to_virtual(void *address) {
   for (u16 i = 0; i < 256; i++) {
-    if (!phys_to_virt_map[i].in_use)
+    if (!phys_to_virt_map[i].in_use) {
       continue;
+    }
     if (phys_to_virt_map[i].physical + phys_to_virt_map[i].length <
-        (u32)address)
+        (u32)address) {
       continue;
-    if (phys_to_virt_map[i].physical > (u32)address)
+    }
+    if (phys_to_virt_map[i].physical > (u32)address) {
       continue;
+    }
     return (void *)phys_to_virt_map[i].virtual;
   }
   assert(0);
@@ -473,8 +492,9 @@ void *physical_to_virtual(void *address) {
 }
 
 void *virtual_to_physical(void *address, PageDirectory *directory) {
-  if (0 == directory)
+  if (0 == directory) {
     directory = get_active_pagedirectory();
+  }
   Page *p = get_page((void *)address, directory, PAGE_NO_ALLOCATE, 0);
   return (void *)((u32)p->frame * 0x1000) + (((uintptr_t)address) & 0xFFF);
 }
@@ -520,18 +540,21 @@ void *is_valid_user_c_string(const char *ptr, size_t *size) {
   size_t s = 0;
   for (; ((u32)ptr - (u32)r) < 0x1000;) {
     void *page = (void *)((uintptr_t)ptr & (uintptr_t)(~(PAGE_SIZE - 1)));
-    if (!is_valid_userpointer(page, PAGE_SIZE))
+    if (!is_valid_userpointer(page, PAGE_SIZE)) {
       return NULL;
+    }
     if (!((uintptr_t)ptr & (PAGE_SIZE - 1))) {
       ptr++;
       s++;
     }
-    for (; (uintptr_t)ptr & (PAGE_SIZE - 1); ptr++, s++)
+    for (; (uintptr_t)ptr & (PAGE_SIZE - 1); ptr++, s++) {
       if (!*ptr) {
-        if (size)
+        if (size) {
           *size = s;
+        }
         return r;
       }
+    }
   }
   // String is too long, something has probably gone wrong.
   assert(0);
@@ -543,12 +566,15 @@ void *is_valid_userpointer(const void *ptr, size_t s) {
   size_t num_pages = (uintptr_t)align_page((void *)s) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, t += 0x1000) {
     Page *page = get_page((void *)t, NULL, PAGE_NO_ALLOCATE, 0);
-    if (!page)
+    if (!page) {
       return NULL;
-    if (!page->present)
+    }
+    if (!page->present) {
       return NULL;
-    if (!page->user)
+    }
+    if (!page->user) {
       return NULL;
+    }
   }
   return (void *)ptr;
 }
@@ -565,8 +591,9 @@ void enable_paging(void) {
 }
 
 void create_table(int table_index) {
-  if (kernel_directory->tables[table_index])
+  if (kernel_directory->tables[table_index]) {
     return;
+  }
   u32 physical;
   kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   kernel_directory->tables[table_index] =
@@ -600,8 +627,9 @@ void paging_init(u64 memsize) {
     PageTable *table = kernel_directory->tables[i];
     write_to_frame(kernel_directory->physical_tables[i], 1);
     for (size_t j = 0; j < 1024; j++) {
-      if (!table->pages[j].present)
+      if (!table->pages[j].present) {
         continue;
+      }
       // Add the frame to our bitmap to ensure it does not get used by
       // another newly created page.
       write_to_frame(table->pages[j].frame * 0x1000, 1);
@@ -611,8 +639,9 @@ void paging_init(u64 memsize) {
   switch_page_directory(kernel_directory);
   // Make null dereferences crash.
   get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
-  for (int i = 0; i < 25; i++)
+  for (int i = 0; i < 25; i++) {
     create_table(770 + i);
+  }
   kernel_directory = clone_directory(kernel_directory);
 
   switch_page_directory(kernel_directory);

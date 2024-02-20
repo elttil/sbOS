@@ -74,45 +74,53 @@ MallocHeader *next_close_header(MallocHeader *a) {
     for (;;)
       ;
   }
-  if (a->flags & IS_FINAL)
+  if (a->flags & IS_FINAL) {
     return NULL;
+  }
   return next_header(a);
 }
 
 MallocHeader *find_free_entry(u32 s) {
   // A new header is required as well as the newly allocated chunk
   s += sizeof(MallocHeader);
-  if (!head)
+  if (!head) {
     init_heap();
+  }
   MallocHeader *p = head;
   for (; p; p = next_header(p)) {
     assert(p->magic == 0xdde51ab9410268b1);
-    if (!(p->flags & IS_FREE))
+    if (!(p->flags & IS_FREE)) {
       continue;
+    }
     u64 required_size = s;
-    if (p->size < required_size)
+    if (p->size < required_size) {
       continue;
+    }
     return p;
   }
   return NULL;
 }
 
 void merge_headers(MallocHeader *b) {
-  if (!(b->flags & IS_FREE))
+  if (!(b->flags & IS_FREE)) {
     return;
+  }
 
   MallocHeader *n = next_close_header(b);
-  if (!n)
+  if (!n) {
     return;
+  }
 
-  if (!(n->flags & IS_FREE))
+  if (!(n->flags & IS_FREE)) {
     return;
+  }
 
   b->size += n->size;
   b->flags |= n->flags & IS_FINAL;
   b->n = n->n;
-  if (n == final)
+  if (n == final) {
     final = b;
+  }
 }
 
 void *kmalloc(size_t s) {
@@ -136,8 +144,9 @@ void *kmalloc(size_t s) {
   new_entry->size = free_entry->size - n - sizeof(MallocHeader);
   new_entry->magic = 0xdde51ab9410268b1;
 
-  if (free_entry == final)
+  if (free_entry == final) {
     final = new_entry;
+  }
   merge_headers(new_entry);
 
   // Modify the free entry
@@ -150,17 +159,20 @@ void *kmalloc(size_t s) {
 }
 
 size_t get_mem_size(void *ptr) {
-  if (!ptr)
+  if (!ptr) {
     return 0;
+  }
   return ((MallocHeader *)((uintptr_t)ptr - sizeof(MallocHeader)))->size;
 }
 
 void *krealloc(void *ptr, size_t size) {
   void *rc = kmalloc(size);
-  if (!rc)
+  if (!rc) {
     return NULL;
-  if (!ptr)
+  }
+  if (!ptr) {
     return rc;
+  }
   size_t l = get_mem_size(ptr);
   size_t to_copy = min(l, size);
   memcpy(rc, ptr, to_copy);
@@ -187,21 +199,24 @@ void *kallocarray(size_t nmemb, size_t size) {
 
 void *kcalloc(size_t nelem, size_t elsize) {
   void *rc = kallocarray(nelem, elsize);
-  if (!rc)
+  if (!rc) {
     return NULL;
+  }
   memset(rc, 0, nelem * elsize);
   return rc;
 }
 
 void kfree(void *p) {
-  if (!p)
+  if (!p) {
     return;
+  }
   // FIXME: This assumes that p is at the start of a allocated area.
   // Could this be avoided in a simple way?
   MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
   assert(h->magic == 0xdde51ab9410268b1);
-  if (h->flags & IS_FREE)
+  if (h->flags & IS_FREE) {
     return;
+  }
 
   h->flags |= IS_FREE;
   merge_headers(h);

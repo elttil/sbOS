@@ -88,8 +88,9 @@ void add_hash_pool(void) {
 
   u8 hash_buffer[HASH_LEN];
   SHA1_Final(&hash_pool, hash_buffer);
-  for (size_t i = 0; i < HASH_LEN; i++)
+  for (size_t i = 0; i < HASH_LEN; i++) {
     new_chacha_key[i % KEY_SIZE] ^= hash_buffer[i];
+  }
 
   SHA1_Init(&hash_pool);
   SHA1_Update(&hash_pool, hash_buffer, HASH_LEN);
@@ -106,8 +107,9 @@ void add_hash_pool(void) {
 void add_entropy(u8 *buffer, size_t size) {
   SHA1_Update(&hash_pool, buffer, size);
   hash_pool_size += size;
-  if (hash_pool_size >= HASH_LEN * 2)
+  if (hash_pool_size >= HASH_LEN * 2) {
     add_hash_pool();
+  }
 }
 
 void setup_random(void) {

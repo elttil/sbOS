@@ -15,8 +15,9 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
   struct list *write_list = &get_current_task()->write_list;
   struct list *disconnect_list = &get_current_task()->disconnect_list;
   for (size_t i = 0; i < nfds; i++) {
-    if (fds[i].fd < 0)
+    if (fds[i].fd < 0) {
       continue;
+    }
     vfs_fd_t *f = get_vfs_fd(fds[i].fd);
     if (NULL == f) {
       continue;
@@ -47,17 +48,22 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     }
     vfs_fd_t *f = get_vfs_fd(fds[i].fd);
     if (!f) {
-      if (fds[i].events & POLLHUP)
+      if (fds[i].events & POLLHUP) {
         fds[i].revents |= POLLHUP;
+      }
     } else {
-      if (f->inode->has_data && fds[i].events & POLLIN)
+      if (f->inode->has_data && fds[i].events & POLLIN) {
         fds[i].revents |= POLLIN;
-      if (f->inode->can_write && fds[i].events & POLLOUT)
+      }
+      if (f->inode->can_write && fds[i].events & POLLOUT) {
         fds[i].revents |= POLLOUT;
-      if (!(f->inode->is_open) && fds[i].events & POLLHUP)
+      }
+      if (!(f->inode->is_open) && fds[i].events & POLLHUP) {
         fds[i].revents |= POLLHUP;
-      if (fds[i].revents)
+      }
+      if (fds[i].revents) {
         rc++;
+      }
     }
   }
   enable_interrupts();

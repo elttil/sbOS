@@ -55,8 +55,9 @@ u16 tcp_checksum(u16 *buffer, int size) {
     cksum += *buffer++;
     size -= sizeof(u16);
   }
-  if (size)
+  if (size) {
     cksum += *(u8 *)buffer;
+  }
 
   cksum = (cksum >> 16) + (cksum & 0xffff);
   cksum += (cksum >> 16);
@@ -179,8 +180,9 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
 
   if (SYN == flags) {
     struct INCOMING_TCP_CONNECTION *inc;
-    if (!(inc = handle_incoming_tcp_connection(src_ip, n_src_port, dst_port)))
+    if (!(inc = handle_incoming_tcp_connection(src_ip, n_src_port, dst_port))) {
       return;
+    }
     memcpy(inc->ip, src_ip, sizeof(u8[4]));
     inc->seq_num = 0;
     inc->ack_num = seq_num + 1;
@@ -192,8 +194,9 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
   }
   struct INCOMING_TCP_CONNECTION *inc =
       get_incoming_tcp_connection(src_ip, n_src_port);
-  if (!inc)
+  if (!inc) {
     return;
+  }
   if (flags == (FIN | ACK)) {
     if (inc->requesting_connection_close) {
       send_empty_tcp_message(inc, ACK, seq_num, n_dst_port, n_src_port);

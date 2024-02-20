@@ -112,16 +112,18 @@ u32 num_block_groups(void) {
   u32 num_blocks = superblock->num_blocks;
   u32 num_blocks_in_group = superblock->num_blocks_in_group;
   u32 b = num_blocks / num_blocks_in_group;
-  if (num_blocks % num_blocks_in_group != 0)
+  if (num_blocks % num_blocks_in_group != 0) {
     b++;
+  }
 
   // Rounding up the total number of inodes divided by the number of
   // inodes per block group
   u32 num_inodes = superblock->num_inodes;
   u32 num_inodes_in_group = superblock->num_inodes_in_group;
   u32 i = num_inodes / num_inodes_in_group;
-  if (num_inodes % num_inodes_in_group != 0)
+  if (num_inodes % num_inodes_in_group != 0) {
     i++;
+  }
   // Both (and check them against each other)
   assert(i == b);
   return i;
@@ -164,8 +166,9 @@ void ext2_get_inode_header(int inode_index, inode_t *data) {
 }
 
 void ext2_write_inode(int inode_index, inode_t *data) {
-  if (ext2_last_inode_read == inode_index)
+  if (ext2_last_inode_read == inode_index) {
     ext2_last_inode_read = -1; // Invalidate the cache
+  }
   u32 block_index;
   u32 block_offset;
   ext2_block_containing_inode(inode_index, &block_index, &block_offset);
@@ -194,16 +197,20 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode;
        data_p += dir->size) {
-    if (0 == dir->size)
+    if (0 == dir->size) {
       break;
-    if (0 == dir->name_length)
+    }
+    if (0 == dir->name_length) {
       continue;
+    }
     if (0 ==
         memcmp(data_p + sizeof(direntry_header_t), file, dir->name_length)) {
-      if (strlen(file) > dir->name_length)
+      if (strlen(file) > dir->name_length) {
         continue;
-      if (entry)
+      }
+      if (entry) {
         memcpy(entry, data_p, sizeof(direntry_header_t));
+      }
       return dir->inode;
     }
   }
@@ -225,12 +232,15 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode && len > 0;
        data_p += dir->size, n_dir++) {
-    if (0 == dir->size)
+    if (0 == dir->size) {
       break;
-    if (0 == dir->name_length)
+    }
+    if (0 == dir->name_length) {
       continue;
-    if (n_dir < (offset / sizeof(struct dirent)))
+    }
+    if (n_dir < (offset / sizeof(struct dirent))) {
       continue;
+    }
 
     memcpy(tmp_entry.d_name, data_p + sizeof(direntry_header_t),
            dir->name_length);
@@ -250,8 +260,9 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
 u32 ext2_find_inode(const char *file) {
   int cur_path_inode = EXT2_ROOT_INODE;
 
-  if (*file == '/' && *(file + 1) == '\0')
+  if (*file == '/' && *(file + 1) == '\0') {
     return cur_path_inode;
+  }
 
   char *str = copy_and_allocate_string(file);
   char *orig_str = str;
@@ -264,8 +275,9 @@ u32 ext2_find_inode(const char *file) {
 
     for (; '/' != *str && '\0' != *str; str++)
       ;
-    if ('\0' == *str)
+    if ('\0' == *str) {
       final = 1;
+    }
 
     *str = '\0';
 
@@ -276,8 +288,9 @@ u32 ext2_find_inode(const char *file) {
       return 0;
     }
 
-    if (final)
+    if (final) {
       break;
+    }
 
     // The expected returned entry is a directory
     if (TYPE_INDICATOR_DIRECTORY != a.type_indicator) {
@@ -298,8 +311,9 @@ u32 get_singly_block_index(u32 singly_block_ptr, u32 i) {
 }
 
 int get_block(inode_t *inode, u32 i) {
-  if (i < 12)
+  if (i < 12) {
     return inode->block_pointers[i];
+  }
 
   i -= 12;
   u32 singly_block_size = block_byte_size / (32 / 8);
@@ -356,8 +370,9 @@ int get_free_inode(int allocate) {
   for (u32 g = 0; g < num_block_groups(); g++) {
     get_group_descriptor(g, &block_group);
 
-    if (0 == block_group.num_unallocated_inodes_in_group)
+    if (0 == block_group.num_unallocated_inodes_in_group) {
       continue;
+    }
 
     u8 bitmap[BLOCK_SIZE];
     ext2_read_block(block_group.inode_usage_bitmap, bitmap, BLOCK_SIZE, 0);
@@ -388,22 +403,25 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   inode_t *inode = (inode_t *)inode_buffer;
 
   u64 fsize = (u64)(((u64)inode->_upper_32size << 32) | (u64)inode->low_32size);
-  if (append)
+  if (append) {
     offset = fsize;
+  }
 
   u32 block_start = offset / block_byte_size;
   u32 block_offset = offset % block_byte_size;
 
   int num_blocks_used = inode->num_disk_sectors / (BLOCK_SIZE / SECTOR_SIZE);
 
-  if (size + offset > fsize)
+  if (size + offset > fsize) {
     fsize = size + offset;
+  }
 
   int num_blocks_required = BLOCKS_REQUIRED(fsize, BLOCK_SIZE);
 
   for (int i = num_blocks_used; i < num_blocks_required; i++) {
-    if (i > 12)
+    if (i > 12) {
       assert(0);
+    }
     int b = get_free_block(1 /*true*/);
     assert(-1 != b);
     inode->block_pointers[i] = b;
@@ -442,17 +460,21 @@ int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size) {
 
   u64 fsize = (u64)(((u64)inode->_upper_32size << 32) | (u64)inode->low_32size);
 
-  if (file_size)
+  if (file_size) {
     *file_size = fsize;
+  }
 
-  if (size > fsize - offset)
+  if (size > fsize - offset) {
     size -= ((size + offset) - fsize);
+  }
 
-  if (size == 0)
+  if (size == 0) {
     return 0;
+  }
 
-  if (offset > fsize)
+  if (offset > fsize) {
     return 0;
+  }
 
   u32 block_start = offset / block_byte_size;
   u32 block_offset = offset % block_byte_size;
@@ -558,8 +580,9 @@ int ext2_truncate(vfs_fd_t *fd, size_t length) {
 
 vfs_inode_t *ext2_open(const char *path) {
   u32 inode_num = ext2_find_inode(path);
-  if (0 == inode_num)
+  if (0 == inode_num) {
     return NULL;
+  }
 
   u8 buffer[inode_size];
   inode_t *ext2_inode = (inode_t *)buffer;
@@ -601,10 +624,12 @@ u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
   for (; pos < file_size && (dir = (direntry_header_t *)data_p)->size;
        data_p += dir->size, prev = pos, pos += dir->size)
     ;
-  if (entry_offset)
+  if (entry_offset) {
     *entry_offset = prev;
-  if (meta)
+  }
+  if (meta) {
     memcpy(meta, ((u8 *)data) + prev, sizeof(direntry_header_t));
+  }
   kfree(data);
   return pos;
 }
@@ -633,8 +658,9 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   entry_header.size += (4 - (entry_header.size % 4));
 
   u32 length_till_next_block = 1024 - (new_entry_offset % 1024);
-  if (0 == length_till_next_block)
+  if (0 == length_till_next_block) {
     length_till_next_block = 1024;
+  }
   assert(entry_header.size < length_till_next_block);
   entry_header.size = length_till_next_block;
 
@@ -659,8 +685,9 @@ int ext2_find_parent(char *path, u32 *parent_inode, char **filename) {
     return 1;
   } else {
     int r = ext2_find_inode(path);
-    if (0 == r)
+    if (0 == r) {
       return 0;
+    }
     *parent_inode = r;
     return 1;
   }
@@ -799,8 +826,9 @@ void parse_superblock(void) {
       ; // TODO: Fail properly
   }
 
-  if (1 <= superblock->major_version)
+  if (1 <= superblock->major_version) {
     inode_size = ((ext_superblock_t *)superblock)->inode_size;
+  }
 
   inodes_per_block = block_byte_size / inode_size;
 }

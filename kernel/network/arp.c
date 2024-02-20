@@ -46,8 +46,9 @@ void print_mac(const char *str, u8 *mac) {
   kprintf("%s: ", str);
   for (int i = 0; i < 6; i++) {
     kprintf("%x", mac[i]);
-    if (5 != i)
+    if (5 != i) {
       kprintf(":");
+    }
   }
   kprintf("\n");
 }
@@ -56,8 +57,9 @@ void print_ip(const char *str, const u8 *ip) {
   kprintf("%s: ", str);
   for (int i = 0; i < 4; i++) {
     kprintf("%d", ip[i]);
-    if (3 != i)
+    if (3 != i) {
       kprintf(".");
+    }
   }
   kprintf("\n");
 }
@@ -84,8 +86,9 @@ void send_arp_request(const u8 ip[4]) {
 
 int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
   for (int i = 0; i < 10; i++) {
-    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4])))
+    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4]))) {
       continue;
+    }
     memcpy(mac, arp_table[i].mac, sizeof(u8[6]));
     return 1;
   }
@@ -93,8 +96,9 @@ int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
   send_arp_request(ip);
   // TODO: Maybe wait a bit?
   for (int i = 0; i < 10; i++) {
-    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4])))
+    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4]))) {
       continue;
+    }
     memcpy(mac, arp_table[i].mac, sizeof(u8[6]));
     return 1;
   }

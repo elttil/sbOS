@@ -28,8 +28,9 @@ int fs_mouse_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
 int fs_mouse_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   FIFO_FILE *f = fd->inode->internal_object;
-  if (!mouse_inode->has_data)
+  if (!mouse_inode->has_data) {
     return 0;
+  }
   int rc = fifo_object_read(buffer, offset, len, f);
   mouse_inode->has_data = f->has_data;
   return rc;

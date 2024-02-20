@@ -181,10 +181,12 @@ u32 check_type(volatile struct HBA_PORT *port) {
   u8 ipm = (ssts >> 8) & 0x0F;
   u8 det = ssts & 0x0F;
 
-  if (det != HBA_PORT_DET_PRESENT) // Check drive status
+  if (det != HBA_PORT_DET_PRESENT) { // Check drive status
     return AHCI_DEV_NULL;
-  if (ipm != HBA_PORT_IPM_ACTIVE)
+  }
+  if (ipm != HBA_PORT_IPM_ACTIVE) {
     return AHCI_DEV_NULL;
+  }
 
   switch (port->sig) {
   case SATA_SIG_ATAPI:
@@ -380,8 +382,9 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   for (;;) {
     // In some longer duration reads, it may be helpful to spin on the DPS bit
     // in the PxIS port field as well (1 << 5)
-    if ((port->ci & (1 << command_slot)) == 0)
+    if ((port->ci & (1 << command_slot)) == 0) {
       break;
+    }
     if (port->is & HBA_PxIS_TFES) // Task file error
     {
       kprintf("Read disk error\n");
@@ -417,8 +420,9 @@ int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   int rc = len;
 
   u32 sector_count = len / 512;
-  if (len % 512 != 0)
+  if (len % 512 != 0) {
     sector_count++;
+  }
   for (; sector_count >= num_prdt; lba++) {
     ahci_raw_write(&hba->ports[port], lba, 0, num_prdt, (u16 *)buffer);
     offset = 0;
@@ -445,8 +449,9 @@ int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   int rc = len;
 
   u32 sector_count = len / 512;
-  if (len % 512 != 0)
+  if (len % 512 != 0) {
     sector_count++;
+  }
   u8 tmp_buffer[512 * num_prdt];
   for (; sector_count >= num_prdt; lba++) {
     ahci_raw_read(&hba->ports[port], lba, 0, num_prdt, (u16 *)tmp_buffer);
@@ -477,8 +482,9 @@ void add_devfs_drive_file(u8 port) {
 
 void ahci_init(void) {
   struct PCI_DEVICE device;
-  if (!pci_devices_by_id(0x01, 0x06, &device))
+  if (!pci_devices_by_id(0x01, 0x06, &device)) {
     return;
+  }
   kprintf("vendor: %x\n", device.vendor);
   kprintf("device: %x\n", device.device);
   kprintf("header_type: %x\n", device.header_type);
@@ -489,8 +495,9 @@ void ahci_init(void) {
   u8 *HBA_base = mmu_map_frames((void *)bar.address, bar.size);
   hba = (volatile struct HBA_MEM *)(HBA_base);
   for (u8 i = 0; i < 32; i++) {
-    if (!((hba->pi >> i) & 1))
+    if (!((hba->pi >> i) & 1)) {
       continue;
+    }
     u32 type = check_type(&hba->ports[i]);
     switch (type) {
     case AHCI_DEV_SATA:

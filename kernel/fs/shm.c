@@ -16,11 +16,13 @@ void shm_init(void) {
 int shm_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_vm_object_t *p = fd->inode->internal_object;
 
-  if (offset > p->size)
+  if (offset > p->size) {
     return -EFBIG;
+  }
 
-  if (offset + len > p->size)
+  if (offset + len > p->size) {
     len = p->size - offset;
+  }
 
   memcpy((void *)((uintptr_t)((uintptr_t)p->virtual_object + offset)), buffer,
          len);
@@ -30,11 +32,13 @@ int shm_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 int shm_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   vfs_vm_object_t *p = fd->inode->internal_object;
 
-  if (offset > p->size)
+  if (offset > p->size) {
     return -EFBIG;
+  }
 
-  if (offset + len > p->size)
+  if (offset + len > p->size) {
     len = p->size - offset;
+  }
 
   memcpy((void *)buffer,
          (void *)((uintptr_t)((uintptr_t)p->virtual_object + offset)), len);
@@ -54,10 +58,11 @@ int shm_ftruncate(vfs_fd_t *fd, size_t length) {
   p->virtual_object = ksbrk(length);
   int n = (uintptr_t)align_page((void *)(u32)length) / 0x1000;
   p->object = kmalloc(sizeof(void *) * n);
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < n; i++) {
     p->object[i] =
         (void *)(get_page(p->virtual_object + (i * 0x1000), NULL, 0, 0)->frame *
                  0x1000);
+  }
   return 0;
 }
 

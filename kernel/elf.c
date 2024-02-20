@@ -52,8 +52,9 @@ void *load_elf_file(const char *f, u32 *ds) {
     flush_tlb();
 
     uintptr_t e = program_header.p_vaddr + program_header.p_memsz;
-    if (e > end_of_code)
+    if (e > end_of_code) {
       end_of_code = e;
+    }
 
     memset((void *)program_header.p_vaddr, 0, program_header.p_memsz);
 

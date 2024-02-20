@@ -54,11 +54,6 @@ struct Process {
   u32 pid;
   char program_name[100];
   char current_working_directory[MAX_PATH];
-  u32 eip, esp, ebp;
-  u32 saved_eip, saved_esp, saved_ebp;
-  u32 useresp;
-  u8 incoming_signal;
-  u32 signal_handler_stack;
   void *signal_handlers[20];
   void *interrupt_handler;
   PageDirectory *cr3;

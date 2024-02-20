@@ -60,8 +60,9 @@ char *copy_c_string(const char *str) {
   char *ret_string;
   size_t len = strlen(str);
   ret_string = kmalloc(len + 1);
-  if (!ret_string)
+  if (!ret_string) {
     return NULL;
+  }
   memcpy(ret_string, str, len);
   ret_string[len] = '\0';
   return ret_string;
@@ -83,26 +84,32 @@ void free_linkedlist_entry(LinkedList *entry) {
 
 LinkedList *get_linkedlist_entry(LinkedList *list, const char *key,
                                  LinkedList **prev) {
-  if (prev)
+  if (prev) {
     *prev = NULL;
+  }
   for (; list; list = list->next) {
     const char *str1 = key;
     const char *str2 = list->key;
-    for (; *str1 && *str2; str1++, str2++)
-      if (*str1 != *str2)
+    for (; *str1 && *str2; str1++, str2++) {
+      if (*str1 != *str2) {
         break;
-    if (*str1 == *str2)
+      }
+    }
+    if (*str1 == *str2) {
       return list;
-    if (prev)
+    }
+    if (prev) {
       prev = &list;
+    }
   }
   return NULL;
 }
 
 void *get_linkedlist_value(LinkedList *list, const char *key) {
   LinkedList *entry = get_linkedlist_entry(list, key, NULL);
-  if (!entry)
+  if (!entry) {
     return NULL;
+  }
   return entry->value;
 }
 
@@ -115,15 +122,17 @@ int hashmap_add_entry(HashMap *m, const char *key, void *value,
                       int do_not_allocate_key) {
   // Create the entry
   LinkedList *entry = kmalloc(sizeof(LinkedList));
-  if (!entry)
+  if (!entry) {
     return 0;
+  }
 
   entry->key_allocated = !do_not_allocate_key;
   if (do_not_allocate_key) {
     entry->key = key;
   } else {
-    if (!(entry->key = copy_c_string(key)))
+    if (!(entry->key = copy_c_string(key))) {
       return 0;
+    }
   }
   entry->value = value;
   entry->next = NULL;
@@ -132,8 +141,9 @@ int hashmap_add_entry(HashMap *m, const char *key, void *value,
   // Add the new entry to the list.
   u32 index = find_index(m, key);
   LinkedList **list_pointer = &m->entries[index];
-  for (; *list_pointer;)
+  for (; *list_pointer;) {
     list_pointer = &(*list_pointer)->next;
+  }
 
   *list_pointer = entry;
   m->num_entries++;
@@ -142,31 +152,37 @@ int hashmap_add_entry(HashMap *m, const char *key, void *value,
 
 void *hashmap_get_entry(HashMap *m, const char *key) {
   u32 index = find_index(m, key);
-  if (!m->entries[index])
+  if (!m->entries[index]) {
     return NULL;
+  }
   return get_linkedlist_value(m->entries[index], key);
 }
 
 int hashmap_delete_entry(HashMap *m, const char *key) {
   LinkedList *list = m->entries[find_index(m, key)];
-  if (!list)
+  if (!list) {
     return 0;
+  }
   LinkedList **prev = NULL;
   LinkedList *entry = get_linkedlist_entry(list, key, prev);
-  if (!entry)
+  if (!entry) {
     return 0;
-  if (!prev)
+  }
+  if (!prev) {
     prev = &m->entries[find_index(m, key)];
+  }
 
-  if (entry->upon_deletion)
+  if (entry->upon_deletion) {
     entry->upon_deletion(entry->key, entry->value);
+  }
 
   LinkedList *next = entry->next;
   free_linkedlist_entry(entry);
-  if (*prev != entry)
+  if (*prev != entry) {
     (*prev)->next = next;
-  else
+  } else {
     *prev = NULL;
+  }
 
   // Redo the delete process incase there are multiple
   // entires that have the same key.
@@ -177,12 +193,14 @@ int hashmap_delete_entry(HashMap *m, const char *key) {
 
 void hashmap_free(HashMap *m) {
   for (int i = 0; i < m->size; i++) {
-    if (!m->entries[i])
+    if (!m->entries[i]) {
       continue;
+    }
     LinkedList *list = m->entries[i];
     for (; list;) {
-      if (list->upon_deletion)
+      if (list->upon_deletion) {
         list->upon_deletion(list->key, list->value);
+      }
       LinkedList *old = list;
       list = list->next;
       free_linkedlist_entry(old);
@@ -194,8 +212,9 @@ void hashmap_free(HashMap *m) {
 
 HashMap *hashmap_create(size_t size) {
   HashMap *m = kmalloc(sizeof(HashMap));
-  if (!m)
+  if (!m) {
     return NULL;
+  }
 
   m->size = size;
   m->num_entries = 0;
@@ -203,11 +222,13 @@ HashMap *hashmap_create(size_t size) {
   // Create a array of pointers to linkedlists but don't create them
   // yet.
   m->entries = kcalloc(size, sizeof(LinkedList **));
-  if (!m->entries)
+  if (!m->entries) {
     return NULL;
+  }
 
-  for (size_t i = 0; i < m->size; i++)
+  for (size_t i = 0; i < m->size; i++) {
     m->entries[i] = NULL;
+  }
 
   m->hash_function = hash;
   return m;

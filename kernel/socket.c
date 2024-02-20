@@ -93,8 +93,9 @@ handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
 
   int i;
   for (i = 0; i < 100; i++) {
-    if (!tcp_connections[i].is_used)
+    if (!tcp_connections[i].is_used) {
       break;
+    }
   }
 
   tcp_connections[i].is_used = 1;
