@@ -1,5 +1,4 @@
 #include <fs/vfs.h>
-#include <halts.h>
 #include <interrupts.h>
 #include <lib/list.h>
 #include <poll.h>

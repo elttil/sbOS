@@ -1,3 +1,2 @@
 BasedOnStyle: llvm
 AllowShortFunctionsOnASingleLine: None
-InsertBraces: true

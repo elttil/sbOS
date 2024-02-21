@@ -3,7 +3,6 @@ typedef struct Process process_t;
 #define SCHEDULER_H
 #include <fs/ext2.h>
 #include <fs/vfs.h>
-#include <halts.h>
 #include <ipc.h>
 #include <lib/list.h>
 #include <lib/stack.h>

@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <fs/fifo.h>
 #include <fs/tmpfs.h>
-#include <halts.h>
 #include <sched/scheduler.h>
 #include <typedefs.h>
 
