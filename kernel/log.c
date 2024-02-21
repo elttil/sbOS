@@ -1,4 +1,5 @@
 #include "log.h"
+#include <cpu/arch_inst.h>
 #include <sched/scheduler.h>
 
 struct stackframe {
@@ -7,8 +8,7 @@ struct stackframe {
 };
 
 void dump_backtrace(u32 max_frames) {
-  struct stackframe *stk;
-  asm("mov %%ebp,%0" : "=r"(stk)::);
+  struct stackframe *stk = (void*)get_current_sbp();
   kprintf("Stack trace:\n");
   for (u32 frame = 0; stk && frame < max_frames; ++frame) {
     kprintf(" 0x%x\n", stk->eip);

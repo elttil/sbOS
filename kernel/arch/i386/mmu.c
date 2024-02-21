@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cpu/arch_inst.h>
 #include <ksbrk.h>
 #include <log.h>
 #include <math.h>
@@ -128,12 +129,6 @@ void *align_page(void *a) {
   }
 
   return a;
-}
-
-void flush_tlb(void) {
-  asm volatile("\
-	mov %cr3, %eax;\
-	mov %eax, %cr3");
 }
 
 u32 first_free_frame(void) {
@@ -506,8 +501,8 @@ void move_stack(u32 new_stack_address, u32 size) {
 
   u32 old_stack_pointer, old_base_pointer;
 
-  asm volatile("mov %%esp, %0" : "=r"(old_stack_pointer));
-  asm volatile("mov %%ebp, %0" : "=r"(old_base_pointer));
+  old_stack_pointer = get_current_sp();
+  old_base_pointer = get_current_sbp();
 
   u32 new_stack_pointer =
       old_stack_pointer + ((u32)new_stack_address - inital_esp);
@@ -528,8 +523,8 @@ void move_stack(u32 new_stack_address, u32 size) {
 
   inital_esp = new_stack_pointer;
   // Actually change the stack
-  asm volatile("mov %0, %%esp" ::"irm"(new_stack_pointer));
-  asm volatile("mov %0, %%ebp" ::"irm"(new_base_pointer));
+  set_sp(new_stack_pointer + 8);
+  set_sbp(new_base_pointer);
 }
 
 // C strings have a unknown length so it does not makes sense to check
@@ -581,13 +576,7 @@ void *is_valid_userpointer(const void *ptr, size_t s) {
 
 void switch_page_directory(PageDirectory *directory) {
   active_directory = directory;
-  asm("mov %0, %%cr3" ::"r"(directory->physical_address));
-}
-
-void enable_paging(void) {
-  asm("mov %cr0, %eax\n"
-      "or 0b10000000000000000000000000000000, %eax\n"
-      "mov %eax, %cr0\n");
+  set_cr3(directory->physical_address);
 }
 
 void create_table(int table_index) {
@@ -603,8 +592,7 @@ void create_table(int table_index) {
 }
 
 void paging_init(u64 memsize) {
-  u32 *cr3;
-  asm volatile("mov %%cr3, %0" : "=r"(cr3));
+  u32 *cr3 = (void *)get_cr3();
   u32 *virtual = (u32 *)((u32)cr3 + 0xC0000000);
   frames = ksbrk(1024 * sizeof(u32));
   memset(frames, 0, 1024 * sizeof(u32));

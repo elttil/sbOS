@@ -2,15 +2,13 @@
 #include <kubsan.h>
 #include <log.h>
 #include <stdio.h>
+#include <cpu/arch_inst.h>
 
 void ubsan_log(const char *cause, struct source_location source) {
   kprintf("%s: %s : %d\n", cause, source.file_name, source.line);
   dump_backtrace(5);
   disable_interrupts();
-  asm volatile("1: jmp 1b");
-  asm("hlt");
-  for (;;)
-    ;
+  halt();
 }
 
 void __ubsan_handle_shift_out_of_bounds(struct ShiftOutOfBoundsData *data,

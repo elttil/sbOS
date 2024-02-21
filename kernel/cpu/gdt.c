@@ -1,4 +1,5 @@
 #include "gdt.h"
+#include <cpu/arch_inst.h>
 #include <interrupts.h>
 
 extern void flush_tss(void);
@@ -39,8 +40,7 @@ void write_tss(struct GDT_Entry *gdt_entry) {
 
   memset(&tss_entry, 0, sizeof tss_entry);
   tss_entry.ss0 = GDT_KERNEL_DATA_SEGMENT * GDT_ENTRY_SIZE;
-  register u32 esp asm("esp");
-  tss_entry.esp0 = esp;
+  tss_entry.esp0 = get_current_sp();
 }
 
 void gdt_init() {

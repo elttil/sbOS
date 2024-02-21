@@ -1,4 +1,6 @@
+#include <cpu/arch_inst.h>
 #include <cpu/idt.h>
+#include <interrupts.h>
 #include <sched/scheduler.h>
 #include <stdio.h>
 
@@ -52,25 +54,20 @@ void general_protection_fault(reg_t *regs) {
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
   dump_backtrace(12);
-  asm("hlt");
-  for (;;)
-    ;
+  halt();
   EOI(0xD - 8);
 }
 
 void double_fault(registers_t *regs) {
   (void)regs;
   klog("DOUBLE FAULT", LOG_ERROR);
-  asm("hlt");
-  for (;;)
-    ;
+  halt();
 }
 
 void page_fault(reg_t *regs) {
-  volatile uint32_t cr2;
-  asm volatile("mov %%cr2, %0" : "=r"(cr2));
+  uint32_t cr2 = get_cr2();
   if (0xDEADC0DE == cr2) {
-    asm("cli");
+    disable_interrupts();
     EOI(0xB);
     process_pop_restore_context(NULL, regs);
     return;
@@ -105,9 +102,7 @@ void page_fault(reg_t *regs) {
   }
 
   dump_backtrace(12);
-  asm("hlt");
-  for (;;)
-    ;
+  halt();
 }
 
 static inline void io_wait(void) {

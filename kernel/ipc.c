@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <interrupts.h>
 #include <ipc.h>
 #include <math.h>
 #include <sched/scheduler.h>
@@ -57,13 +58,13 @@ int ipc_read(u8 *buffer, u32 length, u32 *sender_pid) {
         return 0;
       }
       get_current_task()->is_halted = 1;
-      asm("sti");
+      enable_interrupts();
       continue;
     }
     break;
   }
   get_current_task()->is_halted = 0;
-  asm("cli");
+  disable_interrupts();
   ipc_message->is_used = 0;
   // TODO: Verify sender_pid is a valid address
   if (sender_pid) {
