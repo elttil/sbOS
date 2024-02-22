@@ -182,16 +182,11 @@ int (*syscall_functions[])() = {
     (void(*))syscall_tmp_handle_packet,
 };
 
+void int_syscall(reg_t *r);
 void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
                               u32 arg5, u32 ebp, u32 esp) {
   assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
   syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
-}
-
-void int_syscall(reg_t *r) {
-  u32 syscall = r->eax;
-  assert(syscall < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
-  r->eax = syscall_functions[syscall](r->ebx, r->ecx, r->edx, r->esi, r->edi);
 }
 
 void syscalls_init(void) {

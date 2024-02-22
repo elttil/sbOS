@@ -43,8 +43,8 @@ void set_pit_count(u16 _hertz) {
   outb(PIT_IO_CHANNEL_0, (divisor & 0xFF00) >> 8);
 }
 
-void int_clock(reg_t regs) {
-  outb(0x20, 0x20);
+void int_clock(reg_t *regs) {
+  EOI(0x20);
   pit_counter++;
   if (pit_counter * 1000 >= hertz) {
     pit_counter = 0;

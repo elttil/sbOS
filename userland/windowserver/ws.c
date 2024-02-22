@@ -333,8 +333,8 @@ void parse_mouse_event(int fd) {
         x |= 0xFF00;
       if (ys)
         y |= 0xFF00;
-      xc += *(int16_t *)&x;
-      yc += *(int16_t *)&y;
+      xc += x;
+      yc += y;
     }
   }
   mouse_x += xc;

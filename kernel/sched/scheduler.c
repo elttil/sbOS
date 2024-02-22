@@ -325,7 +325,7 @@ int fork(void) {
 }
 
 int isset_fdhalt(process_t *p) {
-  if(NULL == p) {
+  if (NULL == p) {
     p = get_current_task();
   }
   int blocked = 0;

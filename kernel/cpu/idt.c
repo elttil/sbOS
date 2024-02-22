@@ -249,7 +249,6 @@ void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry) {
 }
 
 void idt_init(void) {
-  //  list_of_handlers = kcalloc(sizeof(void *), 128);
   memset(list_of_handlers, 0, sizeof(void *) * 256);
 
   install_handler(page_fault, INT_32_INTERRUPT_GATE(0x0), 0xE);

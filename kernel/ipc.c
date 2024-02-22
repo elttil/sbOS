@@ -58,7 +58,7 @@ int ipc_read(u8 *buffer, u32 length, u32 *sender_pid) {
         return 0;
       }
       get_current_task()->is_halted = 1;
-      enable_interrupts();
+      switch_task();
       continue;
     }
     break;
