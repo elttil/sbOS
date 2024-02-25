@@ -2,7 +2,6 @@
 #include <interrupts.h>
 #include <ipc.h>
 #include <math.h>
-#include <sched/scheduler.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -43,6 +42,16 @@ int ipc_get_mailbox(u32 id, struct IpcMailbox **out) {
   }
   *out = &p->ipc_mailbox;
   return 1;
+}
+
+int ipc_has_data(process_t *p) {
+  if (!p) {
+    p = get_current_task();
+  }
+  struct IpcMailbox *handler = &p->ipc_mailbox;
+  u32 read_ptr = handler->read_ptr;
+  struct IpcMessage *ipc_message = &handler->data[read_ptr];
+  return ipc_message->is_used;
 }
 
 int ipc_read(u8 *buffer, u32 length, u32 *sender_pid) {

@@ -373,6 +373,12 @@ int is_halted(process_t *process) {
     }
   }
 
+  if (process->is_halted) {
+    if (ipc_has_data(process)) {
+      return 0;
+    }
+  }
+
   if (isset_fdhalt(process)) {
     return 1;
   }
