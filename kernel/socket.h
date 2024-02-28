@@ -3,6 +3,7 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <lib/buffered_write.h>
+#include <lib/stack.h>
 #include <stddef.h>
 #include <typedefs.h>
 
@@ -16,6 +17,42 @@
 #define INADDR_ANY 0
 
 #define MSG_WAITALL 1
+
+u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4);
+u32 tcp_connect_ipv4(u32 ip, u16 port, int *error);
+
+u32 tcp_listen_ipv4(u32 ip, u16 port, int *error);
+u32 tcp_accept(u32 listen_socket, int *error);
+
+int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out);
+int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out);
+
+struct TcpListen {
+  u32 ip;
+  u16 port;
+  struct stack incoming_connections;
+};
+
+struct TcpConnection {
+  int dead;
+  u16 incoming_port;
+  u32 outgoing_ip;
+  u16 outgoing_port;
+
+  int unhandled_packet;
+
+  FIFO_FILE *data_file;
+
+  u32 seq;
+  u32 ack;
+
+  int handshake_state;
+};
+
+struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
+                                            u32 dst_ip, u16 dst_port);
+
+struct TcpConnection *tcp_find_connection(u16 port);
 
 typedef struct {
   vfs_fd_t *ptr_socket_fd;
@@ -41,20 +78,6 @@ typedef struct {
   u16 port;
   SOCKET *s;
 } OPEN_INET_SOCKET;
-
-struct INCOMING_TCP_CONNECTION {
-  u8 ip[4];
-  u16 n_port;
-  u16 dst_port;
-  FIFO_FILE *data_file;
-  struct buffered buffer;
-  u8 *has_data_ptr;
-  u8 is_used;
-  u32 ack_num;
-  u32 seq_num;
-  u8 connection_closed;
-  u8 requesting_connection_close;
-};
 
 typedef u32 in_addr_t;
 typedef u16 in_port_t;

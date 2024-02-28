@@ -1,7 +1,6 @@
+#ifndef STACK_H
+#define STACK_H
 #include <stdint.h>
-
-// struct entry;
-// struct stack;
 
 struct entry {
   void *ptr;
@@ -16,3 +15,4 @@ struct stack {
 void stack_init(struct stack *s);
 int stack_push(struct stack *s, void *data);
 void *stack_pop(struct stack *s);
+#endif

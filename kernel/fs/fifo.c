@@ -57,7 +57,6 @@ FIFO_FILE *create_fifo_object(void) {
 }
 
 int create_fifo(void) {
-
   int fd_n = 0;
   for (; get_current_task()->file_descriptors[fd_n]; fd_n++)
     ;

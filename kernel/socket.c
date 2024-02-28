@@ -10,162 +10,172 @@
 
 // FIXME: Make these more dynamic
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
-OPEN_INET_SOCKET *inet_sockets[100] = {0};
 
-struct INCOMING_TCP_CONNECTION tcp_connections[100] = {0};
+struct TcpConnection *tcp_sockets[100];
+struct TcpListen *tcp_listen[100];
 
-int tcp_socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  struct INCOMING_TCP_CONNECTION *s =
-      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
-  if (s->connection_closed) {
-    return -EBADF;
-  }
-
-  if (buffered_write(&s->buffer, buffer, len)) {
-    return len;
-  }
-
-  // Use the current buffered input
-  if (s->buffer.buffer_usage > 0) {
-    send_tcp_packet(s, s->buffer.data, s->buffer.buffer_usage);
-    buffered_clear(&s->buffer);
-
-    // Try to add to the buffer again. If it fails just send the whole
-    // thing immediatley.
-    if (buffered_write(&s->buffer, buffer, len)) {
-      return len;
-    }
-  }
-  send_tcp_packet(s, buffer, len);
-  return len;
+u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4) {
+  return i4 << (32 - 8) | i3 << (32 - 16) | i2 << (32 - 24) | i1 << (32 - 32);
 }
 
-int tcp_socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  struct INCOMING_TCP_CONNECTION *s =
-      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
-  if (s->connection_closed) {
-    return -EBADF;
-  }
-
-  return fifo_object_read(buffer, offset, len, s->data_file);
-}
-
-void tcp_socket_close(vfs_fd_t *fd) {
-  struct INCOMING_TCP_CONNECTION *s =
-      (struct INCOMING_TCP_CONNECTION *)fd->inode->internal_object;
-
-  // Flush the remaining buffer
-  if (s->buffer.buffer_usage > 0) {
-    send_tcp_packet(s, s->buffer.data, s->buffer.buffer_usage);
-  }
-  buffered_free(&s->buffer);
-
-  if (s->connection_closed) {
-    s->is_used = 0;
-    return;
-  }
-  s->requesting_connection_close = 1;
-  tcp_close_connection(s);
-  s->is_used = 0;
-}
-
-struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
-                                                            u16 n_port) {
+struct TcpConnection *tcp_find_connection(u16 port) {
   for (int i = 0; i < 100; i++) {
-    if (0 != memcmp(tcp_connections[i].ip, ip, sizeof(u8[4]))) {
-      continue;
+    if (port == tcp_sockets[i]->incoming_port) {
+      return tcp_sockets[i];
     }
-    if (n_port != tcp_connections[i].n_port) {
-      continue;
-    }
-    return &tcp_connections[i];
   }
   return NULL;
 }
+struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
+                                            u32 dst_ip, u16 dst_port) {
+  u32 i = 0;
+  for (; i < 100; i++) {
+    if (!tcp_listen[i]) {
+      continue;
+    }
+    if (dst_port == tcp_listen[i]->port) {
+      break;
+    }
+  }
+  if (!tcp_listen[i] || dst_port != tcp_listen[i]->port) {
+    return NULL;
+  }
+  struct TcpListen *listen = tcp_listen[i];
+  u32 listen_id = i;
 
-struct INCOMING_TCP_CONNECTION *
-handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port) {
-  OPEN_INET_SOCKET *in = find_open_tcp_port(htons(dst_port));
-  if (!in) {
-    kprintf("TCP SYN to unopened port: %d\n", dst_port);
+  i = 0;
+  for (; i < 100; i++) {
+    if (!tcp_sockets[i]) {
+      break;
+    }
+  }
+  if (tcp_sockets[i]) {
     return NULL;
   }
 
-  int i;
-  for (i = 0; i < 100; i++) {
-    if (!tcp_connections[i].is_used) {
+  tcp_sockets[i] = kcalloc(1, sizeof(struct TcpConnection));
+  struct TcpConnection *con = tcp_sockets[i];
+  u32 con_id = i;
+  con->outgoing_ip = src_ip;
+  con->outgoing_port = src_port;
+  //  con->incoming_ip = dst_ip;
+  con->incoming_port = dst_port; // FIXME: Should be different for each
+                                 // connection
+
+  con->data_file = create_fifo_object();
+  kprintf("pushing the connection\n");
+  kprintf("listen_id: %x\n", listen_id);
+  stack_push(&listen->incoming_connections, (void *)con_id);
+  kprintf("listen->incoming_connections->head: %x\n",
+          (&listen->incoming_connections)->head);
+  kprintf("root: %x\n", &listen->incoming_connections);
+  return con;
+}
+
+u32 tcp_listen_ipv4(u32 ip, u16 port, int *error) {
+  *error = 0;
+  u32 i = 0;
+  for (; i < 100; i++) {
+    if (!tcp_listen[i]) {
+      break;
+    }
+  }
+  if (tcp_listen[i]) {
+    *error = 1;
+    return 0;
+  }
+
+  tcp_listen[i] = kcalloc(1, sizeof(struct TcpListen));
+  tcp_listen[i]->ip = ip;
+  tcp_listen[i]->port = port;
+  stack_init(&tcp_listen[i]->incoming_connections);
+  return i;
+}
+
+u32 tcp_accept(u32 listen_socket, int *error) {
+  *error = 0;
+  struct TcpListen *l = tcp_listen[listen_socket];
+  if (NULL == l) {
+    *error = 1;
+    return 0;
+  }
+  for (;;) {
+    // TODO: halt the process
+    if (NULL != l->incoming_connections.head) {
+      void *out = stack_pop(&l->incoming_connections);
+      return (u32)out; // TODO: Should a pointer store a u32?
+    }
+  }
+  ASSERT_NOT_REACHED;
+}
+
+u32 tcp_connect_ipv4(u32 ip, u16 port, int *error) {
+  *error = 0;
+  u32 i = 0;
+  for (; i < 100; i++) {
+    if (!tcp_sockets[i]) {
+      break;
+    }
+  }
+  if (tcp_sockets[i]) {
+    *error = 1;
+    return 0;
+  }
+
+  tcp_sockets[i] = kcalloc(1, sizeof(struct TcpConnection));
+  struct TcpConnection *con = tcp_sockets[i];
+
+  con->incoming_port = 1337; // TODO
+  con->outgoing_ip = ip;
+  con->outgoing_port = port;
+
+  con->data_file = create_fifo_object();
+
+  tcp_send_syn(con);
+
+  for (;;) {
+    tcp_wait_reply(con);
+    if (con->dead) { // Port is probably closed
+      *error = 1;
+      return 0;
+    }
+    if (0 != con->handshake_state) {
       break;
     }
   }
 
-  tcp_connections[i].is_used = 1;
-  memcpy(tcp_connections[i].ip, ip, sizeof(u8[4]));
-  tcp_connections[i].n_port = n_port;
-  tcp_connections[i].dst_port = dst_port;
-  tcp_connections[i].data_file = create_fifo_object();
-
-  buffered_init(&tcp_connections[i].buffer, 0x2000);
-
-  SOCKET *s = in->s;
-
-  vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
-      1 /*is_open*/, &tcp_connections[i], 0 /*file_size*/, NULL /*open*/,
-      NULL /*create_file*/, tcp_socket_read, tcp_socket_write, tcp_socket_close,
-      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-      NULL /*stat*/);
-
-  tcp_connections[i].has_data_ptr = &inode->has_data;
-
-  vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd);
-
-  fd->reference_count++;
-  s->incoming_fd = fd;
-
-  // Shitty way of telling the accepting socket we have a incoming
-  // connection.
-  char c = 'i';
-  fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
-  s->ptr_socket_fd->inode->has_data = 1;
-
-  vfs_close(n); // Closes the file descriptor in the current process.
-                // But it does not get freed since the reference count
-                // is still over zero.
-  fd->reference_count--;
-  return &tcp_connections[i];
+  return i;
 }
 
-OPEN_INET_SOCKET *find_open_tcp_port(u16 port) {
-  for (int i = 0; i < 100; i++) {
-    if (!inet_sockets[i]) {
-      continue;
-    }
-    if (inet_sockets[i]->port != port) {
-      continue;
-    }
-    if (inet_sockets[i]->s->type != SOCK_STREAM) {
-      continue;
-    }
-    return inet_sockets[i];
+int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out) {
+  struct TcpConnection *con = tcp_sockets[socket];
+  if (con->dead) {
+    *out = 0;
+    return 0;
   }
-  return NULL;
+
+  send_tcp_packet(con, buffer, len);
+  *out = len;
+  return 1;
 }
 
-OPEN_INET_SOCKET *find_open_udp_port(u16 port) {
-  for (int i = 0; i < 100; i++) {
-    if (!inet_sockets[i]) {
-      continue;
-    }
-    if (inet_sockets[i]->port != port) {
-      continue;
-    }
-    if (inet_sockets[i]->s->type != SOCK_DGRAM) {
-      continue;
-    }
-    return inet_sockets[i];
+int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
+  struct TcpConnection *con = tcp_sockets[socket];
+  if (con->dead) {
+    *out = 0;
+    return 0;
   }
-  return NULL;
+
+  int rc = 0;
+  for (; rc <= 0;) {
+    rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
+  }
+  *out = rc;
+  return 1;
+}
+
+void tcp_close(u32 socket) {
+  assert(NULL);
 }
 
 int uds_open(const char *path) {
@@ -266,24 +276,6 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     us->s = s;
     s->child = us;
     devfs_add_file(us->path, NULL, NULL, NULL, 1, 1, FS_TYPE_UNIX_SOCKET);
-    return 0;
-  }
-  if (AF_INET == s->domain) {
-    struct sockaddr_in *in = (struct sockaddr_in *)addr;
-    assert(in->sin_family == AF_INET); // FIXME: Figure out error value
-    OPEN_INET_SOCKET *inet;
-    int i = 0;
-    for (; i < 100; i++) {
-      if (!inet_sockets[i]) {
-        break;
-      }
-    }
-
-    inet = inet_sockets[i] = kmalloc(sizeof(OPEN_INET_SOCKET));
-    inet->address = in->sin_addr.s_addr;
-    inet->port = in->sin_port;
-    inet->s = s;
-    s->child = inet;
     return 0;
   }
   return 0;
