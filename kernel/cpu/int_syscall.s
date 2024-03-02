@@ -23,8 +23,9 @@ mov    edi,DWORD PTR [edx+0x1c]
 push edi
 mov    edi,DWORD PTR [edx+0x14]
 push edi
+
 call   eax
-add    esp,0x20
+add    esp,20
 mov    edx,DWORD PTR [ebp+0x8] # reg_t*
 mov    DWORD PTR [edx+0x20],eax
 lea    esp,[ebp-0xc]
