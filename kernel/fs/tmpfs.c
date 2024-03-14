@@ -56,8 +56,8 @@ void dual_pipe(int fd[2]) {
     fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd_ptr);
     assert(-1 != fd[i]);
   }
-  vfs_inode_t *f_inode = get_current_task()->file_descriptors[fd[0]]->inode;
-  vfs_inode_t *s_inode = get_current_task()->file_descriptors[fd[1]]->inode;
+  vfs_inode_t *f_inode = current_task->file_descriptors[fd[0]]->inode;
+  vfs_inode_t *s_inode = current_task->file_descriptors[fd[1]]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;
@@ -86,8 +86,8 @@ void pipe(int fd[2]) {
     fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptr);
     assert(-1 != fd[i]);
   }
-  vfs_inode_t *f_inode = get_current_task()->file_descriptors[fd[0]]->inode;
-  vfs_inode_t *s_inode = get_current_task()->file_descriptors[fd[1]]->inode;
+  vfs_inode_t *f_inode = current_task->file_descriptors[fd[0]]->inode;
+  vfs_inode_t *s_inode = current_task->file_descriptors[fd[1]]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;

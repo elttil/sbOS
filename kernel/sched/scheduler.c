@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
+#include <queue.h>
 
 // FIXME: Use the process_t struct instead or keep this contained in it.
 TCB *current_task_TCB;
@@ -25,6 +26,10 @@ extern u32 read_eip(void);
 
 process_t *get_current_task(void) {
   return current_task;
+}
+
+process_t *get_ready_queue(void) {
+  return ready_queue;
 }
 
 void process_push_restore_context(process_t *p, reg_t r) {
@@ -115,6 +120,11 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   list_init(&r->write_list);
   list_init(&r->disconnect_list);
 
+  list_init(&r->tcp_sockets);
+  list_init(&r->tcp_listen);
+
+  list_init(&r->event_queue);
+
   // Temporarily switch to the page directory to be able to place the
   // "entry_instruction_pointer" onto the stack.
 
@@ -178,7 +188,7 @@ void tasking_init(void) {
 
 int i = 0;
 void free_process(void) {
-  process_t *p = get_current_task();
+  process_t *p = current_task;
   kprintf("pid: %x\n", p->pid);
   kprintf("Exiting process: %s\n", p->program_name);
   // free_process() will purge all contents such as allocated frames
@@ -324,9 +334,10 @@ int fork(void) {
   return new_task->pid;
 }
 
-int isset_fdhalt(process_t *p) {
+int isset_fdhalt(process_t *p, int *empty) {
+  *empty = 1;
   if (NULL == p) {
-    p = get_current_task();
+    p = current_task;
   }
   int blocked = 0;
   struct list *read_list = &p->read_list;
@@ -338,6 +349,7 @@ int isset_fdhalt(process_t *p) {
     if (!list_get(read_list, i, (void **)&inode)) {
       break;
     }
+    *empty = 0;
     if (inode->has_data) {
       return 0;
     }
@@ -348,6 +360,7 @@ int isset_fdhalt(process_t *p) {
     if (!list_get(write_list, i, (void **)&inode)) {
       break;
     }
+    *empty = 0;
     if (inode->can_write) {
       return 0;
     }
@@ -358,7 +371,9 @@ int isset_fdhalt(process_t *p) {
     if (!list_get(disconnect_list, i, (void **)&inode)) {
       break;
     }
-    if (inode->is_open) {
+    *empty = 0;
+    if (!inode->is_open) {
+      kprintf("is_open\n");
       return 0;
     }
     blocked = 1;
@@ -375,11 +390,35 @@ int is_halted(process_t *process) {
 
   if (process->is_halted) {
     if (ipc_has_data(process)) {
+      kprintf("ipc had data\n");
       return 0;
     }
   }
 
-  if (isset_fdhalt(process)) {
+  int queue_block = 1;
+  int wait_empty = 1;
+  for (int i = 0;; i++) {
+    struct event_queue *q;
+    if (!list_get(&process->event_queue, i, (void **)&q)) {
+      break;
+    }
+    int is_empty;
+    int rc = queue_should_block(q, &is_empty);
+    if (is_empty) {
+      wait_empty = 0;
+      continue;
+    }
+    if (0 == rc) {
+      queue_block = 0;
+    }
+  }
+  if (!queue_block && !wait_empty) {
+    kprintf("skip because queue_wait has data\n");
+    return 0;
+  }
+
+  int fd_empty;
+  if (isset_fdhalt(process, &fd_empty) && !fd_empty) {
     return 1;
   }
   return 0;
@@ -387,9 +426,10 @@ int is_halted(process_t *process) {
 
 extern PageDirectory *active_directory;
 
-process_t *next_task(process_t *c) {
-  for (;;) {
-    c = c->next;
+process_t *next_task(process_t *s) {
+  process_t *c = s;
+  c = c->next;
+  for (;; c = c->next) {
     if (!c) {
       c = ready_queue;
     }
@@ -430,8 +470,9 @@ void switch_task() {
     return;
   }
 
-  disable_interrupts();
+  enable_interrupts();
   current_task = next_task((process_t *)current_task);
+  disable_interrupts();
   active_directory = current_task->cr3;
 
   switch_to_task(current_task->tcb);
@@ -448,11 +489,11 @@ MemoryMap **get_free_map(void) {
 }
 
 void *get_free_virtual_memory(size_t length) {
-  void *n = (void *)((uintptr_t)(get_current_task()->data_segment_end) +
-                     length + 0x1000);
+  void *n =
+      (void *)((uintptr_t)(current_task->data_segment_end) + length + 0x1000);
 
-  void *rc = get_current_task()->data_segment_end;
-  get_current_task()->data_segment_end = align_page(n);
+  void *rc = current_task->data_segment_end;
+  current_task->data_segment_end = align_page(n);
   return rc;
 }
 

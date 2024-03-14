@@ -530,12 +530,12 @@ void move_stack(u32 new_stack_address, u32 size) {
 // C strings have a unknown length so it does not makes sense to check
 // for a size on the pointer. Instead we check whether the page it
 // resides in is accessible to the user.
-void *is_valid_user_c_string(const char *ptr, size_t *size) {
+void *mmu_is_valid_user_c_string(const char *ptr, size_t *size) {
   void *r = (void *)ptr;
   size_t s = 0;
   for (; ((u32)ptr - (u32)r) < 0x1000;) {
     void *page = (void *)((uintptr_t)ptr & (uintptr_t)(~(PAGE_SIZE - 1)));
-    if (!is_valid_userpointer(page, PAGE_SIZE)) {
+    if (!mmu_is_valid_userpointer(page, PAGE_SIZE)) {
       return NULL;
     }
     if (!((uintptr_t)ptr & (PAGE_SIZE - 1))) {
@@ -556,7 +556,7 @@ void *is_valid_user_c_string(const char *ptr, size_t *size) {
   return NULL;
 }
 
-void *is_valid_userpointer(const void *ptr, size_t s) {
+void *mmu_is_valid_userpointer(const void *ptr, size_t s) {
   uintptr_t t = (uintptr_t)ptr;
   size_t num_pages = (uintptr_t)align_page((void *)s) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, t += 0x1000) {

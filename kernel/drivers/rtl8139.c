@@ -111,8 +111,7 @@ void rtl8139_send_data(u8 *data, u16 data_size) {
     data_size -= 0x1000;
     return rtl8139_send_data(data, data_size);
   }
-  ipc_write(0, data, data_size);
-  /*
+  // ipc_write(0, data, data_size);
   const struct PCI_DEVICE *device = &rtl8139;
   // FIXME: It should block or fail if there is too little space for the
   // buffer
@@ -129,7 +128,7 @@ void rtl8139_send_data(u8 *data, u16 data_size) {
   outl(device->gen.base_mem_io + 0x20 + send_buffers_loop * 4,
        (u32)virtual_to_physical(send_buffers[send_buffers_loop], NULL));
   outl(device->gen.base_mem_io + 0x10 + send_buffers_loop * 4, data_size);
-  send_buffers_loop += 1;*/
+  send_buffers_loop += 1;
 }
 
 void get_mac_address(u8 mac[6]) {

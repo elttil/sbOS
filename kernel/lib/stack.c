@@ -1,3 +1,4 @@
+#include <interrupts.h>
 #include <kmalloc.h>
 #include <lib/stack.h>
 #include <stddef.h>

@@ -190,6 +190,7 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
   }
 
   struct TcpConnection *incoming_connection = tcp_find_connection(dst_port);
+  kprintf("dst_port: %d\n", dst_port);
   if (incoming_connection) {
     incoming_connection->unhandled_packet = 1;
     if (0 != (flags & RST)) {
@@ -212,9 +213,9 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
 
       tcp_send_ack(incoming_connection);
     }
-    if (0 != (flags & PSH)) {
-      u16 tcp_payload_length =
-          payload_length - header->data_offset * sizeof(u32);
+    //    if (0 != (flags & PSH)) {
+    u16 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
+    if (tcp_payload_length > 0) {
       int len = fifo_object_write(
           (u8 *)(payload + header->data_offset * sizeof(u32)), 0,
           tcp_payload_length, incoming_connection->data_file);
@@ -232,7 +233,7 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
                                      // is closed.
     }
   } else {
-    assert(NULL);
+    return;
   }
 }
 /*

@@ -5,6 +5,15 @@
 #include <network/ethernet.h>
 #include <stdio.h>
 #include <string.h>
+#include <interrupts.h>
+
+ipv4_t gateway;
+ipv4_t bitmask;
+
+void setup_network(ipv4_t _gateway, ipv4_t _bitmask) {
+  gateway = _gateway;
+  bitmask = _bitmask;
+}
 
 struct ARP_DATA {
   u16 htype;   // Hardware type
@@ -84,7 +93,20 @@ void send_arp_request(const u8 ip[4]) {
   send_ethernet_packet(broadcast, 0x0806, (u8 *)&data, sizeof(data));
 }
 
+int ip_inside_network(const ipv4_t ip) {
+  if ((ip.d & bitmask.d) == (gateway.d & bitmask.d)) {
+    return 1;
+  }
+  return 0;
+}
+
 int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
+  ipv4_t tmp_ip;
+  memcpy(tmp_ip.a, ip, sizeof(u8[4]));
+  if (!ip_inside_network(tmp_ip)) {
+    return get_mac_from_ip(gateway.a, mac);
+  }
+
   for (int i = 0; i < 10; i++) {
     if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4]))) {
       continue;
@@ -93,6 +115,7 @@ int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
     return 1;
   }
   klog("ARP cache miss", LOG_NOTE);
+  enable_interrupts();
   send_arp_request(ip);
   // TODO: Maybe wait a bit?
   for (int i = 0; i < 10; i++) {

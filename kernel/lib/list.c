@@ -16,13 +16,16 @@ void list_reset(struct list *list) {
   list->tail_index = -1;
 }
 
-int list_add(struct list *list, void *entry) {
+int list_add(struct list *list, void *entry, int *index) {
   if (list->tail_index > 100 - 1) {
     kprintf("Error: list has run out of space\n");
     assert(0);
   }
   list->tail_index++;
   list->entries[list->tail_index] = entry;
+  if(index) {
+    *index = list->tail_index;
+  }
   return 1;
 }
 

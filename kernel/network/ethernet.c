@@ -73,6 +73,7 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
   u64 buffer_size =
       sizeof(struct ETHERNET_HEADER) + payload_length + sizeof(u32);
   u8 *buffer = kmalloc(buffer_size);
+  memset(buffer, 0, buffer_size);
   u8 *buffer_start = buffer;
   struct ETHERNET_HEADER *eth_header = (struct ETHERNET_HEADER *)buffer;
   buffer += sizeof(struct ETHERNET_HEADER);

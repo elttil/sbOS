@@ -45,6 +45,8 @@ void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
                       size_t length);
 void mmu_free_pages(void *a, u32 n);
 void *mmu_map_user_frames(void *const ptr, size_t s);
+void *mmu_is_valid_userpointer(const void *ptr, size_t s);
+void *mmu_is_valid_user_c_string(const char *ptr, size_t *size);
 
 void flush_tlb(void);
 void paging_init(u64 memsize);
@@ -54,8 +56,6 @@ void switch_page_directory(PageDirectory *directory);
 void *allocate_frame(Page *page, int rw, int is_kernel);
 PageDirectory *clone_directory(PageDirectory *original);
 void *virtual_to_physical(void *address, PageDirectory *directory);
-void *is_valid_userpointer(const void *const p, size_t s);
-void *is_valid_user_c_string(const char *ptr, size_t *size);
 void *ksbrk(size_t s);
 void *ksbrk_physical(size_t s, void **physical);
 

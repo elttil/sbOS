@@ -20,7 +20,7 @@ bool ipc_register_endpoint(u32 endpoint) {
     return false;
   }
   ipc_endpoints[endpoint].in_use = 1;
-  ipc_endpoints[endpoint].pid = get_current_task()->pid;
+  ipc_endpoints[endpoint].pid = current_task->pid;
   return true;
 }
 
@@ -46,7 +46,7 @@ int ipc_get_mailbox(u32 id, struct IpcMailbox **out) {
 
 int ipc_has_data(process_t *p) {
   if (!p) {
-    p = get_current_task();
+    p = current_task;
   }
   struct IpcMailbox *handler = &p->ipc_mailbox;
   u32 read_ptr = handler->read_ptr;
@@ -55,28 +55,29 @@ int ipc_has_data(process_t *p) {
 }
 
 int ipc_read(u8 *buffer, u32 length, u32 *sender_pid) {
-  struct IpcMailbox *handler = &get_current_task()->ipc_mailbox;
+  struct IpcMailbox *handler = &current_task->ipc_mailbox;
 
   u32 read_ptr = handler->read_ptr;
   struct IpcMessage *ipc_message = &handler->data[read_ptr];
   for (;;) {
     if (!ipc_message->is_used) {
-      if (get_current_task()->is_interrupted) {
-        get_current_task()->is_interrupted = 0;
-        get_current_task()->is_halted = 0;
+      if (current_task->is_interrupted) {
+        current_task->is_interrupted = 0;
+        current_task->is_halted = 0;
         return 0;
       }
-      get_current_task()->is_halted = 1;
+      current_task->is_halted = 1;
       switch_task();
       continue;
     }
     break;
   }
-  get_current_task()->is_halted = 0;
+  current_task->is_halted = 0;
   disable_interrupts();
   ipc_message->is_used = 0;
   // TODO: Verify sender_pid is a valid address
   if (sender_pid) {
+    assert(mmu_is_valid_userpointer(sender_pid, sizeof(ipc_message->sender_pid)));
     *sender_pid = ipc_message->sender_pid;
   }
 
@@ -100,7 +101,7 @@ int ipc_write_to_process(int pid, u8 *buffer, u32 length) {
   struct IpcMessage *ipc_message = &handler->data[write_ptr];
   ipc_message->is_used = 1;
   u32 len = min(IPC_BUFFER_SIZE, length);
-  ipc_message->sender_pid = get_current_task()->pid;
+  ipc_message->sender_pid = current_task->pid;
   ipc_message->size = len;
   memcpy(ipc_message->buffer, buffer, len);
 

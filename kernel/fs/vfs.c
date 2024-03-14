@@ -19,7 +19,7 @@ vfs_fd_t *get_vfs_fd(int fd) {
     dump_backtrace(12);
     return NULL;
   }
-  return get_current_task()->file_descriptors[fd];
+  return current_task->file_descriptors[fd];
 }
 
 vfs_inode_t *vfs_create_inode(
@@ -56,7 +56,7 @@ vfs_inode_t *vfs_create_inode(
 
 int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
                   vfs_fd_t **fd) {
-  process_t *p = (process_t *)get_current_task();
+  process_t *p = (process_t *)current_task;
   int i;
   for (i = 0; i < 100; i++) {
     if (!p->file_descriptors[i]) {
@@ -194,7 +194,7 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
     assert(vfs_clean_path(file, resolved_path));
     return resolved_path;
   }
-  const char *cwd = get_current_task()->current_working_directory;
+  const char *cwd = current_task->current_working_directory;
   size_t l = strlen(cwd);
   assert(l > 0);
   assert('/' == cwd[l - 1]);
@@ -230,10 +230,10 @@ int vfs_chdir(const char *path) {
     }
     vfs_close(tmp_fd);
   }
-  strcpy(get_current_task()->current_working_directory, resolved_path);
+  strcpy(current_task->current_working_directory, resolved_path);
   if ('/' != resolved_path[strlen(resolved_path)] &&
       strlen(resolved_path) != 1) {
-    strcat(get_current_task()->current_working_directory, "/");
+    strcat(current_task->current_working_directory, "/");
   }
   return 0;
 }
@@ -297,7 +297,7 @@ int vfs_close(int fd) {
   assert(0 < fd_ptr->reference_count);
   // Remove process reference
   fd_ptr->reference_count--;
-  get_current_task()->file_descriptors[fd] = 0;
+  current_task->file_descriptors[fd] = 0;
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
     if (fd_ptr->inode->close) {
@@ -326,7 +326,7 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
   }
-  vfs_fd_t *vfs_fd = get_current_task()->file_descriptors[fd];
+  vfs_fd_t *vfs_fd = current_task->file_descriptors[fd];
   if (!vfs_fd) {
     return -EBADF;
   }
@@ -334,10 +334,15 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   if (-EAGAIN == rc && count > 0) {
     if (!(vfs_fd->flags & O_NONBLOCK)) {
       struct pollfd fds;
-      fds.fd = fd;
-      fds.events = POLLIN;
-      fds.revents = 0;
-      poll(&fds, 1, 0);
+      do {
+        fds.fd = fd;
+        fds.events = POLLIN;
+        fds.revents = 0;
+        int rc = poll(&fds, 1, 0);
+        if (-EINTR == rc) {
+          return -EINTR;
+        }
+      } while (!(fds.revents & POLLIN));
       return vfs_pread(fd, buf, count, offset);
     }
   }
@@ -372,9 +377,9 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
 }
 
 int vfs_dup2(int org_fd, int new_fd) {
-  get_current_task()->file_descriptors[new_fd] =
-      get_current_task()->file_descriptors[org_fd];
-  get_current_task()->file_descriptors[new_fd]->reference_count++;
+  current_task->file_descriptors[new_fd] =
+      current_task->file_descriptors[org_fd];
+  current_task->file_descriptors[new_fd]->reference_count++;
   return 1;
 }
 

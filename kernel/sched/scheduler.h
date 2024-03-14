@@ -14,6 +14,9 @@ typedef struct Process process_t;
 #define KEYBOARD_HALT 0
 #define WAIT_CHILD_HALT 1
 
+extern process_t *current_task;
+extern process_t *ready_queue;
+
 int fork(void);
 int exec(const char *filename, char **argv);
 void switch_task(void);
@@ -63,6 +66,11 @@ struct Process {
   struct list write_list;
   struct list disconnect_list;
 
+  struct list tcp_sockets;
+  struct list tcp_listen;
+
+  struct list event_queue;
+
   struct stack restore_context_stack;
   struct stack signal_stack;
 
@@ -87,7 +95,6 @@ struct Process {
 };
 
 bool get_task_from_pid(u32 pid, process_t **out);
-process_t *get_current_task(void);
 int get_free_fd(process_t *p, int allocate);
 void free_process(void);
 void *get_free_virtual_memory(size_t length);

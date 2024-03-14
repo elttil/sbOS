@@ -62,7 +62,11 @@ int add_heap_memory(size_t min_desired) {
 MallocHeader *next_header(MallocHeader *a) {
   assert(a->magic == 0xdde51ab9410268b1);
   if (a->n) {
-    assert(a->n->magic == 0xdde51ab9410268b1);
+    if (a->n->magic != 0xdde51ab9410268b1) {
+      kprintf("Real magic value is: %x\n", a->n->magic);
+      kprintf("location: %x\n", &(a->n->magic));
+      assert(0);
+    }
     return a->n;
   }
   return NULL;
@@ -124,6 +128,7 @@ void merge_headers(MallocHeader *b) {
 }
 
 void *kmalloc(size_t s) {
+  s += 0x1000;
   size_t n = s;
   MallocHeader *free_entry = find_free_entry(s);
   if (!free_entry) {
@@ -154,7 +159,10 @@ void *kmalloc(size_t s) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
-  get_fast_insecure_random((void *)rc, s);
+  for (int i = 0; i < s; i++) {
+    *(char *)rc = 'A';
+  }
+  // get_fast_insecure_random((void *)rc, s);
   return rc;
 }
 

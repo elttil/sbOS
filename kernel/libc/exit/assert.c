@@ -8,4 +8,5 @@ __attribute__((__noreturn__)) void aFailed(char *f, int l) {
   kprintf("%s : %d\n", f, l);
   dump_backtrace(10);
   halt();
+  kprintf("after halt?\n");
 }

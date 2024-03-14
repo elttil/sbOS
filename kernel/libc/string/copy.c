@@ -14,7 +14,7 @@ char *copy_and_allocate_string(const char *s) {
 
 char *copy_and_allocate_user_string(const char *s) {
   size_t len;
-  if (!is_valid_user_c_string(s, &len)) {
+  if (!mmu_is_valid_user_c_string(s, &len)) {
     return NULL;
   }
   size_t real_len = strlen(s);

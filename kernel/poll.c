@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
 #include <lib/list.h>
@@ -10,9 +11,9 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
 
   disable_interrupts();
 
-  struct list *read_list = &get_current_task()->read_list;
-  struct list *write_list = &get_current_task()->write_list;
-  struct list *disconnect_list = &get_current_task()->disconnect_list;
+  struct list *read_list = &current_task->read_list;
+  struct list *write_list = &current_task->write_list;
+  struct list *disconnect_list = &current_task->disconnect_list;
   for (size_t i = 0; i < nfds; i++) {
     if (fds[i].fd < 0) {
       continue;
@@ -23,13 +24,13 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     }
 
     if (fds[i].events & POLLIN) {
-      list_add(read_list, f->inode);
+      list_add(read_list, f->inode, NULL);
     }
     if (fds[i].events & POLLOUT) {
-      list_add(write_list, f->inode);
+      list_add(write_list, f->inode, NULL);
     }
     if (fds[i].events & POLLHUP) {
-      list_add(disconnect_list, f->inode);
+      list_add(disconnect_list, f->inode, NULL);
     }
   }
 
@@ -39,6 +40,11 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
   list_reset(read_list);
   list_reset(write_list);
   list_reset(disconnect_list);
+  if (current_task->is_interrupted) {
+    current_task->is_interrupted = 0;
+    current_task->is_halted = 0;
+    return -EINTR;
+  }
 
   for (size_t i = 0; i < nfds; i++) {
     if (0 > fds[i].fd) {
@@ -60,9 +66,9 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
       if (!(f->inode->is_open) && fds[i].events & POLLHUP) {
         fds[i].revents |= POLLHUP;
       }
-      if (fds[i].revents) {
-        rc++;
-      }
+    }
+    if (fds[i].revents) {
+      rc++;
     }
   }
   enable_interrupts();

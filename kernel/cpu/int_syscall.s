@@ -2,7 +2,6 @@
 .global int_syscall
 .extern syscall_functions
 int_syscall:
-sti
 push   ebp
 mov    ebp,esp
 push   edi

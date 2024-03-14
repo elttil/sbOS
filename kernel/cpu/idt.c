@@ -74,9 +74,9 @@ void page_fault(reg_t *regs) {
   }
   klog("Page Fault", LOG_ERROR);
   kprintf("CR2: %x\n", cr2);
-  if (get_current_task()) {
-    kprintf("PID: %x\n", get_current_task()->pid);
-    kprintf("Name: %s\n", get_current_task()->program_name);
+  if (current_task) {
+    kprintf("PID: %x\n", current_task->pid);
+    kprintf("Name: %s\n", current_task->program_name);
   }
   kprintf("Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
@@ -101,7 +101,7 @@ void page_fault(reg_t *regs) {
     kprintf("Attempted instruction fetch\n");
   }
 
-  dump_backtrace(12);
+  dump_backtrace(8);
   halt();
 }
 

@@ -16,7 +16,7 @@ void test_handler(reg_t *regs) {
 
 int syscall_install_irq(void (*irq_handler)(), u8 irq) {
   // TODO: This should be able to fail if the handler is already set
-  tmp = get_current_task();
+  tmp = current_task;
   handler = irq_handler;
   install_handler(test_handler, INT_32_INTERRUPT_GATE(0x0), 0x20 + irq);
   return 1;

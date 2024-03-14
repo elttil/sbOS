@@ -11,51 +11,71 @@
 // FIXME: Make these more dynamic
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
 
-struct TcpConnection *tcp_sockets[100];
-struct TcpListen *tcp_listen[100];
+// struct TcpConnection *tcp_sockets[100];
+// struct TcpListen *tcp_listen[100];
 
 u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4) {
   return i4 << (32 - 8) | i3 << (32 - 16) | i2 << (32 - 24) | i1 << (32 - 32);
 }
 
 struct TcpConnection *tcp_find_connection(u16 port) {
-  for (int i = 0; i < 100; i++) {
-    if (port == tcp_sockets[i]->incoming_port) {
-      return tcp_sockets[i];
+  process_t *p = current_task;
+  process_t *s = p;
+  p = p->next;
+  for (; p != s; p = p->next) {
+    if (!p) {
+      p = ready_queue;
+    }
+    struct list *connections = &p->tcp_sockets;
+    for (int i = 0;; i++) {
+      struct TcpConnection *c;
+      if (!list_get(connections, i, (void **)&c)) {
+        break;
+      }
+      kprintf("got port: %d\n", c->incoming_port);
+      if (c->incoming_port == port) {
+        return c;
+      }
     }
   }
   return NULL;
 }
+
+struct TcpListen *tcp_find_listen(u16 port) {
+  process_t *p = current_task;
+  process_t *s = p;
+  p = p->next;
+  for (; p != s; p = p->next) {
+    if (!p) {
+      p = ready_queue;
+    }
+    struct list *listen_list = &p->tcp_listen;
+    for (int i = 0;; i++) {
+      struct TcpListen *c;
+      if (!list_get(listen_list, i, (void **)&c)) {
+        break;
+      }
+      if (c->port == port) {
+        return c;
+      }
+    }
+  }
+  return NULL;
+}
+
 struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
                                             u32 dst_ip, u16 dst_port) {
-  u32 i = 0;
-  for (; i < 100; i++) {
-    if (!tcp_listen[i]) {
-      continue;
-    }
-    if (dst_port == tcp_listen[i]->port) {
-      break;
-    }
-  }
-  if (!tcp_listen[i] || dst_port != tcp_listen[i]->port) {
-    return NULL;
-  }
-  struct TcpListen *listen = tcp_listen[i];
-  u32 listen_id = i;
-
-  i = 0;
-  for (; i < 100; i++) {
-    if (!tcp_sockets[i]) {
-      break;
-    }
-  }
-  if (tcp_sockets[i]) {
+  struct TcpListen *listen = tcp_find_listen(dst_port);
+  if (!listen) {
     return NULL;
   }
 
-  tcp_sockets[i] = kcalloc(1, sizeof(struct TcpConnection));
-  struct TcpConnection *con = tcp_sockets[i];
-  u32 con_id = i;
+  struct TcpConnection *con = kcalloc(1, sizeof(struct TcpConnection));
+
+  int connection_id;
+  struct list *connections = &current_task->tcp_sockets;
+  list_add(connections, con, &connection_id);
+
   con->outgoing_ip = src_ip;
   con->outgoing_port = src_port;
   //  con->incoming_ip = dst_ip;
@@ -63,39 +83,38 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
                                  // connection
 
   con->data_file = create_fifo_object();
-  kprintf("pushing the connection\n");
-  kprintf("listen_id: %x\n", listen_id);
-  stack_push(&listen->incoming_connections, (void *)con_id);
-  kprintf("listen->incoming_connections->head: %x\n",
-          (&listen->incoming_connections)->head);
-  kprintf("root: %x\n", &listen->incoming_connections);
+  stack_push(&listen->incoming_connections, (void *)connection_id);
   return con;
 }
 
 u32 tcp_listen_ipv4(u32 ip, u16 port, int *error) {
   *error = 0;
-  u32 i = 0;
-  for (; i < 100; i++) {
-    if (!tcp_listen[i]) {
-      break;
-    }
-  }
-  if (tcp_listen[i]) {
-    *error = 1;
-    return 0;
-  }
 
-  tcp_listen[i] = kcalloc(1, sizeof(struct TcpListen));
-  tcp_listen[i]->ip = ip;
-  tcp_listen[i]->port = port;
-  stack_init(&tcp_listen[i]->incoming_connections);
-  return i;
+  struct TcpListen *listener = kcalloc(1, sizeof(struct TcpListen));
+  listener->ip = ip;
+  listener->port = port;
+  stack_init(&listener->incoming_connections);
+
+  struct list *listen_list = &current_task->tcp_listen;
+  int index;
+  list_add(listen_list, listener, &index);
+  return index;
+}
+
+struct TcpConnection *tcp_get_connection(u32 socket) {
+  const struct list *connections = &current_task->tcp_sockets;
+  struct TcpConnection *con;
+  if (!list_get(connections, socket, (void **)&con)) {
+    return NULL;
+  }
+  return con;
 }
 
 u32 tcp_accept(u32 listen_socket, int *error) {
   *error = 0;
-  struct TcpListen *l = tcp_listen[listen_socket];
-  if (NULL == l) {
+  struct list *listen_list = &current_task->tcp_listen;
+  struct TcpListen *l;
+  if (!list_get(listen_list, listen_socket, (void **)&l)) {
     *error = 1;
     return 0;
   }
@@ -110,20 +129,12 @@ u32 tcp_accept(u32 listen_socket, int *error) {
 }
 
 u32 tcp_connect_ipv4(u32 ip, u16 port, int *error) {
+  struct list *connections = &current_task->tcp_sockets;
   *error = 0;
-  u32 i = 0;
-  for (; i < 100; i++) {
-    if (!tcp_sockets[i]) {
-      break;
-    }
-  }
-  if (tcp_sockets[i]) {
-    *error = 1;
-    return 0;
-  }
 
-  tcp_sockets[i] = kcalloc(1, sizeof(struct TcpConnection));
-  struct TcpConnection *con = tcp_sockets[i];
+  struct TcpConnection *con = kcalloc(1, sizeof(struct TcpConnection));
+  int index;
+  list_add(connections, con, &index);
 
   con->incoming_port = 1337; // TODO
   con->outgoing_ip = ip;
@@ -144,33 +155,50 @@ u32 tcp_connect_ipv4(u32 ip, u16 port, int *error) {
     }
   }
 
-  return i;
+  return index;
 }
 
 int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out) {
-  struct TcpConnection *con = tcp_sockets[socket];
-  if (con->dead) {
+  if (out) {
     *out = 0;
+  }
+  struct TcpConnection *con = tcp_get_connection(socket);
+  if (!con) {
+    return 0;
+  }
+  if (con->dead) {
     return 0;
   }
 
   send_tcp_packet(con, buffer, len);
-  *out = len;
+  if (out) {
+    *out = len;
+  }
   return 1;
 }
 
 int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
-  struct TcpConnection *con = tcp_sockets[socket];
-  if (con->dead) {
+  if (out) {
     *out = 0;
+  }
+  struct TcpConnection *con = tcp_get_connection(socket);
+  if (!con) {
+    return 0;
+  }
+  if (con->dead) {
     return 0;
   }
 
   int rc = 0;
   for (; rc <= 0;) {
     rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
+    if(rc <= 0) {
+      switch_task();
+    }
   }
-  *out = rc;
+  if (out) {
+    *out = rc;
+  }
   return 1;
 }
 
@@ -210,7 +238,7 @@ int uds_open(const char *path) {
   fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
   s->ptr_socket_fd->inode->has_data = 1;
 
-  s->incoming_fd = get_current_task()->file_descriptors[fd[1]];
+  s->incoming_fd = current_task->file_descriptors[fd[1]];
   // vfs_close(fd[1]);
   return fd[0];
 }
@@ -218,7 +246,7 @@ int uds_open(const char *path) {
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   (void)address;
   (void)address_len;
-  vfs_inode_t *inode = get_current_task()->file_descriptors[socket]->inode;
+  vfs_inode_t *inode = current_task->file_descriptors[socket]->inode;
   SOCKET *s = (SOCKET *)inode->internal_object;
 
   if (NULL == s->incoming_fd) {
@@ -231,10 +259,10 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   }
 
   int n = 0;
-  for (; get_current_task()->file_descriptors[n]; n++)
+  for (; current_task->file_descriptors[n]; n++)
     ;
-  get_current_task()->file_descriptors[n] = s->incoming_fd;
-  get_current_task()->file_descriptors[n]->reference_count++;
+  current_task->file_descriptors[n] = s->incoming_fd;
+  current_task->file_descriptors[n]->reference_count++;
   s->incoming_fd = NULL;
   //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
   //    ;

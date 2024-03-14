@@ -14,8 +14,8 @@ void dump_backtrace(u32 max_frames) {
     kprintf(" 0x%x\n", stk->eip);
     stk = stk->ebp;
   }
-  if (get_current_task()) {
-    kprintf(" PID: %x\n", get_current_task()->pid);
+  if (current_task) {
+    kprintf(" PID: %x\n", current_task->pid);
   }
 }
 

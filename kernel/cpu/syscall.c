@@ -9,6 +9,7 @@
 #include <interrupts.h>
 #include <kmalloc.h>
 #include <network/ethernet.h>
+#include <socket.h>
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
@@ -73,22 +74,24 @@ void syscall_exit(int status) {
 
 void syscall_wait(int *status) {
   disable_interrupts();
-  if (!get_current_task()->child) {
+  if (!current_task->child) {
     if (status) {
       *status = -1;
     }
     return;
   }
-  if (get_current_task()->child->dead) {
+  if (current_task->child->dead) {
     if (status) {
-      *status = get_current_task()->child_rc;
+      *status = current_task->child_rc;
     }
     return;
   }
-  get_current_task()->halts[WAIT_CHILD_HALT] = 1;
-  switch_task();
+  do {
+    current_task->halts[WAIT_CHILD_HALT] = 1;
+    switch_task();
+  } while (current_task->halts[WAIT_CHILD_HALT]);
   if (status) {
-    *status = get_current_task()->child_rc;
+    *status = current_task->child_rc;
   }
 }
 
@@ -97,25 +100,24 @@ int syscall_fork(void) {
 }
 
 int syscall_getpid(void) {
-  return get_current_task()->pid;
+  return current_task->pid;
 }
 
 void *align_page(void *a);
 
 int syscall_brk(void *addr) {
-  void *end = get_current_task()->data_segment_end;
+  void *end = current_task->data_segment_end;
   if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW, NULL)) {
     return -ENOMEM;
   }
-  get_current_task()->data_segment_end = align_page(addr);
+  current_task->data_segment_end = align_page(addr);
   return 0;
 }
 
 void *syscall_sbrk(uintptr_t increment) {
   disable_interrupts();
-  void *rc = get_current_task()->data_segment_end;
-  void *n =
-      (void *)((uintptr_t)(get_current_task()->data_segment_end) + increment);
+  void *rc = current_task->data_segment_end;
+  void *n = (void *)((uintptr_t)(current_task->data_segment_end) + increment);
   int rc2;
   if (0 > (rc2 = syscall_brk(n))) {
     return (void *)rc2;
@@ -128,9 +130,24 @@ int syscall_close(int fd) {
 }
 
 int syscall_openpty(SYS_OPENPTY_PARAMS *args) {
-  assert(is_valid_userpointer(args, sizeof(SYS_OPENPTY_PARAMS)));
+  assert(mmu_is_valid_userpointer(args, sizeof(SYS_OPENPTY_PARAMS)));
   return openpty(args->amaster, args->aslave, args->name, args->termp,
                  args->winp);
+}
+
+u32 syscall_tcp_connect(u32 ip, u16 port, int *error) {
+  // TODO: Make sure error is a user address
+  return tcp_connect_ipv4(ip, port, error);
+}
+
+int syscall_tcp_write(u32 socket, const u8 *buffer, u32 len, u64 *out) {
+  // TODO: Make sure out is a user address
+  return tcp_write(socket, buffer, len, out);
+}
+
+int syscall_tcp_read(u32 socket, u8 *buffer, u32 buffer_size, u64 *out) {
+  // TODO: Make sure out is a user address
+  return tcp_read(socket, buffer, buffer_size, out);
 }
 
 int (*syscall_functions[])() = {
@@ -180,14 +197,17 @@ int (*syscall_functions[])() = {
     (void(*))syscall_virtual_to_physical,
     (void(*))syscall_install_irq,
     (void(*))syscall_tmp_handle_packet,
+
+    (void(*))syscall_tcp_connect,
+    (void(*))syscall_tcp_write,
+    (void(*))syscall_tcp_read,
+
+    (void(*))syscall_queue_create,
+    (void(*))syscall_queue_add,
+    (void(*))syscall_queue_wait,
 };
 
 void int_syscall(reg_t *r);
-void syscall_function_handler(u32 eax, u32 arg1, u32 arg2, u32 arg3, u32 arg4,
-                              u32 arg5, u32 ebp, u32 esp) {
-  assert(eax < sizeof(syscall_functions) / sizeof(syscall_functions[0]));
-  syscall_functions[eax](arg1, arg2, arg3, arg4, arg5);
-}
 
 void syscalls_init(void) {
   install_handler(int_syscall, INT_32_INTERRUPT_GATE(0x3), 0x80);
