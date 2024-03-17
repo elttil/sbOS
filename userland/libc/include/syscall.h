@@ -6,7 +6,7 @@
 #include <sys/types.h>
 
 #define SYS_OPEN 0
-#define SYS_READ 1
+#define SYS_MREAD 1
 #define SYS_WRITE 2
 #define SYS_PREAD 3
 #define SYS_PWRITE 4

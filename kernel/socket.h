@@ -18,7 +18,7 @@
 
 #define MSG_WAITALL 1
 
-u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4);
+void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4);
 u32 tcp_connect_ipv4(u32 ip, u16 port, int *error);
 
 u32 tcp_listen_ipv4(u32 ip, u16 port, int *error);
@@ -49,6 +49,7 @@ struct TcpConnection {
   int handshake_state;
 };
 
+struct TcpConnection *tcp_get_connection(u32 socket, process_t *p);
 struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
                                             u32 dst_ip, u16 dst_port);
 

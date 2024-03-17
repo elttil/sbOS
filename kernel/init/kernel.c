@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cpu/arch_inst.h>
 #include <cpu/gdt.h>
 #include <cpu/idt.h>
 #include <cpu/spinlock.h>
@@ -121,35 +122,13 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   */
 
   ipv4_t gateway;
-  gateway.d = gen_ipv4(10, 0, 2, 2);
+  gen_ipv4(&gateway, 10, 0, 2, 2);
   ipv4_t bitmask;
-  bitmask.d = gen_ipv4(255, 255, 255, 0);
+  gen_ipv4(&bitmask, 255, 255, 255, 0);
   setup_network(gateway, bitmask);
 
-  /*
-  //  u32 ip = gen_ipv4(10, 0, 2, 2);
-  u32 ip = gen_ipv4(93, 184, 216, 34);
-  int err;
-  u32 socket = tcp_connect_ipv4(ip, 80, &err);
-  assert(!err);
-  kprintf("socket: %x\n", socket);
-  u64 out;
-  char *http_request = "GET /\r\n\r\n";
-  assert(tcp_write(socket, http_request, strlen(http_request), &out));
-  kprintf("sent: %x over the tcp socket\n", out);
+  gen_ipv4(&ip_address, 10, 0, 2, 15);
 
-  for (;;) {
-    char buffer[256];
-    assert(tcp_read(socket, buffer, 256, &out));
-    kprintf("got %x bytes\n", out);
-    for (int i = 0; i < out; i++) {
-      kprintf("%c", buffer[i]);
-    }
-  }
-
-  for (;;)
-    ;
-    */
   display_driver_init(mb);
   add_vbe_device();
   int pid;
@@ -161,7 +140,6 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   }
   for (;;) {
     current_task->sleep_until = pit_num_ms() + 100000000;
-    //    enable_interrupts();
-    switch_task();
+    wait_for_interrupt();
   }
 }

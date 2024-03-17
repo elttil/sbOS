@@ -1,11 +1,11 @@
 #include <assert.h>
 #include <drivers/rtl8139.h>
+#include <interrupts.h>
 #include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ethernet.h>
 #include <stdio.h>
 #include <string.h>
-#include <interrupts.h>
 
 ipv4_t gateway;
 ipv4_t bitmask;
@@ -38,7 +38,7 @@ struct ARP_TABLE_ENTRY {
 struct ARP_TABLE_ENTRY arp_table[10] = {0};
 
 // FIXME: This is hardcoded, don't do this.
-u8 ip_address[4] = {10, 0, 2, 15};
+ipv4_t ip_address;
 
 struct ARP_TABLE_ENTRY *find_arp_entry_to_use(void) {
   // This does not need to find a "free" entry as a ARP table is
@@ -73,7 +73,7 @@ void print_ip(const char *str, const u8 *ip) {
   kprintf("\n");
 }
 
-void send_arp_request(const u8 ip[4]) {
+void send_arp_request(const ipv4_t ip) {
   struct ARP_DATA data;
   data.htype = htons(1);
   data.ptype = htons(0x0800);
@@ -83,10 +83,10 @@ void send_arp_request(const u8 ip[4]) {
 
   data.opcode = htons(0x0001);
   get_mac_address(data.srchw);
-  memcpy(data.srcpr, ip_address, sizeof(u8[4]));
+  memcpy(data.srcpr, &ip_address, sizeof(ipv4_t));
 
   memset(data.dsthw, 0, sizeof(u8[6]));
-  memcpy(data.dstpr, ip, sizeof(u8[4]));
+  memcpy(data.dstpr, &ip, sizeof(ipv4_t));
 
   u8 broadcast[6];
   memset(broadcast, 0xFF, sizeof(broadcast));
@@ -100,15 +100,13 @@ int ip_inside_network(const ipv4_t ip) {
   return 0;
 }
 
-int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
-  ipv4_t tmp_ip;
-  memcpy(tmp_ip.a, ip, sizeof(u8[4]));
-  if (!ip_inside_network(tmp_ip)) {
-    return get_mac_from_ip(gateway.a, mac);
+int get_mac_from_ip(const ipv4_t ip, u8 mac[6]) {
+  if (!ip_inside_network(ip)) {
+    return get_mac_from_ip(gateway, mac);
   }
 
   for (int i = 0; i < 10; i++) {
-    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4]))) {
+    if (0 != memcmp(arp_table[i].ip, &ip, sizeof(u8[4]))) {
       continue;
     }
     memcpy(mac, arp_table[i].mac, sizeof(u8[6]));
@@ -119,7 +117,7 @@ int get_mac_from_ip(const u8 ip[4], u8 mac[6]) {
   send_arp_request(ip);
   // TODO: Maybe wait a bit?
   for (int i = 0; i < 10; i++) {
-    if (0 != memcmp(arp_table[i].ip, ip, sizeof(u8[4]))) {
+    if (0 != memcmp(arp_table[i].ip, &ip, sizeof(u8[4]))) {
       continue;
     }
     memcpy(mac, arp_table[i].mac, sizeof(u8[6]));
@@ -142,10 +140,10 @@ void handle_arp(const u8 *payload) {
   if (0x0001 /*arp_request*/ == ntohs(data->opcode)) {
     struct ARP_TABLE_ENTRY *entry = find_arp_entry_to_use();
     entry->is_used = 1;
-    memcpy(entry->mac, data->srchw, sizeof(uint8_t[6]));
-    memcpy(entry->ip, data->srcpr, sizeof(uint8_t[4]));
+    memcpy(entry->mac, data->srchw, sizeof(u8[6]));
+    memcpy(entry->ip, data->srcpr, sizeof(u8[4]));
 
-    assert(0 == memcmp(data->dstpr, ip_address, sizeof(uint8_t[4])));
+    assert(0 == memcmp(data->dstpr, &ip_address, sizeof(u8[4])));
 
     // Now we have to construct a ARP response
     struct ARP_DATA response;
@@ -155,7 +153,7 @@ void handle_arp(const u8 *payload) {
     response.hlen = 6;
     response.plen = 4;
     get_mac_address(response.srchw);
-    memcpy(response.srcpr, ip_address, sizeof(u8[4]));
+    memcpy(response.srcpr, &ip_address, sizeof(u8[4]));
 
     memcpy(response.dsthw, data->srchw, sizeof(u8[6]));
     memcpy(response.dstpr, data->srcpr, sizeof(u8[4]));

@@ -9,6 +9,7 @@
 .global set_cr3
 .global get_cr3
 .global enable_paging
+.global wait_for_interrupt
 
 get_current_sp:
 	mov eax, esp
@@ -28,6 +29,11 @@ set_sp:
 set_sbp:
 	mov eax, [esp + 4]
 	mov ebp, eax
+	ret
+
+wait_for_interrupt:
+	sti
+	hlt
 	ret
 
 halt:

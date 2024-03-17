@@ -1,11 +1,14 @@
+#include <assert.h>
 #include <kmalloc.h>
 #include <queue.h>
 #include <sched/scheduler.h>
+#include <socket.h>
 #include <stdio.h>
 
-int queue_create(u32 *id) {
+int queue_create(u32 *id, process_t *p) {
   struct event_queue *q = kcalloc(1, sizeof(struct event_queue));
   q->wait = 0;
+  q->p = p;
   list_init(&q->events);
 
   struct list *list = &current_task->event_queue;
@@ -51,7 +54,7 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
     *is_empty = 0;
     if (EVENT_TYPE_FD == ev->type) {
       kprintf("found fd: %d\n", ev->internal_id);
-      vfs_fd_t *fd = get_vfs_fd(ev->internal_id);
+      vfs_fd_t *fd = get_vfs_fd(ev->internal_id, q->p);
       kprintf("fd->inode->has_data: %x\n", fd->inode->has_data);
       if (!fd) {
         kprintf("queue: Invalid fd given\n");
@@ -62,8 +65,15 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
         return 0;
       }
     } else if (EVENT_TYPE_TCP_SOCKET == ev->type) {
-      kprintf("tcp socket wait\n");
-      return 0;
+      struct TcpConnection *con = tcp_get_connection(ev->internal_id, q->p);
+      assert(con);
+      assert(con->data_file);
+      if (con->data_file->has_data) {
+        kprintf("has data\n");
+        return 0;
+      } else {
+        kprintf("blocking queue\n");
+      }
     }
   }
   return 1;

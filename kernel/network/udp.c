@@ -15,11 +15,11 @@ void send_udp_packet(struct sockaddr_in *src, const struct sockaddr_in *dst,
   u8 *packet = kmalloc(packet_length);
   memcpy(packet, header, sizeof(header));
   memcpy(packet + sizeof(header), payload, payload_length);
-  send_ipv4_packet(dst->sin_addr.s_addr, 0x11, packet, packet_length);
+  send_ipv4_packet((ipv4_t){.d = dst->sin_addr.s_addr}, 0x11, packet, packet_length);
   kfree(packet);
 }
 
-void handle_udp(u8 src_ip[4], const u8 *payload, u32 packet_length) {
+void handle_udp(ipv4_t src_ip, const u8 *payload, u32 packet_length) {
   // TODO: Reimplement
   assert(NULL);
 }

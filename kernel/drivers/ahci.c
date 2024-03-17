@@ -2,6 +2,7 @@
 #include <drivers/pci.h>
 #include <fs/devfs.h>
 #include <fs/vfs.h>
+#include <math.h>
 #include <mmu.h>
 #include <stdio.h>
 
@@ -312,7 +313,7 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   u8 err;
   u32 command_slot = get_free_command_slot(port, &err);
   if (err) {
-    klog("No command slot found", LOG_WARN);
+    klog("AHCI No command slot found", LOG_WARN);
     return 0;
   }
   struct HBA_CMD_HEADER *cmdheader =
@@ -372,7 +373,7 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
     spin++;
   }
   if (spin == 10000) {
-    kprintf("Port is hung\n");
+    klog("AHCI port is hung", LOG_ERROR);
     return 0;
   }
 
@@ -385,16 +386,15 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
     if ((port->ci & (1 << command_slot)) == 0) {
       break;
     }
-    if (port->is & HBA_PxIS_TFES) // Task file error
-    {
-      kprintf("Read disk error\n");
+    if (port->is & HBA_PxIS_TFES) {
+      klog("AHCI command failed", LOG_ERROR);
       return 0;
     }
   }
 
   // Check again
   if (port->is & HBA_PxIS_TFES) {
-    kprintf("Read disk error\n");
+    klog("AHCI command failed", LOG_ERROR);
     return 0;
   }
 
@@ -417,21 +417,37 @@ int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   assert(port == 0);
   u32 lba = offset / 512;
   offset %= 512;
-  int rc = len;
+  const int rc = len;
 
   u32 sector_count = len / 512;
   if (len % 512 != 0) {
     sector_count++;
   }
+
+  if (offset > 0) {
+    u8 tmp_buffer[512];
+    ahci_raw_read(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
+
+    int left = 512 - offset;
+    int write = min(left, len);
+
+    memcpy(tmp_buffer + offset, buffer, write);
+    ahci_raw_write(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
+
+    offset = 0;
+    len -= write;
+    sector_count--;
+    lba++;
+  }
+
   for (; sector_count >= num_prdt; lba++) {
     ahci_raw_write(&hba->ports[port], lba, 0, num_prdt, (u16 *)buffer);
-    offset = 0;
     buffer += num_prdt * 512;
     len -= num_prdt * 512;
     sector_count -= num_prdt;
   }
 
-  if (sector_count > 0) {
+  if (sector_count > 0 && len > 0) {
     u8 tmp_buffer[512 * num_prdt];
     ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
     memcpy(tmp_buffer + offset, buffer, len);

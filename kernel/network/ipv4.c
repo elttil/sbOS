@@ -40,16 +40,15 @@ u16 ip_checksum(void *vdata, size_t length) {
   return htons(~acc);
 }
 
-extern u8 ip_address[4];
-void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload, u16 length) {
+void send_ipv4_packet(ipv4_t ip, u8 protocol, const u8 *payload, u16 length) {
   u8 header[20] = {0};
   header[0] = (4 /*version*/ << 4) | (5 /*IHL*/);
   *((u16 *)(header + 2)) = htons(length + 20);
   header[8 /*TTL*/] = 0xF8;
   header[9] = protocol;
 
-  memcpy(header + 12 /*src_ip*/, ip_address, sizeof(u8[4]));
-  memcpy(header + 16, &ip, sizeof(u8[4]));
+  memcpy(header + 12 /*src_ip*/, &ip_address, sizeof(ipv4_t));
+  memcpy(header + 16, &ip, sizeof(ipv4_t));
 
   *((u16 *)(header + 10 /*checksum*/)) = ip_checksum(header, 20);
   u16 packet_length = length + 20;
@@ -58,9 +57,7 @@ void send_ipv4_packet(u32 ip, u8 protocol, const u8 *payload, u16 length) {
   memcpy(packet + 20, payload, length);
 
   u8 mac[6];
-  u8 ip_copy[4]; // TODO: Do I need to do this?
-  memcpy(ip_copy, &ip, sizeof(u8[4]));
-  for (; !get_mac_from_ip(ip_copy, mac);)
+  for (; !get_mac_from_ip(ip, mac);)
     ;
   send_ethernet_packet(mac, 0x0800, packet, packet_length);
   kfree(packet);
@@ -86,8 +83,8 @@ void handle_ipv4(const u8 *payload, u32 packet_length) {
   // Make sure the ipv4 header is not trying to get uninitalized memory
   assert(ipv4_total_length <= packet_length);
 
-  u8 src_ip[4];
-  memcpy(src_ip, payload + 12, sizeof(u8[4]));
+  ipv4_t src_ip;
+  memcpy(&src_ip, payload + 12, sizeof(u8[4]));
 
   u8 protocol = *(payload + 9);
   switch (protocol) {

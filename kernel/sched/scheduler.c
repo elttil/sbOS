@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cpu/arch_inst.h>
 #include <cpu/io.h>
 #include <defs.h>
 #include <drivers/pit.h>
@@ -433,6 +434,9 @@ process_t *next_task(process_t *s) {
     if (!c) {
       c = ready_queue;
     }
+    if (s == c) {
+      wait_for_interrupt();
+    }
     if (c->sleep_until > pit_num_ms()) {
       continue;
     }
@@ -547,7 +551,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
   *ptr = kmalloc(sizeof(MemoryMap));
   MemoryMap *free_map = *ptr;
 
-  if (fd == -1) {
+  if (-1 == fd) {
     void *rc = allocate_virtual_user_memory(length, prot, flags);
     if ((void *)-1 == rc) {
       kprintf("ENOMEM\n");

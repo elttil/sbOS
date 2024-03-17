@@ -9,3 +9,4 @@ void set_sbp(uintptr_t);
 void set_cr3(uintptr_t);
 uintptr_t get_cr3(void);
 void enable_paging(void);
+void wait_for_interrupt(void);

@@ -18,7 +18,7 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     if (fds[i].fd < 0) {
       continue;
     }
-    vfs_fd_t *f = get_vfs_fd(fds[i].fd);
+    vfs_fd_t *f = get_vfs_fd(fds[i].fd, NULL);
     if (NULL == f) {
       continue;
     }
@@ -51,7 +51,7 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
       fds[i].revents = 0;
       continue;
     }
-    vfs_fd_t *f = get_vfs_fd(fds[i].fd);
+    vfs_fd_t *f = get_vfs_fd(fds[i].fd, NULL);
     if (!f) {
       if (fds[i].events & POLLHUP) {
         fds[i].revents |= POLLHUP;

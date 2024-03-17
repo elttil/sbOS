@@ -68,6 +68,7 @@ int puts(const char *s);
 int brk(void *addr);
 void *sbrk(intptr_t increment);
 int printf(const char *format, ...);
+int mread(int fd, void *buf, size_t count, int blocking);
 int pread(int fd, void *buf, size_t count, size_t offset);
 int read(int fd, void *buf, size_t count);
 int fork(void);

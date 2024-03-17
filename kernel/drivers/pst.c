@@ -12,8 +12,8 @@ int openpty(int *amaster, int *aslave, char *name,
   pipe(fd); // This depends upon that pipe will support read and write
             // through the same fd. In reality this should not be the
             // case.
-  get_vfs_fd(fd[0])->is_tty = 1;
-  get_vfs_fd(fd[1])->is_tty = 1;
+  get_vfs_fd(fd[0], NULL)->is_tty = 1;
+  get_vfs_fd(fd[1], NULL)->is_tty = 1;
   *amaster = fd[0];
   *aslave = fd[1];
   return 0;

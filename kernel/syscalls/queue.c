@@ -2,7 +2,7 @@
 #include <syscalls.h>
 
 int syscall_queue_create(u32 *id) {
-  return queue_create(id);
+  return queue_create(id, current_task);
 }
 
 int syscall_queue_add(u32 queue_id, struct event *ev, u32 size) {

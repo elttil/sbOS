@@ -53,13 +53,13 @@ int syscall_pread(SYS_PREAD_PARAMS *args) {
   return vfs_pread(args->fd, args->buf, args->count, args->offset);
 }
 
-int syscall_read(SYS_READ_PARAMS *args) {
-  vfs_fd_t *fd = get_vfs_fd(args->fd);
-  if (!fd) {
+int syscall_mread(int fd, void *buf, size_t count, int blocking) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+  if (!fd_ptr) {
     return -EBADF;
   }
-  int rc = vfs_pread(args->fd, args->buf, args->count, fd->offset);
-  fd->offset += rc;
+  int rc = vfs_pmread(fd, buf, count, blocking, fd_ptr->offset);
+  fd_ptr->offset += rc;
   return rc;
 }
 
@@ -152,7 +152,7 @@ int syscall_tcp_read(u32 socket, u8 *buffer, u32 buffer_size, u64 *out) {
 
 int (*syscall_functions[])() = {
     (void(*))syscall_open,
-    (void(*))syscall_read,
+    (void(*))syscall_mread,
     (void(*))syscall_write,
     (void(*))syscall_pread,
     (void(*))syscall_pwrite,

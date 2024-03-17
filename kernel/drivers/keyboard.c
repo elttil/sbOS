@@ -185,7 +185,6 @@ int keyboard_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void add_keyboard(void) {
-  kprintf("very important");
   kb_inode = devfs_add_file("/keyboard", keyboard_read, NULL, NULL, 0, 0,
                             FS_TYPE_CHAR_DEVICE);
 }

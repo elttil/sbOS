@@ -8,7 +8,10 @@ vfs_inode_t *root_dir;
 vfs_mounts_t mounts[10];
 int num_mounts = 0;
 
-vfs_fd_t *get_vfs_fd(int fd) {
+vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
+  if (!p) {
+    p = current_task;
+  }
   if (fd >= 100) {
     klog("get_vfs_fd(): Tried to get out of range fd", LOG_WARN);
     dump_backtrace(12);
@@ -19,7 +22,7 @@ vfs_fd_t *get_vfs_fd(int fd) {
     dump_backtrace(12);
     return NULL;
   }
-  return current_task->file_descriptors[fd];
+  return p->file_descriptors[fd];
 }
 
 vfs_inode_t *vfs_create_inode(
@@ -206,7 +209,7 @@ char *vfs_resolve_path(const char *file, char *resolved_path) {
 }
 
 int vfs_fstat(int fd, struct stat *buf) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
   }
@@ -290,7 +293,7 @@ int vfs_open(const char *file, int flags, int mode) {
 }
 
 int vfs_close(int fd) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (NULL == fd_ptr) {
     return -1;
   }
@@ -316,7 +319,7 @@ int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
 }
 
-int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
+int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
   if (fd >= 100) {
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
@@ -332,7 +335,7 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   }
   int rc = raw_vfs_pread(vfs_fd, buf, count, offset);
   if (-EAGAIN == rc && count > 0) {
-    if (!(vfs_fd->flags & O_NONBLOCK)) {
+    if (!(vfs_fd->flags & O_NONBLOCK) && blocking) {
       struct pollfd fds;
       do {
         fds.fd = fd;
@@ -349,6 +352,10 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   return rc;
 }
 
+int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
+  return vfs_pmread(fd, buf, count, 1, offset);
+}
+
 int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   assert(vfs_fd);
   assert(vfs_fd->inode);
@@ -357,7 +364,7 @@ int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
 }
 
 int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
-  vfs_fd_t *vfs_fd = get_vfs_fd(fd);
+  vfs_fd_t *vfs_fd = get_vfs_fd(fd, NULL);
   if (!vfs_fd) {
     return -EBADF;
   }
@@ -368,7 +375,7 @@ int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
 }
 
 vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
-  vfs_fd_t *vfs_fd = get_vfs_fd(fd);
+  vfs_fd_t *vfs_fd = get_vfs_fd(fd, NULL);
   if (!vfs_fd) {
     return NULL;
   }
@@ -384,7 +391,7 @@ int vfs_dup2(int org_fd, int new_fd) {
 }
 
 int vfs_ftruncate(int fd, size_t length) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
   }

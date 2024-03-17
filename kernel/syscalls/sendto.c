@@ -10,7 +10,7 @@ size_t syscall_sendto(int socket, const void *message, size_t length,
   const struct sockaddr *dest_addr = (const struct sockaddr *)extra_args->a;
   socklen_t dest_len = (socklen_t)extra_args->b;
   (void)dest_len;
-  vfs_fd_t *fd = get_vfs_fd(socket);
+  vfs_fd_t *fd = get_vfs_fd(socket, NULL);
   assert(fd);
   SOCKET *s = (SOCKET *)fd->inode->internal_object;
   OPEN_INET_SOCKET *inet = s->child;

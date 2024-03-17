@@ -3,7 +3,7 @@
 #include <syscalls.h>
 
 int syscall_isatty(int fd) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd);
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
   }

@@ -143,7 +143,9 @@ void _libc_setup(void) {
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);
 
-int pipe(int fd[2]) { return syscall(SYS_PIPE, (u32)fd, 0, 0, 0, 0); }
+int pipe(int fd[2]) {
+  return syscall(SYS_PIPE, (u32)fd, 0, 0, 0, 0);
+}
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strerror.html
 char *strerror(int errnum) {
@@ -172,7 +174,9 @@ void perror(const char *s) {
   printf("%s\n", strerror(errno));
 }
 
-int close(int fd) { return syscall(SYS_CLOSE, (u32)fd, 0, 0, 0, 0); }
+int close(int fd) {
+  return syscall(SYS_CLOSE, (u32)fd, 0, 0, 0, 0);
+}
 
 int execv(char *path, char **argv) {
   struct SYS_EXEC_PARAMS args = {.path = path, .argv = argv};
@@ -181,9 +185,13 @@ int execv(char *path, char **argv) {
 
 int s_syscall(int sys);
 
-int wait(int *stat_loc) { return syscall(SYS_WAIT, (u32)stat_loc, 0, 0, 0, 0); }
+int wait(int *stat_loc) {
+  return syscall(SYS_WAIT, (u32)stat_loc, 0, 0, 0, 0);
+}
 
-void exit(int status) { syscall(SYS_EXIT, (u32)status, 0, 0, 0, 0); }
+void exit(int status) {
+  syscall(SYS_EXIT, (u32)status, 0, 0, 0, 0);
+}
 
 int pread(int fd, void *buf, size_t count, size_t offset) {
   struct SYS_PREAD_PARAMS args = {
@@ -195,13 +203,12 @@ int pread(int fd, void *buf, size_t count, size_t offset) {
   RC_ERRNO(syscall(SYS_PREAD, (u32)&args, 0, 0, 0, 0));
 }
 
+int mread(int fd, void *buf, size_t count, int blocking) {
+  RC_ERRNO(syscall(SYS_MREAD, fd, buf, count, blocking, 0));
+}
+
 int read(int fd, void *buf, size_t count) {
-  struct SYS_READ_PARAMS args = {
-      .fd = fd,
-      .buf = buf,
-      .count = count,
-  };
-  RC_ERRNO(syscall(SYS_READ, (u32)&args, 0, 0, 0, 0));
+  return mread(fd, buf, count, 1);
 }
 
 int dup2(int org_fd, int new_fd) {
@@ -212,11 +219,17 @@ int dup2(int org_fd, int new_fd) {
   RC_ERRNO(syscall(SYS_DUP2, (u32)&args, 0, 0, 0, 0));
 }
 
-int fork(void) { return s_syscall(SYS_FORK); }
+int fork(void) {
+  return s_syscall(SYS_FORK);
+}
 
-void dputc(int fd, const char c) { pwrite(fd, &c, 1, 0); }
+void dputc(int fd, const char c) {
+  pwrite(fd, &c, 1, 0);
+}
 
-int brk(void *addr) { return syscall(SYS_BRK, addr, 0, 0, 0, 0); }
+int brk(void *addr) {
+  return syscall(SYS_BRK, addr, 0, 0, 0, 0);
+}
 
 void *sbrk(intptr_t increment) {
   return (void *)syscall(SYS_SBRK, (void *)increment, 0, 0, 0, 0);

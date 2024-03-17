@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fs/devfs.h>
 #include <fs/tmpfs.h>
+#include <interrupts.h>
 #include <network/bytes.h>
 #include <network/tcp.h>
 #include <poll.h>
@@ -14,15 +15,17 @@ OPEN_UNIX_SOCKET *un_sockets[100] = {0};
 // struct TcpConnection *tcp_sockets[100];
 // struct TcpListen *tcp_listen[100];
 
-u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4) {
-  return i4 << (32 - 8) | i3 << (32 - 16) | i2 << (32 - 24) | i1 << (32 - 32);
+void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
+  ip->a[0] = i1;
+  ip->a[1] = i2;
+  ip->a[2] = i3;
+  ip->a[3] = i4;
 }
 
 struct TcpConnection *tcp_find_connection(u16 port) {
   process_t *p = current_task;
-  process_t *s = p;
   p = p->next;
-  for (; p != s; p = p->next) {
+  for (int i = 0; i < 100; i++, p = p->next) {
     if (!p) {
       p = ready_queue;
     }
@@ -101,8 +104,11 @@ u32 tcp_listen_ipv4(u32 ip, u16 port, int *error) {
   return index;
 }
 
-struct TcpConnection *tcp_get_connection(u32 socket) {
-  const struct list *connections = &current_task->tcp_sockets;
+struct TcpConnection *tcp_get_connection(u32 socket, process_t *p) {
+  if (!p) {
+    p = current_task;
+  }
+  const struct list *connections = &p->tcp_sockets;
   struct TcpConnection *con;
   if (!list_get(connections, socket, (void **)&con)) {
     return NULL;
@@ -162,7 +168,7 @@ int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out) {
   if (out) {
     *out = 0;
   }
-  struct TcpConnection *con = tcp_get_connection(socket);
+  struct TcpConnection *con = tcp_get_connection(socket, NULL);
   if (!con) {
     return 0;
   }
@@ -181,7 +187,7 @@ int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
   if (out) {
     *out = 0;
   }
-  struct TcpConnection *con = tcp_get_connection(socket);
+  struct TcpConnection *con = tcp_get_connection(socket, NULL);
   if (!con) {
     return 0;
   }
@@ -192,8 +198,10 @@ int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
   int rc = 0;
   for (; rc <= 0;) {
     rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
-    if(rc <= 0) {
-      switch_task();
+    if (rc <= 0) {
+      enable_interrupts();
+      rc = 0;
+      return 0;
     }
   }
   if (out) {
@@ -274,7 +282,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   (void)addrlen;
-  vfs_fd_t *fd = get_vfs_fd(sockfd);
+  vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
   if (!fd) {
     return -EBADF;
   }

@@ -1,9 +1,10 @@
 #include <assert.h>
+#include <cpu/arch_inst.h>
 #include <drivers/pit.h>
+#include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ipv4.h>
 #include <network/udp.h>
-extern u8 ip_address[4];
 
 #define CWR (1 << 7)
 #define ECE (1 << 6)
@@ -53,8 +54,7 @@ void tcp_wait_reply(struct TcpConnection *con) {
     if (con->unhandled_packet) {
       return;
     }
-    // TODO: Make the scheduler halt the process
-    switch_task();
+    wait_for_interrupt();
   }
 }
 
@@ -73,10 +73,10 @@ u16 tcp_checksum(u16 *buffer, int size) {
   return (u16)(~cksum);
 }
 
-void tcp_calculate_checksum(u8 src_ip[4], u32 dst_ip, const u8 *payload,
+void tcp_calculate_checksum(ipv4_t src_ip, u32 dst_ip, const u8 *payload,
                             u16 payload_length, struct TCP_HEADER *header) {
   struct PSEUDO_TCP_HEADER ps = {0};
-  memcpy(&ps.src_addr, src_ip, sizeof(u32));
+  memcpy(&ps.src_addr, &src_ip.d, sizeof(u32));
   memcpy(&ps.dst_addr, &dst_ip, sizeof(u32));
   ps.protocol = 6;
   ps.tcp_length = htons(20 + payload_length);
@@ -118,7 +118,7 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
 
-  send_ipv4_packet(con->outgoing_ip, 6, send_buffer, send_len);
+  send_ipv4_packet((ipv4_t){.d = con->outgoing_ip}, 6, send_buffer, send_len);
 }
 
 void tcp_send_ack(struct TcpConnection *con) {
@@ -130,8 +130,6 @@ void tcp_send_syn(struct TcpConnection *con) {
   con->seq++;
 }
 
-// void send_tcp_packet(struct INCOMING_TCP_CONNECTION *inc, const u8 *payload,
-//                      u16 payload_length) {
 void send_tcp_packet(struct TcpConnection *con, const u8 *payload,
                      u16 payload_length) {
   if (payload_length > 1500 - 20 - sizeof(struct TCP_HEADER)) {
@@ -156,12 +154,12 @@ void send_tcp_packet(struct TcpConnection *con, const u8 *payload,
   u8 send_buffer[send_len];
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
-  send_ipv4_packet(con->outgoing_ip, 6, send_buffer, send_len);
+  send_ipv4_packet((ipv4_t){.d = con->outgoing_ip}, 6, send_buffer, send_len);
 
   con->seq += payload_length;
 }
 
-void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
+void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
   const struct TCP_HEADER *header = (const struct TCP_HEADER *)payload;
   (void)header;
   u16 n_src_port = *(u16 *)(payload);
@@ -180,9 +178,8 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
   (void)ack_num;
 
   if (SYN == flags) {
-    u32 t;
-    memcpy(&t, src_ip, sizeof(u8[4]));
-    struct TcpConnection *con = internal_tcp_incoming(t, src_port, 0, dst_port);
+    struct TcpConnection *con =
+        internal_tcp_incoming(src_ip.d, src_port, 0, dst_port);
     assert(con);
     con->ack = seq_num + 1;
     tcp_send_empty_payload(con, SYN | ACK);
@@ -191,6 +188,9 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
 
   struct TcpConnection *incoming_connection = tcp_find_connection(dst_port);
   kprintf("dst_port: %d\n", dst_port);
+  if (!incoming_connection) {
+    kprintf("unable to find open port for incoming connection\n");
+  }
   if (incoming_connection) {
     incoming_connection->unhandled_packet = 1;
     if (0 != (flags & RST)) {
@@ -213,7 +213,6 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
 
       tcp_send_ack(incoming_connection);
     }
-    //    if (0 != (flags & PSH)) {
     u16 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
     if (tcp_payload_length > 0) {
       int len = fifo_object_write(
@@ -236,83 +235,3 @@ void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
     return;
   }
 }
-/*
-void handle_tcp(u8 src_ip[4], const u8 *payload, u32 payload_length) {
-  const struct TCP_HEADER *inc_header = (const struct TCP_HEADER *)payload;
-  u16 n_src_port = *(u16 *)(payload);
-  u16 n_dst_port = *(u16 *)(payload + 2);
-  u32 n_seq_num = *(u32 *)(payload + 4);
-  u32 n_ack_num = *(u32 *)(payload + 8);
-
-  u8 flags = *(payload + 13);
-
-  u16 src_port = htons(n_src_port);
-  (void)src_port;
-  u16 dst_port = htons(n_dst_port);
-  u32 seq_num = htonl(n_seq_num);
-  u32 ack_num = htonl(n_ack_num);
-  (void)ack_num;
-
-  if (SYN == flags) {
-    struct INCOMING_TCP_CONNECTION *inc;
-    if (!(inc = handle_incoming_tcp_connection(src_ip, n_src_port, dst_port))) {
-      return;
-    }
-    memcpy(inc->ip, src_ip, sizeof(u8[4]));
-    inc->seq_num = 0;
-    inc->ack_num = seq_num + 1;
-    inc->connection_closed = 0;
-    inc->requesting_connection_close = 0;
-    send_empty_tcp_message(inc, SYN | ACK, seq_num, n_dst_port, n_src_port);
-    inc->seq_num++;
-    return;
-  }
-  struct INCOMING_TCP_CONNECTION *inc =
-      get_incoming_tcp_connection(src_ip, n_src_port);
-  if (!inc) {
-    return;
-  }
-  if (flags == (FIN | ACK)) {
-    if (inc->requesting_connection_close) {
-      send_empty_tcp_message(inc, ACK, seq_num, n_dst_port, n_src_port);
-      inc->connection_closed = 1;
-    } else {
-      send_empty_tcp_message(inc, FIN | ACK, seq_num, n_dst_port, n_src_port);
-    }
-    inc->seq_num++;
-    inc->connection_closed = 1;
-    return;
-  }
-  if (flags & ACK) {
-    // inc->seq_num = ack_num;
-  }
-  if (flags & PSH) {
-    kprintf("TCP: Got PSH\n");
-    u16 tcp_payload_length =
-        payload_length - inc_header->data_offset * sizeof(u32);
-    int rc = fifo_object_write(
-        (u8 *)(payload + inc_header->data_offset * sizeof(u32)), 0,
-        tcp_payload_length, inc->data_file);
-    kprintf("fifo object write rc: %x\n", rc);
-    *inc->has_data_ptr = 1;
-
-    // Send back a ACK
-    struct TCP_HEADER header = {0};
-    header.src_port = n_dst_port;
-    header.dst_port = n_src_port;
-    header.seq_num = htonl(inc->seq_num);
-    inc->ack_num = seq_num + tcp_payload_length;
-    header.ack_num = htonl(seq_num + tcp_payload_length);
-    header.data_offset = 5;
-    header.reserved = 0;
-    header.flags = ACK;
-    header.window_size = htons(WINDOW_SIZE);
-    header.urgent_pointer = 0;
-    u32 dst_ip;
-    memcpy(&dst_ip, src_ip, sizeof(dst_ip));
-    char payload[0];
-    tcp_calculate_checksum(ip_address, dst_ip, (const u8 *)payload, 0, &header);
-    send_ipv4_packet(dst_ip, 6, (const u8 *)&header, sizeof(header));
-    return;
-  }
-}*/
