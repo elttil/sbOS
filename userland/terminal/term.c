@@ -248,7 +248,12 @@ void run() {
       if (0 == e.ev.c) {
         continue;
       }
-      write(cmdfd, &e.ev.c, 1);
+      char c = e.ev.c;
+      int ctrl_down = (1 == ((e.ev.mode >> 2) & 1));
+      if (ctrl_down) {
+        c &= 0x1f;
+      }
+      write(cmdfd, &c, 1);
     }
   }
 }

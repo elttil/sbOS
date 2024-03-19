@@ -102,10 +102,11 @@ u8 keyboard_to_ascii(u16 key, u8 capital) {
 
 u8 is_shift_down = 0;
 u8 is_alt_down = 0;
+u8 is_ctrl_down = 0;
 
 struct KEY_EVENT {
   char c;
-  u8 mode;    // (shift (0 bit)) (alt (1 bit))
+  u8 mode;    // (shift (0 bit)) (alt (1 bit)) (ctrl (2 bit))
   u8 release; // 0 pressed, 1 released
 };
 
@@ -125,6 +126,9 @@ void int_keyboard(reg_t *frame) {
     case 0x38:
       is_alt_down = 0;
       return;
+    case 0x1D:
+      is_ctrl_down = 0;
+      return;
     }
     released = 1;
   } else {
@@ -136,6 +140,9 @@ void int_keyboard(reg_t *frame) {
     case 0x38:
       is_alt_down = 1;
       return;
+    case 0x1D:
+      is_ctrl_down = 1;
+      return;
     }
     released = 0;
   }
@@ -146,6 +153,7 @@ void int_keyboard(reg_t *frame) {
   ev.mode = 0;
   ev.mode |= is_shift_down << 0;
   ev.mode |= is_alt_down << 1;
+  ev.mode |= is_ctrl_down << 2;
   fifo_object_write((u8 *)&ev, 0, sizeof(ev), keyboard_fifo);
   kb_inode->has_data = keyboard_fifo->has_data;
 }

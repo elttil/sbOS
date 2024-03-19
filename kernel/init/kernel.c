@@ -98,28 +98,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   add_keyboard();
   add_mouse();
 
-  ////////
   rtl8139_init();
-  enable_interrupts();
-
-  /*
-  u32 ip = gen_ipv4(10, 0, 2, 2);
-  int err;
-  u32 listen_socket = tcp_listen_ipv4(ip, 6000, &err);
-  assert(!err);
-  u32 socket = tcp_accept(listen_socket, &err);
-  assert(!err);
-
-  kprintf("socket: %x\n", socket);
-
-  u64 out;
-  char buffer[256];
-  assert(tcp_read(socket, buffer, 256, &out));
-  kprintf("got %x bytes\n", out);
-  for (int i = 0; i < out; i++) {
-    kprintf("%c", buffer[i]);
-  }
-  */
 
   ipv4_t gateway;
   gen_ipv4(&gateway, 10, 0, 2, 2);

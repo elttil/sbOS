@@ -19,7 +19,7 @@ typedef struct {
 // Taken from drivers/keyboard.c
 struct KEY_EVENT {
   char c;
-  uint8_t mode;    // (shift (0 bit)) (alt (1 bit))
+  uint8_t mode;    // (shift (0 bit)) (alt (1 bit)) (ctrl (2 bit))
   uint8_t release; // 0 pressed, 1 released
 };
 
