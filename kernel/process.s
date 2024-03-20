@@ -128,15 +128,13 @@ switch_to_task:
     mov eax,[esi+TCB.CR3]         # eax = address of page directory for next task
     mov ebx,[esi+TCB.ESP0]        # ebx = address for the top of the next task's kernel stack
 #    mov [TSS.ESP0],ebx            # Adjust the ESP0 field in the TSS (used by CPU for for CPL=3 -> CPL=0 privilege level changes)
-#    mov ecx,cr3                   # ecx = previous task's virtual address space
+    mov ecx,cr3                   # ecx = previous task's virtual address space
  
-# FIXME: This branch gets a from the assembler, something about "relaxed branches".
-# this branch would probably not be used anyway but should be checked on later anyway.
-#    cmp eax,ecx                   # Does the virtual address space need to being changed?
+    cmp eax,ecx                   # Does the virtual address space need to being changed?
 
-#    je .doneVAS                   #  no, virtual address space is the same, so don't reload it and cause TLB flushes
+    je .doneVAS                   #  no, virtual address space is the same, so don't reload it and cause TLB flushes
     mov cr3,eax                   #  yes, load the next task's virtual address space
-#.doneVAS:
+.doneVAS:
  
     pop ebp
     pop edi

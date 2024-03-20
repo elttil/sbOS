@@ -129,19 +129,25 @@ void msg_sv_println(struct sv s) {
 }
 
 void msg_sv_print(struct sv s) {
+  char buffer[4096];
+  int buffer_pos = 0;
+  mvcursor(message_pos_x, message_pos_y);
   for (size_t i = 0; i < s.length; i++) {
-    mvcursor(message_pos_x, message_pos_y);
-    if ('\n' == s.s[i]) {
-      message_pos_x = 0;
-      message_pos_y++;
-      continue;
-    }
-    printf("%c", s.s[i]);
+    buffer[buffer_pos] = s.s[i];
+    buffer_pos++;
     message_pos_x++;
-    if (message_pos_x > TERMINAL_WIDTH) {
+    if ('\n' == s.s[i] || message_pos_x > TERMINAL_WIDTH) {
+      buffer[buffer_pos] = '\0';
+      printf("%s", buffer);
+      buffer_pos = 0;
       message_pos_x = 0;
       message_pos_y++;
+      mvcursor(message_pos_x, message_pos_y);
     }
+  }
+  if (0 != buffer_pos) {
+    buffer[buffer_pos] = '\0';
+    printf("%s", buffer);
   }
   mvcursor(prompt_x, prompt_y);
 }
@@ -154,8 +160,10 @@ void msg_sv_print(struct sv s) {
 #define RPL_LUSERCLIENT C_TO_SV("251")
 #define RPL_NOTOPIC C_TO_SV("331")
 #define RPL_TOPIC C_TO_SV("332")
-#define ERR_NOMOTD C_TO_SV("422")
+#define RPL_NAMREPLY C_TO_SV("353")
+#define RPL_ENDOFNAMES C_TO_SV("366")
 
+#define ERR_NOMOTD C_TO_SV("422")
 #define RPL_MOTDSTART C_TO_SV("375")
 #define RPL_MOTD C_TO_SV("372")
 #define RPL_ENDOFMOTD C_TO_SV("376")
@@ -234,6 +242,29 @@ void handle_msg(struct irc_server *server, struct sv msg) {
     msg = sv_trim_left(msg, 1);
     irc_add_message(server, channel, nick, msg);
   }
+  HANDLE_CMD(RPL_NAMREPLY) {
+    struct sv intended_recipient =
+        sv_split_delim(command_parameters, &command_parameters, ' ');
+    struct sv channel_status =
+        sv_split_delim(command_parameters, &command_parameters, ' ');
+    (void)channel_status;
+    struct sv channel =
+        sv_split_delim(command_parameters, &command_parameters, ' ');
+    // Remove the ':'
+    command_parameters = sv_trim_left(command_parameters, 1);
+    if (sv_eq(intended_recipient, server_nick)) {
+      struct sb user_list_message;
+      sb_init(&user_list_message);
+      sb_append(&user_list_message, "Users on ");
+      sb_append_sv(&user_list_message, channel);
+      sb_append(&user_list_message, ": ");
+      sb_append_sv(&user_list_message, command_parameters);
+      irc_add_message(server, channel, C_TO_SV("*"), SB_TO_SV(user_list_message));
+      sb_free(&user_list_message);
+    }
+  }
+  PASSTHROUGH_CHANNEL_CMD(RPL_ENDOFNAMES)
+
   PASSTHROUGH_CHANNEL_CMD(RPL_NOTOPIC)
   PASSTHROUGH_CHANNEL_CMD(RPL_TOPIC)
 

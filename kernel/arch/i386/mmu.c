@@ -17,16 +17,20 @@ PageDirectory *kernel_directory;
 PageDirectory real_kernel_directory;
 PageDirectory *active_directory = 0;
 
-#define END_OF_MEMORY 0x8000000 * 15
-u64 num_of_frames;
-u32 *frames;
-u64 available_memory_kb;
 u32 num_allocated_frames = 0;
+
+#define END_OF_MEMORY 0x8000000 * 15
+u64 available_memory_kb;
+
+u32 num_array_frames = 1024;
+u32 tmp_array[1024];
+u32 *tmp_small_frames = tmp_array;
 
 #define KERNEL_START 0xc0000000
 extern uintptr_t data_end;
 
-void write_to_frame(u32 frame_address, u8 on);
+void change_frame(u32 frame, int on);
+u32 get_free_frame(void);
 
 void *ksbrk(size_t s) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
@@ -37,7 +41,6 @@ void *ksbrk(size_t s) {
     // If there is no active pagedirectory we
     // just assume that the memory is
     // already mapped.
-    get_fast_insecure_random((void *)rc, data_end - rc);
     return (void *)rc;
   }
   // Determine whether we are approaching a unallocated table
@@ -59,7 +62,6 @@ void *ksbrk(size_t s) {
   mmu_allocate_shared_kernel_region((void *)rc, (data_end - (uintptr_t)rc));
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
 
-  get_fast_insecure_random((void *)rc, data_end - rc);
   return (void *)rc;
 }
 
@@ -132,20 +134,18 @@ void *align_page(void *a) {
 }
 
 u32 first_free_frame(void) {
-  for (u32 i = 1; i < INDEX_FROM_BIT(num_of_frames); i++) {
-    if (frames[i] == 0xFFFFFFFF) {
+  u32 i = 1;
+  for (; i < INDEX_FROM_BIT(num_array_frames * 32); i++) {
+    if (tmp_small_frames[i] == 0xFFFFFFFF) {
       continue;
     }
 
     for (u32 c = 0; c < 32; c++) {
-      if (!(frames[i] & ((u32)1 << c))) {
+      if (!(tmp_small_frames[i] & ((u32)1 << c))) {
         return i * 32 + c;
       }
     }
   }
-
-  kprintf("ERROR Num frames: %x\n", mmu_get_number_of_allocated_frames());
-  klog("No free frames, uh oh.", LOG_ERROR);
   assert(0);
   return 0;
 }
@@ -154,11 +154,13 @@ void write_to_frame(u32 frame_address, u8 on) {
   u32 frame = frame_address / 0x1000;
   if (on) {
     num_allocated_frames++;
-    frames[INDEX_FROM_BIT(frame)] |= ((u32)0x1 << OFFSET_FROM_BIT(frame));
+    tmp_small_frames[INDEX_FROM_BIT(frame)] |=
+        ((u32)0x1 << OFFSET_FROM_BIT(frame));
     return;
   }
   num_allocated_frames--;
-  frames[INDEX_FROM_BIT(frame)] &= ~((u32)0x1 << OFFSET_FROM_BIT(frame));
+  tmp_small_frames[INDEX_FROM_BIT(frame)] &=
+      ~((u32)0x1 << OFFSET_FROM_BIT(frame));
 }
 
 PageDirectory *get_active_pagedirectory(void) {
@@ -441,7 +443,6 @@ void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
     p->frame = (uintptr_t)physical / PAGE_SIZE;
     write_to_frame((uintptr_t)physical, 1);
   }
-  flush_tlb();
 }
 
 struct PhysVirtMap {
@@ -591,12 +592,33 @@ void create_table(int table_index) {
   kernel_directory->physical_tables[table_index] = (u32)physical | 0x3;
 }
 
-void paging_init(u64 memsize) {
+void paging_init(u64 memsize, multiboot_info_t *mb) {
   u32 *cr3 = (void *)get_cr3();
   u32 *virtual = (u32 *)((u32)cr3 + 0xC0000000);
-  frames = ksbrk(1024 * sizeof(u32));
-  memset(frames, 0, 1024 * sizeof(u32));
-  num_of_frames = 1024 * 32;
+
+  u32 num_of_frames = 0;
+
+  memset(tmp_small_frames, 0xFF, num_array_frames * sizeof(u32));
+  {
+    multiboot_memory_map_t *map =
+        (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
+    for (int length = 0; length < mb->mmap_length;) {
+      if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
+        num_of_frames = max(num_of_frames, map->addr + map->len);
+        for (size_t i = 0; i < map->len; i += 0x20000) {
+          u32 frame = (map->addr + i) / 0x1000;
+          if (frame < (num_array_frames * 32)) {
+            tmp_small_frames[INDEX_FROM_BIT(frame)] = 0;
+          }
+        }
+      }
+      u32 delta = (uintptr_t)map->size + sizeof(map->size);
+      map = (multiboot_memory_map_t *)((uintptr_t)map + delta);
+      length += delta;
+    }
+  }
+  num_of_frames /= 0x1000;
+  num_of_frames /= 32;
 
   kernel_directory = &real_kernel_directory;
   kernel_directory->physical_address = (u32)cr3;
@@ -636,24 +658,29 @@ void paging_init(u64 memsize) {
   switch_page_directory(clone_directory(kernel_directory));
   move_stack(0xA0000000, 0x80000);
 
-  u64 buffer_size = (memsize / 32) * sizeof(u32);
-  // TODO: Very hacky solution since we have to memcpy the old allocation. This
-  // places a strict requierment on how much RAM the system can have(altough it
-  // is very small). Ideally the number of frames required would be dynamically
-  // calculated.
-  assert(buffer_size >= 1024 * sizeof(u32));
-
-  // TODO Do this better
-  // NOTE:
-  // There are some addresses that point to devices rather than RAM.
-  // Therefore we need frames for these to exist
-  u64 min_buffer_required = 0xFD000 + 0x100000;
-  buffer_size = max(min_buffer_required, buffer_size);
-
   available_memory_kb = memsize;
-  num_of_frames = available_memory_kb / 4;
-  u32 *new_frames = ksbrk(buffer_size);
-  memset(new_frames, 0, buffer_size);
-  memcpy(new_frames, frames, 1024 * sizeof(u32));
-  frames = new_frames;
+
+  void *new = kmalloc(num_of_frames * sizeof(u32));
+  memset(new, 0xFF, num_of_frames * sizeof(u32));
+  memcpy(new, tmp_small_frames, num_array_frames * sizeof(u32));
+  tmp_small_frames = new;
+  {
+    multiboot_memory_map_t *map =
+        (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
+    for (int length = 0; length < mb->mmap_length;) {
+      if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
+        for (size_t i = 0; i < map->len - 0x1000; i += 0x20000) {
+          u32 frame = (map->addr + i) / 0x1000;
+          if (frame > (num_array_frames * 32)) {
+            assert(INDEX_FROM_BIT(frame) <= num_of_frames);
+            tmp_small_frames[INDEX_FROM_BIT(frame)] = 0;
+          }
+        }
+      }
+      u32 delta = (uintptr_t)map->size + sizeof(map->size);
+      map = (multiboot_memory_map_t *)((uintptr_t)map + delta);
+      length += delta;
+    }
+  }
+  num_array_frames = num_of_frames;
 }

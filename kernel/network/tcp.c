@@ -162,12 +162,11 @@ void send_tcp_packet(struct TcpConnection *con, const u8 *payload,
 void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
   const struct TCP_HEADER *header = (const struct TCP_HEADER *)payload;
   (void)header;
-  u16 n_src_port = *(u16 *)(payload);
-  u16 n_dst_port = *(u16 *)(payload + 2);
-  u32 n_seq_num = *(u32 *)(payload + 4);
-  u32 n_ack_num = *(u32 *)(payload + 8);
+  u16 n_src_port = header->src_port;
+  u16 n_dst_port = header->dst_port;
+  u32 n_seq_num = header->seq_num;
+  u32 n_ack_num = header->ack_num;
 
-  //  u8 flags = *(payload + 13);
   u8 flags = header->flags;
 
   u16 src_port = htons(n_src_port);

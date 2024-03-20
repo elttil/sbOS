@@ -1,6 +1,7 @@
 #ifndef PAGING_H
 #define PAGING_H
 #include "kmalloc.h"
+#include <multiboot.h>
 #include <typedefs.h>
 
 typedef u8 mmu_flags;
@@ -49,7 +50,7 @@ void *mmu_is_valid_userpointer(const void *ptr, size_t s);
 void *mmu_is_valid_user_c_string(const char *ptr, size_t *size);
 
 void flush_tlb(void);
-void paging_init(u64 memsize);
+void paging_init(u64 memsize, multiboot_info_t *mb);
 PageDirectory *get_active_pagedirectory(void);
 void move_stack(u32 new_stack_address, u32 size);
 void switch_page_directory(PageDirectory *directory);
@@ -58,6 +59,7 @@ PageDirectory *clone_directory(PageDirectory *original);
 void *virtual_to_physical(void *address, PageDirectory *directory);
 void *ksbrk(size_t s);
 void *ksbrk_physical(size_t s, void **physical);
+void write_to_frame(u32 frame_address, u8 on);
 
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user);

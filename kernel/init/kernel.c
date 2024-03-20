@@ -43,7 +43,6 @@ uintptr_t data_end;
 
 void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
                  u32 inital_stack) {
-  (void)kernel_end;
   data_end = 0xc0400000;
   inital_esp = inital_stack;
 
@@ -55,7 +54,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   u32 mem_kb = mb->mem_lower;
   u32 mem_mb = (mb->mem_upper - 1000) / 1000;
   u64 memsize_kb = mem_mb * 1000 + mem_kb;
-  paging_init(memsize_kb);
+
+  paging_init(memsize_kb, mb);
   klog("Paging Initalized", LOG_SUCCESS);
   mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
 

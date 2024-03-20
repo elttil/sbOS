@@ -44,16 +44,14 @@ void set_pit_count(u16 _hertz) {
 }
 
 void int_clock(reg_t *regs) {
-  EOI(0x20);
-  pit_counter++;
-  if (pit_counter * 1000 >= hertz) {
-    pit_counter = 0;
-    clock_num_ms_ticks += 1000 / hertz;
-  }
+  clock_num_ms_ticks++;
   switch_counter++;
-  if (switch_counter * 500 >= hertz) {
+  if (switch_counter >= hertz) {
+    EOI(0x20);
     switch_counter = 0;
     switch_task();
+  } else {
+    EOI(0x20);
   }
 }
 
