@@ -16,6 +16,9 @@ typedef struct {
   int sy;
   int buffer_sx;
   int buffer_sy;
+  int minimized;
+  struct WINDOW *next;
+  struct WINDOW *prev;
 } WINDOW;
 
 typedef struct {
@@ -32,6 +35,7 @@ typedef struct {
   uint8_t border_color;
   uint8_t wallpaper_color;
   WINDOW *active_window;
-  WINDOW **windows;
+  WINDOW *window;
+  WINDOW *window_tail;
 } DISPLAY;
 #endif

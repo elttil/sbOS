@@ -7,6 +7,7 @@
 #include <socket.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -14,10 +15,16 @@
 
 #define WINDOW_SERVER_SOCKET "/windowserver"
 
-WINDOW *windows[100];
+WINDOW *window;
 
 int mouse_x = 0;
 int mouse_y = 0;
+int mouse_down = 0;
+int mouse_up = 0;
+int active_id = -1;
+
+int ui_id = 0;
+int ui_state = 0;
 
 DISPLAY main_display;
 
@@ -27,6 +34,8 @@ uint64_t num_fds;
 uint64_t socket_fd_poll;
 uint64_t keyboard_fd_poll;
 uint64_t mouse_fd_poll;
+
+void draw(void);
 
 // Taken from drivers/keyboard.c
 struct KEY_EVENT {
@@ -50,6 +59,12 @@ int create_socket(void) {
   return fd;
 }
 
+int next_ui_id(void) {
+  int r = ui_id;
+  ui_id++;
+  return r;
+}
+
 void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   disp->wallpaper_color = 0x3;
   disp->size = size;
@@ -61,7 +76,7 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   }
   disp->true_buffer = mmap(NULL, size, 0, 0, disp->vga_fd, 0);
   disp->back_buffer = malloc(size + 0x1000);
-  disp->windows = windows;
+  disp->window = window;
 
   disp->wallpaper_fd = shm_open("wallpaper", O_RDWR, 0);
   assert(disp->wallpaper_fd >= 0);
@@ -100,13 +115,10 @@ void setup(void) {
   main_display.border_size = 1;
   main_display.border_color = 0xF;
   main_display.active_window = NULL;
-  for (int i = 0; i < 100; i++) {
-    windows[i] = NULL;
-  }
+  main_display.window = NULL;
 
   num_fds = 100;
-  fds = malloc(sizeof(struct pollfd[num_fds]));
-  memset(fds, 0, sizeof(struct pollfd[num_fds]));
+  fds = calloc(num_fds, sizeof(struct pollfd));
   for (size_t i = 0; i < num_fds; i++)
     fds[i].fd = -1;
   // Create socket
@@ -150,15 +162,19 @@ void add_fd(int fd) {
 void add_window(int fd) {
   int window_socket = accept(fd, NULL, NULL);
   add_fd(window_socket);
-  int i;
-  for (i = 0; i < 100; i++)
-    if (!windows[i])
-      break;
-  printf("adding window: %d\n", i);
-  WINDOW *w = windows[i] = malloc(sizeof(WINDOW));
+  WINDOW *w = calloc(sizeof(WINDOW), 1);
   w->fd = window_socket;
-  w->bitmap_ptr = NULL;
   main_display.active_window = w;
+  if (NULL == main_display.window) {
+    assert(NULL == main_display.window_tail);
+    main_display.window = w;
+    main_display.window_tail = w;
+  } else {
+    w->next = main_display.window;
+    assert(NULL == main_display.window->prev);
+    main_display.window->prev = w;
+    main_display.window = w;
+  }
 }
 
 #define CLIENT_EVENT_CREATESCREEN 0
@@ -184,11 +200,10 @@ typedef struct {
 void parse_window_event(WINDOW *w) {
   uint8_t event_type;
   if (0 == read(w->fd, &event_type, sizeof(uint8_t))) {
-    printf("empty\n");
     return;
   }
   if (0 == event_type) {
-    update_full_display(&main_display, mouse_x, mouse_y);
+    draw();
     return;
   }
   if (1 == event_type) {
@@ -200,7 +215,7 @@ void parse_window_event(WINDOW *w) {
     bitmap_name[e.name_len] = '\0';
     int bitmap_fd = shm_open(bitmap_name, O_RDWR, O_CREAT);
     create_window(w, bitmap_fd, e.px, e.py, e.sx, e.sy);
-    update_full_display(&main_display, mouse_x, mouse_y);
+    draw();
   }
 }
 
@@ -232,16 +247,20 @@ void clamp_screen_position(int *x, int *y) {
   }
 }
 
+void send_kill_window(WINDOW *w) {
+  WS_EVENT e = {
+      .type = WINDOWSERVER_EVENT_WINDOW_EXIT,
+  };
+  write(w->fd, &e, sizeof(e));
+}
+
 int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
   if (ev.release)
     return 0;
   if (!(ev.mode & (1 << 1)))
     return 0;
   if ('q' == ev.c) {
-    WS_EVENT e = {
-        .type = WINDOWSERVER_EVENT_WINDOW_EXIT,
-    };
-    write(main_display.active_window->fd, &e, sizeof(e));
+    send_kill_window(main_display.active_window);
     return 1;
   }
   if ('n' == ev.c) {
@@ -290,24 +309,6 @@ struct mouse_event {
   uint8_t y;
 };
 
-void update_mouse(void) {
-  draw_mouse(&main_display, mouse_x, mouse_y);
-  return;
-}
-
-void focus_window(int x, int y) {
-  for (int i = 0; i < 100; i++) {
-    if (!windows[i])
-      continue;
-    WINDOW *w = windows[i];
-    if (w->x < x && x < w->x + w->sx) {
-      if (w->y < y && y < w->y + w->sy) {
-        main_display.active_window = windows[i];
-      }
-    }
-  }
-}
-
 void parse_mouse_event(int fd) {
   int16_t xc = 0;
   int16_t yc = 0;
@@ -339,13 +340,18 @@ void parse_mouse_event(int fd) {
   }
   mouse_x += xc;
   mouse_y -= yc;
-  if (mouse_x < 0)
+  if (mouse_x < 0) {
     mouse_x = 0;
-  if (mouse_y < 0)
-    mouse_y = 0;
-  if (left_button) {
-    focus_window(mouse_x, mouse_y);
   }
+  if (mouse_y < 0) {
+    mouse_y = 0;
+  }
+  if (mouse_down && !left_button) {
+    mouse_up = 1;
+  } else {
+    mouse_up = 0;
+  }
+  mouse_down = left_button;
   if (middle_button) {
     if (main_display.active_window) {
       main_display.active_window->x += xc;
@@ -360,7 +366,7 @@ void parse_mouse_event(int fd) {
       main_display.active_window->sy -= yc;
     }
   }
-  update_mouse();
+  draw();
 }
 
 void parse_keyboard_event(int fd) {
@@ -372,40 +378,53 @@ void parse_keyboard_event(int fd) {
       break;
     int n = rc / sizeof(ev[0]);
     for (int i = 0; i < n; i++) {
-      if (windowserver_key_events(ev[i], &redraw))
+      if (windowserver_key_events(ev[i], &redraw)) {
         continue;
-      if (!main_display.active_window)
+      }
+      if (!main_display.active_window) {
         continue;
+      }
       send_key_event_to_window(ev[i]);
     }
   }
-  if (redraw)
-    update_full_display(&main_display, mouse_x, mouse_y);
+  if (redraw) {
+    draw();
+  }
 }
 
-WINDOW *get_window(int fd, int *index) {
-  for (int i = 0; i < 100; i++) {
-    if (!windows[i])
-      continue;
-    if (windows[i]->fd == fd) {
-      if (index)
-        *index = i;
-      return windows[i];
+WINDOW *get_window(int fd) {
+  WINDOW *w = main_display.window;
+  for (; w; w = w->next) {
+    if (fd == w->fd) {
+      return w;
     }
   }
   return NULL;
 }
 
-void kill_window(int i) {
-  windows[i] = NULL;
-  update_full_display(&main_display, mouse_x, mouse_y);
-  main_display.active_window = NULL;
-  for (int i = 0; i < 100; i++) {
-    if (windows[i]) {
-      main_display.active_window = windows[i];
-      break;
+void kill_window(WINDOW *w) {
+  WINDOW *prev = w->prev;
+  if (prev) {
+    assert(prev->next == w);
+    WINDOW *next_window = w->next;
+    prev->next = next_window;
+    if (next_window) {
+      next_window->prev = prev;
     }
+  } else {
+    assert(w = main_display.window);
+    main_display.window = w->next;
+    if (main_display.window) {
+      main_display.window->prev = NULL;
+    }
+    main_display.active_window = NULL;
   }
+
+  if (w == main_display.window_tail) {
+    assert(NULL == w->next);
+    main_display.window_tail = prev;
+  }
+  free(w);
 }
 
 void parse_revents(struct pollfd *fds, size_t s) {
@@ -424,11 +443,10 @@ void parse_revents(struct pollfd *fds, size_t s) {
       parse_mouse_event(fds[i].fd);
       continue;
     }
-    int index;
-    WINDOW *w = get_window(fds[i].fd, &index);
+    WINDOW *w = get_window(fds[i].fd);
     assert(w);
     if (fds[i].revents & POLLHUP) {
-      kill_window(index);
+      kill_window(w);
       fds[i].fd = -1;
     } else {
       parse_window_event(w);
@@ -441,6 +459,200 @@ void run(void) {
     poll(fds, num_fds, 0);
     parse_revents(fds, num_fds);
     reset_revents(fds, num_fds);
+  }
+}
+
+int contains(int x, int y, int sx, int sy, int px, int py) {
+  if ((px >= x) && (px <= x + sx) && (py >= y) && (py <= y + sy)) {
+    return 1;
+  }
+  return 0;
+}
+
+int draw_button(DISPLAY *disp, int x, int y, int sx, int sy, uint32_t border,
+                uint32_t filled, int id) {
+  draw_rectangle(disp, x + 1, y + 1, sx, sy, filled);
+  draw_outline(disp, x, y, sx, sy, 1, border);
+
+  if (contains(x, y, sx, sy, mouse_x, mouse_y)) {
+    if (mouse_down) {
+      active_id = id;
+    } else if (mouse_up) {
+      if (id == active_id) {
+        return 1;
+      }
+    }
+  } else {
+    if (id == active_id && mouse_up) {
+      active_id = -1;
+    }
+  }
+  return 0;
+}
+
+int draw_window(DISPLAY *disp, WINDOW *w, int id) {
+  int x, y;
+  uint8_t border_size = disp->border_size;
+  const int px = w->x + border_size;
+  const int py = w->y;
+  const int sx = w->sx;
+  const int sy = w->sy;
+  const int b_sx = w->buffer_sx;
+  const int b_sy = w->buffer_sy;
+  x = px;
+  y = py;
+  int border_px = 1;
+  if (draw_button(disp, x + sx - 40, y - 20, 20, 20, 0x000000, 0x999999,
+                  next_ui_id())) {
+    w->minimized = 1;
+  }
+  if (draw_button(disp, x + sx - 20, y - 20, 20, 20, 0x000000, 0x999999,
+                  next_ui_id())) {
+    send_kill_window(w);
+  }
+
+  uint32_t border_color = 0x999999;
+  if (w == disp->active_window) {
+    border_color = 0xFF00FF;
+  }
+  draw_outline(disp, x, y, sx, sy, border_px, border_color);
+  x += border_px;
+  y += border_px;
+
+  for (int i = 0; i < sy; i++) {
+    if ((i + y) * disp->width + x > disp->height * disp->width)
+      break;
+    uint32_t *ptr =
+        disp->back_buffer + disp->bpp * ((i + y) * disp->width) + x * disp->bpp;
+    if (i * sx > disp->height * disp->width)
+      break;
+    if (i < b_sy) {
+      uint32_t *bm = &w->bitmap_ptr[i * b_sx];
+      int j = 0;
+      for (; j < b_sx && j < sx; j++) {
+        ptr[j] = bm[j];
+      }
+      for (; j < sx; j++) {
+        ptr[j] = 0;
+      }
+    } else {
+      for (int j = 0; j < sx; j++) {
+        ptr[j] = 0;
+      }
+    }
+  }
+
+  if (contains(px, py, sx, sy, mouse_x, mouse_y)) {
+    if (mouse_down) {
+      active_id = id;
+    } else if (mouse_up) {
+      if (id == active_id) {
+        return 1;
+      }
+    }
+  } else {
+    if (id == active_id && mouse_up) {
+      active_id = -1;
+    }
+  }
+  return 0;
+}
+
+void update_display(const DISPLAY *disp) {
+  for (int i = 0; i < 20; i++) {
+    uint32_t color = 0xFFFFFFFF;
+    // Make every other pixel black to make the mouse more visible on all
+    // backgrounds.
+    if (i & 1) {
+      color = 0x0;
+    }
+    place_pixel(color, mouse_x + i, mouse_y + i);
+    if (i <= 10) {
+      place_pixel(color, mouse_x, mouse_y + i);
+      place_pixel(color, mouse_x + i, mouse_y);
+    }
+  }
+  uint32_t *dst = disp->true_buffer;
+  uint32_t *src = disp->back_buffer;
+  const uint32_t n = disp->size / disp->bpp;
+  for (int i = 0; i < n; i++) {
+    *dst = *src;
+    dst++;
+    src++;
+  }
+}
+
+void draw(void) {
+  ui_id = 0;
+  DISPLAY *disp = &main_display;
+  draw_wallpaper(disp);
+
+  WINDOW *w = disp->window_tail;
+  for (int i = 100; w; w = w->prev, i++) {
+    if (!w->bitmap_ptr) {
+      continue;
+    }
+    if (w->minimized) {
+      continue;
+    }
+    if (draw_window(disp, w, i)) {
+      if (w == main_display.active_window) {
+        continue;
+      }
+      ui_state = 1;
+      main_display.active_window = w;
+      if (w == main_display.window) {
+        continue;
+      }
+      // Remove w from the list
+      WINDOW *prev = w->prev;
+      assert(prev);
+      assert(prev->next == w);
+      WINDOW *next_window = w->next;
+      prev->next = next_window;
+      if (next_window) {
+        next_window->prev = prev;
+      }
+
+      if (w == main_display.window_tail) {
+        assert(NULL == w->next);
+        main_display.window_tail = prev;
+        assert(NULL == prev->next);
+      }
+      // Place it in front
+      WINDOW *m = main_display.window;
+      assert(NULL == m->prev);
+      m->prev = w;
+      w->next = m;
+      w->prev = NULL;
+      main_display.window = w;
+      assert(main_display.window ==
+             ((WINDOW *)main_display.window->next)->prev);
+      if (NULL == m->next) {
+        assert(m == main_display.window_tail);
+      }
+    }
+  }
+
+  int disp_x = 0;
+  w = disp->window_tail;
+  for (; w; w = w->prev) {
+    if (w->minimized) {
+      if (draw_button(disp, disp_x, 0, 20, 20, 0x000000, 0x999999,
+                      next_ui_id())) {
+        ui_state = 1;
+        w->minimized = 0;
+      }
+      disp_x += 20;
+    }
+  }
+  if (ui_state) {
+    mouse_down = 0;
+    mouse_up = 0;
+    ui_state = 0;
+    draw();
+  } else {
+    update_display(disp);
   }
 }
 
