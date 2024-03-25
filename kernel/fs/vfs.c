@@ -379,6 +379,10 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
   if (!vfs_fd) {
     return NULL;
   }
+  assert(vfs_fd->inode);
+  if(!vfs_fd->inode->get_vm_object) {
+    return NULL;
+  }
   vfs_vm_object_t *r = vfs_fd->inode->get_vm_object(length, offset, vfs_fd);
   return r;
 }

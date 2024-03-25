@@ -3,6 +3,7 @@
 #include "font.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <math.h>
 #include <poll.h>
 #include <socket.h>
 #include <stddef.h>
@@ -15,12 +16,46 @@
 
 #define WINDOW_SERVER_SOCKET "/windowserver"
 
+#define RET_CLICKED(_x, _y, _sx, _sy, _id)                                     \
+  if (contains(_x, _y, _sx, _sy, mouse_x, mouse_y)) {                          \
+    if (mouse_left_down) {                                                     \
+      active_id = _id;                                                         \
+    } else if (mouse_left_up) {                                                \
+      if (_id == active_id) {                                                  \
+        return 1;                                                              \
+      }                                                                        \
+    }                                                                          \
+  } else {                                                                     \
+    if (_id == active_id && mouse_left_up) {                                   \
+      active_id = -1;                                                          \
+    }                                                                          \
+  }                                                                            \
+  return 0;
+
+// Taken from drivers/keyboard.c
+struct KEY_EVENT {
+  char c;
+  uint8_t mode;    // (shift (0 bit)) (alt (1 bit))
+  uint8_t release; // 0 pressed, 1 released
+};
+
+typedef struct {
+  int type;
+  union {
+    struct KEY_EVENT ev;
+    int vector[2];
+  };
+} WS_EVENT;
+
 WINDOW *window;
 
 int mouse_x = 0;
 int mouse_y = 0;
-int mouse_down = 0;
-int mouse_up = 0;
+int mouse_left_down = 0;
+int mouse_left_up = 0;
+int mouse_right_down = 0;
+int mouse_right_up = 0;
+
 int active_id = -1;
 
 int ui_id = 0;
@@ -36,13 +71,6 @@ uint64_t keyboard_fd_poll;
 uint64_t mouse_fd_poll;
 
 void draw(void);
-
-// Taken from drivers/keyboard.c
-struct KEY_EVENT {
-  char c;
-  uint8_t mode;    // (shift (0 bit)) (alt (1 bit))
-  uint8_t release; // 0 pressed, 1 released
-};
 
 int create_socket(void) {
   struct sockaddr_un address;
@@ -216,13 +244,26 @@ void parse_window_event(WINDOW *w) {
     int bitmap_fd = shm_open(bitmap_name, O_RDWR, O_CREAT);
     create_window(w, bitmap_fd, e.px, e.py, e.sx, e.sy);
     draw();
+    return;
+  }
+  if (2 == event_type) {
+    uint32_t vec[2];
+    for (; 0 == read(w->fd, vec, sizeof(vec));)
+      ;
+    void *rc =
+        mmap(NULL, vec[0] * vec[1] * sizeof(uint32_t), 0, 0, w->bitmap_fd, 0);
+    if ((void *)-1 == rc) {
+      return;
+    }
+    w->sx = vec[0];
+    w->sy = vec[1];
+    w->buffer_sx = vec[0];
+    w->buffer_sy = vec[1];
+    munmap(w->bitmap_ptr, 0);
+    w->bitmap_ptr = rc;
+    return;
   }
 }
-
-typedef struct {
-  int type;
-  struct KEY_EVENT ev;
-} WS_EVENT;
 
 void send_key_event_to_window(struct KEY_EVENT ev) {
   WS_EVENT e = {
@@ -309,6 +350,14 @@ struct mouse_event {
   uint8_t y;
 };
 
+void send_resize(WINDOW *w, int x, int y) {
+  WS_EVENT e = {
+      .type = WINDOWSERVER_EVENT_WINDOW_RESIZE,
+      .vector = {x, y},
+  };
+  write(w->fd, &e, sizeof(e));
+}
+
 void parse_mouse_event(int fd) {
   int16_t xc = 0;
   int16_t yc = 0;
@@ -346,12 +395,20 @@ void parse_mouse_event(int fd) {
   if (mouse_y < 0) {
     mouse_y = 0;
   }
-  if (mouse_down && !left_button) {
-    mouse_up = 1;
+  if (mouse_left_down && !left_button) {
+    mouse_left_up = 1;
   } else {
-    mouse_up = 0;
+    mouse_left_up = 0;
   }
-  mouse_down = left_button;
+
+  if (mouse_right_down && !right_button) {
+    mouse_right_up = 1;
+  } else {
+    mouse_right_up = 0;
+  }
+  mouse_right_down = right_button;
+
+  mouse_left_down = left_button;
   if (middle_button) {
     if (main_display.active_window) {
       main_display.active_window->x += xc;
@@ -360,10 +417,13 @@ void parse_mouse_event(int fd) {
                             &main_display.active_window->y);
     }
   }
-  if (right_button) {
+  if (mouse_right_down) {
     if (main_display.active_window) {
-      main_display.active_window->sx += xc;
-      main_display.active_window->sy -= yc;
+      int new_sx = main_display.active_window->sx + xc;
+      int new_sy = main_display.active_window->sy - yc;
+      new_sx = max(0, new_sx);
+      new_sy = max(0, new_sy);
+      send_resize(main_display.active_window, new_sx, new_sy);
     }
   }
   draw();
@@ -474,20 +534,7 @@ int draw_button(DISPLAY *disp, int x, int y, int sx, int sy, uint32_t border,
   draw_rectangle(disp, x + 1, y + 1, sx, sy, filled);
   draw_outline(disp, x, y, sx, sy, 1, border);
 
-  if (contains(x, y, sx, sy, mouse_x, mouse_y)) {
-    if (mouse_down) {
-      active_id = id;
-    } else if (mouse_up) {
-      if (id == active_id) {
-        return 1;
-      }
-    }
-  } else {
-    if (id == active_id && mouse_up) {
-      active_id = -1;
-    }
-  }
-  return 0;
+  RET_CLICKED(x, y, sx, sy, id)
 }
 
 int draw_window(DISPLAY *disp, WINDOW *w, int id) {
@@ -542,20 +589,7 @@ int draw_window(DISPLAY *disp, WINDOW *w, int id) {
     }
   }
 
-  if (contains(px, py, sx, sy, mouse_x, mouse_y)) {
-    if (mouse_down) {
-      active_id = id;
-    } else if (mouse_up) {
-      if (id == active_id) {
-        return 1;
-      }
-    }
-  } else {
-    if (id == active_id && mouse_up) {
-      active_id = -1;
-    }
-  }
-  return 0;
+  RET_CLICKED(x, y, sx, sy, id)
 }
 
 void update_display(const DISPLAY *disp) {
@@ -647,8 +681,8 @@ void draw(void) {
     }
   }
   if (ui_state) {
-    mouse_down = 0;
-    mouse_up = 0;
+    mouse_left_down = 0;
+    mouse_left_up = 0;
     ui_state = 0;
     draw();
   } else {

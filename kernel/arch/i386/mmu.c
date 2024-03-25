@@ -156,11 +156,11 @@ void write_to_frame(u32 frame_address, u8 on) {
     num_allocated_frames++;
     tmp_small_frames[INDEX_FROM_BIT(frame)] |=
         ((u32)0x1 << OFFSET_FROM_BIT(frame));
-    return;
+  } else {
+    num_allocated_frames--;
+    tmp_small_frames[INDEX_FROM_BIT(frame)] &=
+        ~((u32)0x1 << OFFSET_FROM_BIT(frame));
   }
-  num_allocated_frames--;
-  tmp_small_frames[INDEX_FROM_BIT(frame)] &=
-      ~((u32)0x1 << OFFSET_FROM_BIT(frame));
 }
 
 PageDirectory *get_active_pagedirectory(void) {

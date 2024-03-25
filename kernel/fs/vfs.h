@@ -29,6 +29,7 @@ typedef struct vfs_mounts vfs_mounts_t;
 #define FS_TYPE_LINK 7
 
 struct vfs_vm_object {
+  void *real_pointer;
   void *virtual_object;
   void **object;
   u64 size;

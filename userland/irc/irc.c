@@ -259,7 +259,8 @@ void handle_msg(struct irc_server *server, struct sv msg) {
       sb_append_sv(&user_list_message, channel);
       sb_append(&user_list_message, ": ");
       sb_append_sv(&user_list_message, command_parameters);
-      irc_add_message(server, channel, C_TO_SV("*"), SB_TO_SV(user_list_message));
+      irc_add_message(server, channel, C_TO_SV("*"),
+                      SB_TO_SV(user_list_message));
       sb_free(&user_list_message);
     }
   }

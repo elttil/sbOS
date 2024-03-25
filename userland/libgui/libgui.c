@@ -256,6 +256,19 @@ void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev)) {
   }
 }
 
+void GUI_Resize(GUI_Window *w, uint32_t sx, uint32_t sy) {
+  ftruncate(w->bitmap_fd, sx * sy * sizeof(uint32_t));
+  w->sx = sx;
+  w->sy = sy;
+  char buffer[sizeof(uint8_t) + sizeof(uint32_t) * 2];
+  uint8_t l = 2;
+  memcpy(buffer, &l, sizeof(l));
+  memcpy(buffer + sizeof(uint8_t), &sx, sizeof(sx));
+  memcpy(buffer + sizeof(uint8_t) + sizeof(uint32_t), &sy, sizeof(sy));
+  int len = sizeof(uint8_t) + sizeof(uint32_t) * 2;
+  write(w->ws_socket, buffer, len);
+}
+
 GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
   GUI_Window *w = malloc(sizeof(GUI_Window));
   if (!w)

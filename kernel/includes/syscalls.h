@@ -1,4 +1,5 @@
 #include <fs/vfs.h>
+#include <queue.h>
 #include <signal.h>
 #include <socket.h>
 #include <stddef.h>
@@ -6,7 +7,6 @@
 #include <time.h>
 #include <typedefs.h>
 #include <types.h>
-#include <queue.h>
 
 void syscall_outw(u16 port, u16 word);
 u32 syscall_inl(u16 port);
@@ -68,6 +68,7 @@ typedef struct SYS_MMAP_PARAMS {
 } __attribute__((packed)) SYS_MMAP_PARAMS;
 
 void *syscall_mmap(SYS_MMAP_PARAMS *args);
+int syscall_munmap(void *addr, size_t length);
 #ifndef MSLEEP_H
 #define MSLEEP_H
 void syscall_msleep(u32 ms);

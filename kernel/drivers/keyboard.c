@@ -155,26 +155,10 @@ void int_keyboard(reg_t *frame) {
   ev.mode |= is_alt_down << 1;
   ev.mode |= is_ctrl_down << 2;
   fifo_object_write((u8 *)&ev, 0, sizeof(ev), keyboard_fifo);
-  kb_inode->has_data = keyboard_fifo->has_data;
+  if (kb_inode) {
+    kb_inode->has_data = keyboard_fifo->has_data;
+  }
 }
-
-#define PS2_WAIT_RECV                                                          \
-  {                                                                            \
-    for (;;) {                                                                 \
-      u8 status = inb(PS2_REG_STATUS);                                         \
-      if (status & 0x1)                                                        \
-        break;                                                                 \
-    }                                                                          \
-  }
-
-#define PS2_WAIT_SEND                                                          \
-  {                                                                            \
-    for (;;) {                                                                 \
-      u8 status = inb(PS2_REG_STATUS);                                         \
-      if (!(status & (0x1 << 1)))                                              \
-        break;                                                                 \
-    }                                                                          \
-  }
 
 void install_keyboard(void) {
   keyboard_fifo = create_fifo_object();

@@ -100,6 +100,8 @@ void newtty(void) {
   openpty(&m, &s, NULL, NULL, NULL);
   int pid = fork();
   if (0 == pid) {
+    close(global_w->ws_socket);
+    close(global_w->bitmap_fd);
     dup2(s, 0);
     dup2(s, 1);
     dup2(s, 2);
@@ -240,6 +242,18 @@ void run() {
       WS_EVENT e;
       int rc;
       if (0 >= (rc = read(global_w->ws_socket, &e, sizeof(e)))) {
+        continue;
+      }
+      if (WINDOWSERVER_EVENT_WINDOW_EXIT == e.type) {
+        close(global_w->ws_socket);
+        exit(0);
+        return;
+      }
+//      if (WINDOWSERVER_EVENT_WINDOW_RESIZE == e.type) {
+//        GUI_Resize(global_w, e.vector[0], e.vector[1]);
+//        continue;
+//      }
+      if (WINDOWSERVER_EVENT_KEYPRESS != e.type) {
         continue;
       }
       if (1 == e.ev.release) {

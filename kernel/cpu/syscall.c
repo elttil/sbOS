@@ -205,6 +205,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_queue_create,
     (void(*))syscall_queue_add,
     (void(*))syscall_queue_wait,
+    (void(*))syscall_munmap,
 };
 
 void int_syscall(reg_t *r);

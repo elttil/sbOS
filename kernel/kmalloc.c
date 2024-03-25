@@ -184,7 +184,7 @@ void *krealloc(void *ptr, size_t size) {
   size_t l = get_mem_size(ptr);
   size_t to_copy = min(l, size);
   memcpy(rc, ptr, to_copy);
-  //  kfree(ptr);
+    kfree(ptr);
   return rc;
 }
 
