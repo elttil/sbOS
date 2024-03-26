@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <poll.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,47 @@
 #define MAX_ARGS 20
 
 #define IS_SPECIAL(_c) (';' == _c || '\n' == _c || '&' == _c || '|' == _c)
+
+struct child_process {
+  int pid;
+  struct child_process *next;
+};
+
+struct child_process *children = NULL;
+
+void add_child_process(int pid) {
+  struct child_process *new = malloc(sizeof(struct child_process));
+  new->next = NULL;
+  new->pid = pid;
+  struct child_process **entry = &children;
+  for (; *entry; entry = &(*entry)->next)
+    ;
+  *entry = new;
+}
+
+void remove_child_process(int pid) {
+  struct child_process *prev = NULL;
+  struct child_process *child = children;
+  for (; child; child = child->next) {
+    if (pid == child->pid) {
+      if (prev) {
+        prev->next = child->next;
+      } else {
+        children = child->next;
+      }
+      free(child);
+      return;
+    }
+    prev = child;
+  }
+}
+
+void slaugther_children(void) {
+  struct child_process *child = children;
+  for (; child; child = child->next) {
+    kill(child->pid, SIGTERM);
+  }
+}
 
 char *PATH = "/:/bin";
 
@@ -112,6 +154,7 @@ int execute_program(char *s, size_t l, int ignore_rc, int f_stdout,
       exit(1);
     }
   }
+  add_child_process(pid);
 
   close(fd[1]);
   if (new_out)
@@ -213,7 +256,18 @@ char *get_line(void) {
   return str;
 }
 
+void term_handler() {
+  slaugther_children();
+  exit(0);
+}
+
 int main(void) {
+  struct sigaction act = {0};
+  act.sa_handler = term_handler;
+  if (-1 == sigaction(SIGTERM, &act, NULL)) {
+    perror("sigaction");
+    return 1;
+  }
   for (;;) {
     printf("/ : ");
     char *l = get_line();

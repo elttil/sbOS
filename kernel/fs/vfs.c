@@ -292,15 +292,15 @@ int vfs_open(const char *file, int flags, int mode) {
   return vfs_create_fd(flags, mode, 0 /*is_tty*/, inode, NULL);
 }
 
-int vfs_close(int fd) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+int vfs_close_process(process_t *p, int fd) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, p);
   if (NULL == fd_ptr) {
     return -1;
   }
   assert(0 < fd_ptr->reference_count);
   // Remove process reference
   fd_ptr->reference_count--;
-  current_task->file_descriptors[fd] = 0;
+  p->file_descriptors[fd] = 0;
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
     if (fd_ptr->inode->close) {
@@ -310,6 +310,10 @@ int vfs_close(int fd) {
     kfree(fd_ptr);
   }
   return 0;
+}
+
+int vfs_close(int fd) {
+  return vfs_close_process(current_task, fd);
 }
 
 int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
@@ -380,7 +384,7 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
     return NULL;
   }
   assert(vfs_fd->inode);
-  if(!vfs_fd->inode->get_vm_object) {
+  if (!vfs_fd->inode->get_vm_object) {
     return NULL;
   }
   vfs_vm_object_t *r = vfs_fd->inode->get_vm_object(length, offset, vfs_fd);

@@ -45,4 +45,5 @@ ln -s ./minibox ./yes
 ln -s ./minibox ./echo
 ln -s ./minibox ./wc
 ln -s ./minibox ./ls
+ln -s ./minibox ./kill
 cd ..

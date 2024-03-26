@@ -87,9 +87,17 @@ void syscall_wait(int *status) {
     return;
   }
   do {
+    current_task->is_halted = 1;
     current_task->halts[WAIT_CHILD_HALT] = 1;
     switch_task();
+    if (current_task->is_interrupted) {
+      break;
+    }
   } while (current_task->halts[WAIT_CHILD_HALT]);
+  if (current_task->is_interrupted) {
+    current_task->is_interrupted = 0;
+    return;
+  }
   if (status) {
     *status = current_task->child_rc;
   }

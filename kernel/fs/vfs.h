@@ -71,6 +71,7 @@ struct vfs_inode {
 };
 
 int vfs_close(int fd);
+int vfs_close_process(process_t *p, int fd);
 vfs_fd_t *get_vfs_fd(int fd, process_t *p);
 int vfs_open(const char *file, int flags, int mode);
 void vfs_mount(char *path, vfs_inode_t *local_root);

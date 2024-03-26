@@ -394,10 +394,10 @@ void *allocate_frame(Page *page, int rw, int is_kernel) {
   return (void *)(frame_address * 0x1000);
 }
 
-void mmu_free_address_range(void *ptr, size_t length) {
+void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd) {
   size_t num_pages = (size_t)align_page((void *)length) / PAGE_SIZE;
   for (size_t i = 0; i < num_pages; i++, ptr += PAGE_SIZE) {
-    Page *page = get_page(ptr, NULL, PAGE_NO_ALLOCATE, 0);
+    Page *page = get_page(ptr, pd, PAGE_NO_ALLOCATE, 0);
     if (!page) {
       continue;
     }

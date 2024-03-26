@@ -4,6 +4,7 @@
 #include <libgui.h>
 #include <poll.h>
 #include <pty.h>
+#include <signal.h>
 #include <socket.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -18,6 +19,8 @@ GUI_Window *global_w;
 uint32_t screen_pos_x = 0;
 uint32_t screen_pos_y = 0;
 int serial_fd;
+
+int shell_pid;
 
 int raw_mode = 0;
 
@@ -98,8 +101,8 @@ void newtty(void) {
   int m;
   int s;
   openpty(&m, &s, NULL, NULL, NULL);
-  int pid = fork();
-  if (0 == pid) {
+  shell_pid = fork();
+  if (0 == shell_pid) {
     close(global_w->ws_socket);
     close(global_w->bitmap_fd);
     dup2(s, 0);
@@ -246,13 +249,14 @@ void run() {
       }
       if (WINDOWSERVER_EVENT_WINDOW_EXIT == e.type) {
         close(global_w->ws_socket);
+        kill(shell_pid, SIGTERM);
         exit(0);
         return;
       }
-//      if (WINDOWSERVER_EVENT_WINDOW_RESIZE == e.type) {
-//        GUI_Resize(global_w, e.vector[0], e.vector[1]);
-//        continue;
-//      }
+      //      if (WINDOWSERVER_EVENT_WINDOW_RESIZE == e.type) {
+      //        GUI_Resize(global_w, e.vector[0], e.vector[1]);
+      //        continue;
+      //      }
       if (WINDOWSERVER_EVENT_KEYPRESS != e.type) {
         continue;
       }

@@ -6,6 +6,7 @@
 #define SIGWINCH 2
 #define SIGQUIT 3
 #define SIG_IGN 4
+#define SIGTERM 15
 typedef int sigset_t;
 
 union sigval {

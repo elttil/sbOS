@@ -54,7 +54,7 @@ void tcp_wait_reply(struct TcpConnection *con) {
     if (con->unhandled_packet) {
       return;
     }
-    wait_for_interrupt();
+    switch_task();
   }
 }
 

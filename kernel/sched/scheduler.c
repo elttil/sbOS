@@ -8,6 +8,7 @@
 #include <fs/vfs.h>
 #include <interrupts.h>
 #include <queue.h>
+#include <signal.h>
 
 // FIXME: Use the process_t struct instead or keep this contained in it.
 TCB *current_task_TCB;
@@ -188,8 +189,7 @@ void tasking_init(void) {
 }
 
 int i = 0;
-void free_process(void) {
-  process_t *p = current_task;
+void free_process(process_t *p) {
   kprintf("pid: %x\n", p->pid);
   kprintf("Exiting process: %s\n", p->program_name);
   // free_process() will purge all contents such as allocated frames
@@ -199,53 +199,57 @@ void free_process(void) {
   // Do a special free for shared memory which avoids labeling
   // underlying frames as "unused".
   for (int i = 0; i < 100; i++) {
-    vfs_close(i);
-    if (!current_task->maps[i]) {
+    vfs_close_process(p, i);
+    if (!p->maps[i]) {
       continue;
     }
-    MemoryMap *m = current_task->maps[i];
+    MemoryMap *m = p->maps[i];
     mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
   }
 
   // NOTE: Kernel stuff begins at 0x90000000
-  mmu_free_address_range((void *)0x1000, 0x90000000);
+  mmu_free_address_range((void *)0x1000, 0x90000000, p->cr3);
 
   list_free(&p->read_list);
   list_free(&p->write_list);
   list_free(&p->disconnect_list);
 }
 
-void exit(int status) {
-  assert(current_task->pid != 1);
-  if (current_task->parent) {
-    current_task->parent->halts[WAIT_CHILD_HALT] = 0;
-    current_task->parent->child_rc = status;
+void exit_process(process_t *p, int status) {
+  assert(p->pid != 1);
+  if (p->parent) {
+    p->parent->halts[WAIT_CHILD_HALT] = 0;
+    p->parent->child_rc = status;
   }
-  process_t *new_task = current_task;
-  for (; new_task == current_task;) {
+  process_t *new_task = p;
+  for (; new_task == p;) {
     if (!new_task->next) {
       new_task = ready_queue;
     }
     new_task = new_task->next;
   }
 
-  free_process();
+  free_process(p);
+  p->dead = 1;
   // Remove current_task from list
   for (process_t *tmp = ready_queue; tmp;) {
-    if (tmp == current_task) // current_task is ready_queue(TODO:
-                             // Figure out whether this could even
-                             // happen)
+    if (tmp == p) // current_task is ready_queue(TODO:
+                  // Figure out whether this could even
+                  // happen)
     {
-      ready_queue = current_task->next;
+      ready_queue = p->next;
       break;
     }
-    if (tmp->next == current_task) {
+    if (tmp->next == p) {
       tmp->next = tmp->next->next;
       break;
     }
     tmp = tmp->next;
   }
-  current_task->dead = 1;
+}
+
+void exit(int status) {
+  exit_process(current_task, status);
   switch_task();
 }
 
@@ -434,18 +438,41 @@ process_t *next_task(process_t *s) {
     if (!c) {
       c = ready_queue;
     }
+    if (c->is_interrupted) {
+      break;
+    }
     if (s == c) {
-      wait_for_interrupt();
+      // wait_for_interrupt();
     }
     if (c->sleep_until > pit_num_ms()) {
       continue;
     }
-    if (is_halted(c) || c->dead) {
+    if (c->dead) {
+      kprintf("dead process\n");
+      continue;
+    }
+    if (is_halted(c)) {
       continue;
     }
     break;
   }
   return c;
+}
+
+void signal_process(process_t *p, int sig) {
+  assert(sig < 32);
+  kprintf("sending signal to: %x\n", p);
+  if (!p->signal_handlers[sig]) {
+    if (SIGTERM == sig) {
+      kprintf("HAS NO SIGTERM\n");
+      exit_process(p, 1 /*TODO: what should the status be?*/);
+    } else {
+      // TODO: Should also exit proess(I think)
+      assert(0);
+    }
+  }
+  signal_t signal = {.handler_ip = (uintptr_t)p->signal_handlers[sig]};
+  process_push_signal(p, signal);
 }
 
 int kill(pid_t pid, int sig) {
@@ -466,6 +493,7 @@ int kill(pid_t pid, int sig) {
   if (p->pid != pid) {
     return -ESRCH;
   }
+  signal_process(p, sig);
   return 0;
 }
 

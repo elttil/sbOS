@@ -56,7 +56,7 @@ struct Process {
   u32 pid;
   char program_name[100];
   char current_working_directory[MAX_PATH];
-  void *signal_handlers[20];
+  void *signal_handlers[32];
   void *interrupt_handler;
   PageDirectory *cr3;
   struct IpcMailbox ipc_mailbox;
@@ -96,6 +96,6 @@ struct Process {
 
 bool get_task_from_pid(u32 pid, process_t **out);
 int get_free_fd(process_t *p, int allocate);
-void free_process(void);
+void free_process(process_t *p);
 void *get_free_virtual_memory(size_t length);
 #endif

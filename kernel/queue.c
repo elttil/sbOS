@@ -50,18 +50,14 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
     if (!list_get(&q->events, i, (void **)&ev)) {
       break;
     }
-    kprintf("wait %d\n", i);
     *is_empty = 0;
     if (EVENT_TYPE_FD == ev->type) {
-      kprintf("found fd: %d\n", ev->internal_id);
       vfs_fd_t *fd = get_vfs_fd(ev->internal_id, q->p);
-      kprintf("fd->inode->has_data: %x\n", fd->inode->has_data);
       if (!fd) {
         kprintf("queue: Invalid fd given\n");
         continue;
       }
       if (fd->inode->has_data) {
-        kprintf("no block\n");
         return 0;
       }
     } else if (EVENT_TYPE_TCP_SOCKET == ev->type) {
@@ -69,10 +65,7 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
       assert(con);
       assert(con->data_file);
       if (con->data_file->has_data) {
-        kprintf("has data\n");
         return 0;
-      } else {
-        kprintf("blocking queue\n");
       }
     }
   }
