@@ -3,7 +3,7 @@
 #include <ksbrk.h>
 #include <math.h>
 #include <random.h>
-#define NEW_ALLOC_SIZE 0x20000
+#define NEW_ALLOC_SIZE 0x5000
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)
@@ -35,7 +35,7 @@ int init_heap(void) {
 }
 
 int add_heap_memory(size_t min_desired) {
-  min_desired += sizeof(MallocHeader) + 0x1000;
+  min_desired += sizeof(MallocHeader) + 0x2000;
   size_t allocation_size = max(min_desired, NEW_ALLOC_SIZE);
   allocation_size += delta_page(allocation_size);
   void *p;
@@ -127,7 +127,7 @@ void merge_headers(MallocHeader *b) {
   }
 }
 
-void *kmalloc(size_t s) {
+void *int_kmalloc(size_t s) {
   s += 0x1000;
   size_t n = s;
   MallocHeader *free_entry = find_free_entry(s);
@@ -159,10 +159,15 @@ void *kmalloc(size_t s) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
-  for (int i = 0; i < s; i++) {
-    *(char *)rc = 'A';
+  return rc;
+}
+
+void *kmalloc(size_t s) {
+  void *rc = int_kmalloc(s);
+  if (NULL == rc) {
+    return NULL;
   }
-  // get_fast_insecure_random((void *)rc, s);
+  get_fast_insecure_random((void *)rc, s);
   return rc;
 }
 
@@ -184,7 +189,7 @@ void *krealloc(void *ptr, size_t size) {
   size_t l = get_mem_size(ptr);
   size_t to_copy = min(l, size);
   memcpy(rc, ptr, to_copy);
-    kfree(ptr);
+  kfree(ptr);
   return rc;
 }
 
@@ -206,7 +211,11 @@ void *kallocarray(size_t nmemb, size_t size) {
 }
 
 void *kcalloc(size_t nelem, size_t elsize) {
-  void *rc = kallocarray(nelem, elsize);
+  if ((nelem >= MUL_NO_OVERFLOW || elsize >= MUL_NO_OVERFLOW) && nelem > 0 &&
+      SIZE_MAX / nelem < elsize) {
+    return NULL;
+  }
+  void *rc = int_kmalloc(nelem * elsize);
   if (!rc) {
     return NULL;
   }
@@ -225,6 +234,7 @@ void kfree(void *p) {
   if (h->flags & IS_FREE) {
     return;
   }
+  get_fast_insecure_random((void *)p, h->size);
 
   h->flags |= IS_FREE;
   merge_headers(h);
