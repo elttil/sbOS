@@ -375,7 +375,23 @@ int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
   if (!(vfs_fd->flags & O_WRITE)) {
     return -EBADF;
   }
-  return raw_vfs_pwrite(vfs_fd, buf, count, offset);
+  int rc = raw_vfs_pwrite(vfs_fd, buf, count, offset);
+  if (-EAGAIN == rc) {
+    if (!(vfs_fd->flags & O_NONBLOCK)) {
+      struct pollfd fds;
+      do {
+        fds.fd = fd;
+        fds.events = POLLOUT;
+        fds.revents = 0;
+        int rc = poll(&fds, 1, 0);
+        if (-EINTR == rc) {
+          return -EINTR;
+        }
+      } while (!(fds.revents & POLLOUT));
+      return vfs_pwrite(fd, buf, count, offset);
+    }
+  }
+  return rc;
 }
 
 vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {

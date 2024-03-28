@@ -218,6 +218,7 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
           (u8 *)(payload + header->data_offset * sizeof(u32)), 0,
           tcp_payload_length, incoming_connection->data_file);
       assert(len >= 0);
+      assert(len == tcp_payload_length);
       incoming_connection->ack += len;
       tcp_send_ack(incoming_connection);
     }

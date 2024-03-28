@@ -129,27 +129,20 @@ void msg_sv_println(struct sv s) {
 }
 
 void msg_sv_print(struct sv s) {
-  char buffer[4096];
-  int buffer_pos = 0;
-  mvcursor(message_pos_x, message_pos_y);
-  for (size_t i = 0; i < s.length; i++) {
-    buffer[buffer_pos] = s.s[i];
-    buffer_pos++;
-    message_pos_x++;
-    if ('\n' == s.s[i] || message_pos_x > TERMINAL_WIDTH) {
-      buffer[buffer_pos] = '\0';
-      printf("%s", buffer);
-      buffer_pos = 0;
-      message_pos_x = 0;
-      message_pos_y++;
-      mvcursor(message_pos_x, message_pos_y);
+  for (;;) {
+    mvcursor(message_pos_x, message_pos_y);
+    struct sv line = sv_split_delim(s, &s, '\n');
+    write(1, line.s, line.length);
+    message_pos_x += line.length;
+    if (sv_isempty(s) && '\n' != line.s[line.length]) {
+      break;
+    }
+    message_pos_x = 0;
+    message_pos_y++;
+    if ('\n' == line.s[line.length]) {
+      break;
     }
   }
-  if (0 != buffer_pos) {
-    buffer[buffer_pos] = '\0';
-    printf("%s", buffer);
-  }
-  mvcursor(prompt_x, prompt_y);
 }
 
 #define RPL_WELCOME C_TO_SV("001")
@@ -339,6 +332,16 @@ void irc_show_channel(struct irc_channel *channel) {
   clear_area(0, 0, TERMINAL_WIDTH, prompt_y - 1);
   message_pos_x = 0;
   message_pos_y = 0;
+
+  char buffer[4096];
+  sprintf(buffer, "Number of messages in channe: %d",
+          (int)channel->messages_num);
+  struct sb b;
+  sb_init(&b);
+  sb_append(&b, buffer);
+  msg_sv_println(SB_TO_SV(b));
+  sb_free(&b);
+
   for (size_t i = 0; i < channel->messages_num; i++) {
     struct message *m = &channel->messages[i];
     struct sv nick = {
@@ -351,9 +354,9 @@ void irc_show_channel(struct irc_channel *channel) {
     };
     msg_sv_print(nick);
     msg_sv_print(C_TO_SV(": "));
-    msg_sv_print(msg);
-    msg_sv_print(C_TO_SV("\n"));
+    msg_sv_println(msg);
   }
+  mvcursor(prompt_x, prompt_y);
 }
 
 void irc_add_message_to_channel(struct irc_channel *chan, struct sv sender,
@@ -523,6 +526,7 @@ int main(void) {
                                       .s = current_msg,
                                       .length = msg_usage,
                                   });
+          refresh_screen();
           msg_usage = 0;
           continue;
         }

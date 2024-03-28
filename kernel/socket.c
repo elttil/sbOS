@@ -9,11 +9,7 @@
 #include <sched/scheduler.h>
 #include <socket.h>
 
-// FIXME: Make these more dynamic
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
-
-// struct TcpConnection *tcp_sockets[100];
-// struct TcpListen *tcp_listen[100];
 
 void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
   ip->a[0] = i1;
@@ -195,14 +191,11 @@ int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
     return 0;
   }
 
-  int rc = 0;
-  for (; rc <= 0;) {
-    rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
-    if (rc <= 0) {
-      enable_interrupts();
-      rc = 0;
-      return 0;
-    }
+  int rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
+  if (rc <= 0) {
+    enable_interrupts();
+    rc = 0;
+    return 0;
   }
   if (out) {
     *out = rc;

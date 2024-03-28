@@ -9,11 +9,17 @@ void fifo_close(vfs_fd_t *fd) {
   return;
 }
 
+void fifo_realloc(FIFO_FILE *file) {
+  file->buffer_len += 4096;
+  file->buffer = krealloc(file->buffer, file->buffer_len);
+}
+
 int fifo_object_write(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file) {
   (void)offset;
   file->has_data = 1;
   if (file->write_len + len >= file->buffer_len) {
     file->can_write = 0;
+    fifo_realloc(file);
     return -EAGAIN;
   }
   memcpy(file->buffer + file->write_len, buffer, len);
