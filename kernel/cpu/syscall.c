@@ -24,19 +24,18 @@ int syscall_exec(SYS_EXEC_PARAMS *args) {
     argc++;
   }
 
-  char **new_argv = kallocarray(argc + 1, sizeof(char *));
+  char *new_argv[argc + 1];
   for (int i = 0; i < argc; i++) {
     new_argv[i] = copy_and_allocate_user_string(args->argv[i]);
   }
 
   new_argv[argc] = NULL;
 
-  exec(filename, new_argv);
+  exec(filename, new_argv, 1, 1);
   kfree((void *)filename);
   for (int i = 0; i < argc; i++) {
     kfree(new_argv[i]);
   }
-  kfree(new_argv);
   return -1;
 }
 
@@ -214,6 +213,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_queue_add,
     (void(*))syscall_queue_wait,
     (void(*))syscall_munmap,
+    (void(*))syscall_open_process,
 };
 
 void int_syscall(reg_t *r);

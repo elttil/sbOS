@@ -113,7 +113,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   int pid;
   if (0 == (pid = fork())) {
     char *argv[] = {"/init", NULL};
-    if (0 == exec("/init", argv)) {
+    if (0 == exec("/init", argv, 0, 0)) {
       kprintf("exec() failed\n");
     }
   }

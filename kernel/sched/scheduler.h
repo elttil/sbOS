@@ -18,10 +18,12 @@ extern process_t *current_task;
 extern process_t *ready_queue;
 
 int fork(void);
-int exec(const char *filename, char **argv);
+int exec(const char *filename, char **argv, int dealloc_argv,
+         int dealloc_filename);
 void switch_task(void);
 void tasking_init(void);
 void exit(int status);
+int process_signal(vfs_fd_t *fd, int sig);
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd,
            size_t offset);

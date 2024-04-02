@@ -4,7 +4,8 @@
 
 int list_init(struct list *list) {
   // TODO: Make it dynamic
-  list->entries = kmalloc(sizeof(void *) * 100);
+  list->capacity = 5;
+  list->entries = kmalloc(sizeof(void *) * list->capacity);
   if (!list->entries) {
     return 0;
   }
@@ -17,13 +18,13 @@ void list_reset(struct list *list) {
 }
 
 int list_add(struct list *list, void *entry, int *index) {
-  if (list->tail_index > 100 - 1) {
-    kprintf("Error: list has run out of space\n");
-    assert(0);
+  if (list->tail_index + 1 >= list->capacity) {
+    list->capacity += 25;
+    list->entries = krealloc(list->entries, sizeof(void *) * list->capacity);
   }
   list->tail_index++;
   list->entries[list->tail_index] = entry;
-  if(index) {
+  if (index) {
     *index = list->tail_index;
   }
   return 1;

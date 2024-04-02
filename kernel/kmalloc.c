@@ -231,9 +231,8 @@ void kfree(void *p) {
   // Could this be avoided in a simple way?
   MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
   assert(h->magic == 0xdde51ab9410268b1);
-  if (h->flags & IS_FREE) {
-    return;
-  }
+  assert(!(h->flags & IS_FREE));
+
   get_fast_insecure_random((void *)p, h->size);
 
   h->flags |= IS_FREE;

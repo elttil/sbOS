@@ -54,6 +54,7 @@ struct vfs_fd {
 struct vfs_inode {
   int inode_num;
   int type;
+  int ref;
   u8 has_data;
   u8 can_write;
   u8 is_open;
@@ -68,6 +69,7 @@ struct vfs_inode {
   vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd);
   int (*truncate)(vfs_fd_t *fd, size_t length);
   int (*stat)(vfs_fd_t *fd, struct stat *buf);
+  int (*send_signal)(vfs_fd_t *fd, int signal);
 };
 
 int vfs_close(int fd);
@@ -100,5 +102,6 @@ vfs_inode_t *vfs_create_inode(
     int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length),
-    int (*stat)(vfs_fd_t *fd, struct stat *buf));
+    int (*stat)(vfs_fd_t *fd, struct stat *buf),
+    int (*send_signal)(vfs_fd_t *fd, int signal));
 #endif

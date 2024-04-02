@@ -213,6 +213,10 @@ void free_process(process_t *p) {
   list_free(&p->read_list);
   list_free(&p->write_list);
   list_free(&p->disconnect_list);
+  list_free(&p->tcp_sockets);
+  list_free(&p->tcp_listen);
+  list_free(&p->event_queue);
+  kfree(p->tcb);
 }
 
 void exit_process(process_t *p, int status) {
@@ -291,7 +295,8 @@ u32 setup_stack(u32 stack_pointer, int argc, char **argv) {
   return ptr;
 }
 
-int exec(const char *filename, char **argv) {
+int exec(const char *filename, char **argv, int dealloc_argv,
+         int dealloc_filename) {
   // exec() will "takeover" the process by loading the file specified in
   // filename into memory, change from ring 0 to ring 3 and jump to the
   // files entry point as decided by the ELF header of the file.
@@ -312,6 +317,15 @@ int exec(const char *filename, char **argv) {
   current_task->data_segment_end = align_page((void *)end_of_code);
 
   u32 ptr = setup_stack(0x90000000, argc, argv);
+
+  if (dealloc_argv) {
+    for (int i = 0; i < argc; i++) {
+      kfree(argv[i]);
+    }
+  }
+  if (dealloc_filename) {
+    kfree((char *)filename);
+  }
 
   jump_usermode((void (*)())(entry), ptr);
   ASSERT_NOT_REACHED;
@@ -473,6 +487,13 @@ void signal_process(process_t *p, int sig) {
   }
   signal_t signal = {.handler_ip = (uintptr_t)p->signal_handlers[sig]};
   process_push_signal(p, signal);
+}
+
+int process_signal(vfs_fd_t *fd, int sig) {
+  process_t *p = fd->inode->internal_object;
+  assert(p);
+  signal_process(p, sig);
+  return 0;
 }
 
 int kill(pid_t pid, int sig) {

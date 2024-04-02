@@ -11,3 +11,4 @@
 #define O_RDWR (O_WRITE | O_READ)
 
 int open(const char *file, int flags, ...);
+int open_process(int pid);

@@ -11,6 +11,7 @@
 void syscall_outw(u16 port, u16 word);
 u32 syscall_inl(u16 port);
 void syscall_outl(u16 port, u32 l);
+int syscall_open_process(int pid);
 
 int syscall_queue_create(u32 *id);
 int syscall_queue_add(u32 queue_id, struct event *ev, u32 size);

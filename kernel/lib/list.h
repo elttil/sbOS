@@ -2,6 +2,7 @@
 #define LIST_H
 struct list {
   void **entries;
+  int capacity;
   int tail_index;
 };
 

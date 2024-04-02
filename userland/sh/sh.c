@@ -49,7 +49,9 @@ void remove_child_process(int pid) {
 void slaugther_children(void) {
   struct child_process *child = children;
   for (; child; child = child->next) {
-    kill(child->pid, SIGTERM);
+    int fd = open_process(child->pid);
+    kill(fd, SIGTERM);
+    close(fd);
   }
 }
 

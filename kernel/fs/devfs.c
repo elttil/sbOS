@@ -14,7 +14,7 @@ vfs_inode_t *devfs_add_file(
     u8 has_data, u8 can_write, int type) {
   files[num_files].name = copy_and_allocate_string(path);
 
-  vfs_inode_t *i = kmalloc(sizeof(vfs_inode_t));
+  vfs_inode_t *i = kcalloc(1, sizeof(vfs_inode_t));
   files[num_files].inode = i;
   i->type = type;
   i->read = read;
@@ -24,6 +24,7 @@ vfs_inode_t *devfs_add_file(
   i->has_data = has_data;
   i->is_open = 1;
   i->can_write = can_write;
+  i->ref = 1;
   num_files++;
   return i;
 }

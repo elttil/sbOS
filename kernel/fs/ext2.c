@@ -211,9 +211,12 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
       if (entry) {
         memcpy(entry, data_p, sizeof(direntry_header_t));
       }
-      return dir->inode;
+      int r = dir->inode;
+      kfree(data);
+      return r;
     }
   }
+  kfree(data);
   return 0;
 }
 
@@ -603,11 +606,12 @@ vfs_inode_t *ext2_open(const char *path) {
     break;
   }
 
-  return vfs_create_inode(
-      inode_num, type, 1 /*has_data*/, 1 /*can_write*/, 1 /*is_open*/,
-      NULL /*internal_object*/, file_size, ext2_open, ext2_create_file,
-      ext2_read, ext2_write, ext2_close, ext2_create_directory,
-      NULL /*get_vm_object*/, ext2_truncate /*truncate*/, ext2_stat);
+  return vfs_create_inode(inode_num, type, 1 /*has_data*/, 1 /*can_write*/,
+                          1 /*is_open*/, NULL /*internal_object*/, file_size,
+                          ext2_open, ext2_create_file, ext2_read, ext2_write,
+                          ext2_close, ext2_create_directory,
+                          NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
+                          ext2_stat, NULL /*send_signal*/);
 }
 
 u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
@@ -805,12 +809,12 @@ vfs_inode_t *ext2_mount(void) {
   mount_fd = current_task->file_descriptors[fd];
   current_task->file_descriptors[fd] = NULL;
   parse_superblock();
-  return vfs_create_inode(0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/,
-                          0 /*can_write*/, 0 /*is_open*/,
-                          NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
-                          ext2_create_file, ext2_read, ext2_write, ext2_close,
-                          ext2_create_directory, NULL /*get_vm_object*/,
-                          ext2_truncate /*truncate*/, ext2_stat);
+  return vfs_create_inode(
+      0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/,
+      0 /*is_open*/, NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
+      ext2_create_file, ext2_read, ext2_write, ext2_close,
+      ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
+      ext2_stat, NULL /*send_signal*/);
 }
 
 void parse_superblock(void) {

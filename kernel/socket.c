@@ -341,7 +341,7 @@ int socket(int domain, int type, int protocol) {
       1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
       NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
       socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/, NULL /*stat*/);
+      NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
 
   vfs_fd_t *fd;
   int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);

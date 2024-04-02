@@ -36,7 +36,8 @@ vfs_inode_t *vfs_create_inode(
     int (*create_directory)(const char *path, int mode),
     vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length),
-    int (*stat)(vfs_fd_t *fd, struct stat *buf)) {
+    int (*stat)(vfs_fd_t *fd, struct stat *buf),
+    int (*send_signal)(vfs_fd_t *fd, int signal)) {
   vfs_inode_t *r = kmalloc(sizeof(inode_t));
   r->inode_num = inode_num;
   r->type = type;
@@ -54,6 +55,8 @@ vfs_inode_t *vfs_create_inode(
   r->get_vm_object = get_vm_object;
   r->truncate = truncate;
   r->stat = stat;
+  r->send_signal = send_signal;
+  r->ref = 1;
   return r;
 }
 
@@ -69,6 +72,7 @@ int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
   if (p->file_descriptors[i]) {
     return -1;
   }
+  inode->ref++;
   vfs_fd_t *r = kmalloc(sizeof(vfs_fd_t));
   r->flags = flags;
   r->mode = mode;
@@ -307,6 +311,11 @@ int vfs_close_process(process_t *p, int fd) {
       fd_ptr->inode->close(fd_ptr);
     }
 
+    assert(0 < fd_ptr->inode->ref);
+    fd_ptr->inode->ref--;
+    if (0 >= fd_ptr->inode->ref) {
+      kfree(fd_ptr->inode);
+    }
     kfree(fd_ptr);
   }
   return 0;
@@ -333,7 +342,7 @@ int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
   }
-  vfs_fd_t *vfs_fd = current_task->file_descriptors[fd];
+  vfs_fd_t *vfs_fd = get_vfs_fd(fd, NULL);
   if (!vfs_fd) {
     return -EBADF;
   }
