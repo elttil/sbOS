@@ -43,7 +43,7 @@ void add_mouse(void) {
   // Don't look at this
   int fd = vfs_open("/dev/mouse", O_RDWR, 0);
   mouse_fd = get_vfs_fd(fd, NULL);
-  current_task->file_descriptors[fd] = NULL;
+  list_set(&current_task->file_descriptors, fd, NULL);
 }
 
 void what(registers_t *r) {

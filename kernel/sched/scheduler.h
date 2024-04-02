@@ -62,7 +62,8 @@ struct Process {
   void *interrupt_handler;
   PageDirectory *cr3;
   struct IpcMailbox ipc_mailbox;
-  vfs_fd_t *file_descriptors[100];
+
+  struct list file_descriptors;
 
   struct list read_list;
   struct list write_list;
@@ -97,7 +98,6 @@ struct Process {
 };
 
 bool get_task_from_pid(u32 pid, process_t **out);
-int get_free_fd(process_t *p, int allocate);
 void free_process(process_t *p);
 void *get_free_virtual_memory(size_t length);
 #endif

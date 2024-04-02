@@ -17,6 +17,18 @@ void list_reset(struct list *list) {
   list->tail_index = -1;
 }
 
+int list_clone(struct list *in, struct list *out) {
+  list_init(out);
+  for (int i = 0;; i++) {
+    void *output;
+    if (!list_get(in, i, &output)) {
+      break;
+    }
+    list_add(out, output, NULL);
+  }
+  return 1;
+}
+
 int list_add(struct list *list, void *entry, int *index) {
   if (list->tail_index + 1 >= list->capacity) {
     list->capacity += 25;
@@ -27,6 +39,15 @@ int list_add(struct list *list, void *entry, int *index) {
   if (index) {
     *index = list->tail_index;
   }
+  return 1;
+}
+
+int list_set(struct list *list, int index, void *entry) {
+  if (index > list->tail_index) {
+    assert(0);
+    return 0;
+  }
+  list->entries[index] = entry;
   return 1;
 }
 

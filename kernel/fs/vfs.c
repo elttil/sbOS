@@ -12,17 +12,12 @@ vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
   if (!p) {
     p = current_task;
   }
-  if (fd >= 100) {
-    klog("get_vfs_fd(): Tried to get out of range fd", LOG_WARN);
-    dump_backtrace(12);
+
+  vfs_fd_t *r;
+  if (!list_get(&p->file_descriptors, fd, (void **)&r)) {
     return NULL;
   }
-  if (fd < 0) {
-    klog("get_vfs_fd(): Tried to get out of range fd", LOG_WARN);
-    dump_backtrace(12);
-    return NULL;
-  }
-  return p->file_descriptors[fd];
+  return r;
 }
 
 vfs_inode_t *vfs_create_inode(
@@ -62,16 +57,6 @@ vfs_inode_t *vfs_create_inode(
 
 int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
                   vfs_fd_t **fd) {
-  process_t *p = (process_t *)current_task;
-  int i;
-  for (i = 0; i < 100; i++) {
-    if (!p->file_descriptors[i]) {
-      break;
-    }
-  }
-  if (p->file_descriptors[i]) {
-    return -1;
-  }
   inode->ref++;
   vfs_fd_t *r = kmalloc(sizeof(vfs_fd_t));
   r->flags = flags;
@@ -80,11 +65,12 @@ int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
   r->reference_count = 1;
   r->is_tty = is_tty;
   r->offset = 0;
-  p->file_descriptors[i] = r;
   if (fd) {
     *fd = r;
   }
-  return i;
+  int index;
+  list_add(&current_task->file_descriptors, r, &index);
+  return index;
 }
 
 int vfs_create_file(const char *file) {
@@ -304,7 +290,7 @@ int vfs_close_process(process_t *p, int fd) {
   assert(0 < fd_ptr->reference_count);
   // Remove process reference
   fd_ptr->reference_count--;
-  p->file_descriptors[fd] = 0;
+  list_set(&p->file_descriptors, fd, NULL);
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
     if (fd_ptr->inode->close) {
@@ -417,9 +403,16 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
 }
 
 int vfs_dup2(int org_fd, int new_fd) {
-  current_task->file_descriptors[new_fd] =
-      current_task->file_descriptors[org_fd];
-  current_task->file_descriptors[new_fd]->reference_count++;
+  vfs_fd_t *orig;
+  if (!list_get(&current_task->file_descriptors, org_fd, (void **)&orig)) {
+    assert(0);
+    return -1;
+  }
+  if (!list_set(&current_task->file_descriptors, new_fd, orig)) {
+    assert(0);
+    return -1;
+  }
+  orig->reference_count++;
   return 1;
 }
 

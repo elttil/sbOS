@@ -37,6 +37,7 @@ int tmp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void dual_pipe(int fd[2]) {
+  vfs_fd_t *fd_ptrs[2];
   for (int i = 0; i < 2; i++) {
     tmp_inode *pipe = kmalloc(sizeof(tmp_inode));
     pipe->fifo = create_fifo_object();
@@ -53,12 +54,12 @@ void dual_pipe(int fd[2]) {
         NULL /*send_signal*/);
     assert(inode);
 
-    vfs_fd_t *fd_ptr;
-    fd[i] = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd_ptr);
+    fd[i] =
+        vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd_ptrs[i]);
     assert(-1 != fd[i]);
   }
-  vfs_inode_t *f_inode = current_task->file_descriptors[fd[0]]->inode;
-  vfs_inode_t *s_inode = current_task->file_descriptors[fd[1]]->inode;
+  vfs_inode_t *f_inode = fd_ptrs[0]->inode;
+  vfs_inode_t *s_inode = fd_ptrs[1]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;
@@ -68,6 +69,7 @@ void dual_pipe(int fd[2]) {
 }
 
 void pipe(int fd[2]) {
+  vfs_fd_t *fd_ptrs[2];
   for (int i = 0; i < 2; i++) {
     tmp_inode *pipe = kmalloc(sizeof(tmp_inode));
     pipe->fifo = create_fifo_object();
@@ -84,12 +86,11 @@ void pipe(int fd[2]) {
         NULL /*send_signal*/);
     assert(inode);
 
-    vfs_fd_t *fd_ptr;
-    fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptr);
+    fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptrs[i]);
     assert(-1 != fd[i]);
   }
-  vfs_inode_t *f_inode = current_task->file_descriptors[fd[0]]->inode;
-  vfs_inode_t *s_inode = current_task->file_descriptors[fd[1]]->inode;
+  vfs_inode_t *f_inode = fd_ptrs[0]->inode;
+  vfs_inode_t *s_inode = fd_ptrs[1]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;

@@ -239,7 +239,7 @@ int uds_open(const char *path) {
   fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
   s->ptr_socket_fd->inode->has_data = 1;
 
-  s->incoming_fd = current_task->file_descriptors[fd[1]];
+  s->incoming_fd = get_vfs_fd(fd[1], NULL);
   // vfs_close(fd[1]);
   return fd[0];
 }
@@ -247,7 +247,9 @@ int uds_open(const char *path) {
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   (void)address;
   (void)address_len;
-  vfs_inode_t *inode = current_task->file_descriptors[socket]->inode;
+  vfs_fd_t *fd_ptr = get_vfs_fd(socket, NULL);
+  assert(fd_ptr);
+  vfs_inode_t *inode = fd_ptr->inode;
   SOCKET *s = (SOCKET *)inode->internal_object;
 
   if (NULL == s->incoming_fd) {
@@ -259,18 +261,16 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
     poll(fds, 1, 0);
   }
 
-  int n = 0;
-  for (; current_task->file_descriptors[n]; n++)
-    ;
-  current_task->file_descriptors[n] = s->incoming_fd;
-  current_task->file_descriptors[n]->reference_count++;
+  int index;
+  assert(list_add(&current_task->file_descriptors, s->incoming_fd, &index));
+  s->incoming_fd->reference_count++;
   s->incoming_fd = NULL;
   //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
   //    ;
   inode->has_data = 0;
   //  s->ptr_fifo_fd->inode->has_data = 0;
 
-  return n;
+  return index;
 }
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {

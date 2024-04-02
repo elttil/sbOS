@@ -118,6 +118,20 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   r->tcb = kcalloc(1, sizeof(struct TCB));
   r->tcb->CR3 = r->cr3->physical_address;
 
+  if (p) {
+    list_clone(&p->file_descriptors, &r->file_descriptors);
+    for (int i = 0;; i++) {
+      vfs_fd_t *out;
+      if (!list_get(&p->file_descriptors, i, (void **)&out)) {
+        break;
+      }
+      if (out) {
+        out->reference_count++;
+      }
+    }
+  } else {
+    list_init(&r->file_descriptors);
+  }
   list_init(&r->read_list);
   list_init(&r->write_list);
   list_init(&r->disconnect_list);
@@ -149,37 +163,7 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     strcpy(r->current_working_directory, "/");
   }
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
-  for (int i = 0; i < 100; i++) {
-    if (p) {
-      r->file_descriptors[i] = p->file_descriptors[i];
-      if (r->file_descriptors[i]) {
-        r->file_descriptors[i]->reference_count++;
-      }
-    } else {
-      r->file_descriptors[i] = NULL;
-    }
-  }
   return r;
-}
-
-int get_free_fd(process_t *p, int allocate) {
-  if (!p) {
-    p = (process_t *)current_task;
-  }
-  int i;
-  for (i = 0; i < 100; i++) {
-    if (!p->file_descriptors[i]) {
-      break;
-    }
-  }
-  if (p->file_descriptors[i]) {
-    return -1;
-  }
-  if (allocate) {
-    vfs_fd_t *fd = p->file_descriptors[i] = kmalloc(sizeof(vfs_fd_t));
-    fd->inode = kmalloc(sizeof(vfs_inode_t));
-  }
-  return i;
 }
 
 void tasking_init(void) {
@@ -216,6 +200,7 @@ void free_process(process_t *p) {
   list_free(&p->tcp_sockets);
   list_free(&p->tcp_listen);
   list_free(&p->event_queue);
+  list_free(&p->file_descriptors);
   kfree(p->tcb);
 }
 

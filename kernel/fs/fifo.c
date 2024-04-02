@@ -1,4 +1,5 @@
 #include "fifo.h"
+#include <assert.h>
 #include <errno.h>
 
 #define STARTING_SIZE 4096
@@ -63,13 +64,12 @@ FIFO_FILE *create_fifo_object(void) {
 }
 
 int create_fifo(void) {
-  int fd_n = 0;
-  for (; current_task->file_descriptors[fd_n]; fd_n++)
-    ;
 
   vfs_fd_t *fd = kmalloc(sizeof(vfs_fd_t));
+  int fd_n;
+  assert(list_add(&current_task->file_descriptors, fd, &fd_n));
+
   fd->flags = O_RDWR | O_NONBLOCK;
-  current_task->file_descriptors[fd_n] = fd;
   fd->inode = kmalloc(sizeof(vfs_inode_t));
 
   fd->inode->internal_object = (void *)create_fifo_object();
