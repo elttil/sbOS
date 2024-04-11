@@ -8,7 +8,6 @@
 
 #define INDEX_FROM_BIT(a) (a / (32))
 #define OFFSET_FROM_BIT(a) (a % (32))
-#define PAGE_SIZE ((uintptr_t)0x1000)
 
 #define PAGE_ALLOCATE 1
 #define PAGE_NO_ALLOCATE 0
@@ -107,6 +106,7 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
   Page *p = &directory->tables[table_index]->pages[address % 1024];
   if (create_new_page) {
     p->present = 0;
+    p->user = set_user;
   }
   return &directory->tables[table_index]->pages[address % 1024];
 }
@@ -118,19 +118,6 @@ void mmu_free_pages(void *a, u32 n) {
     write_to_frame(p->frame * 0x1000, 0);
     a += 0x1000;
   }
-}
-
-void *next_page(void *ptr) {
-  uintptr_t a = (uintptr_t)ptr;
-  return (void *)(a + (PAGE_SIZE - ((u32)a & (PAGE_SIZE - 1))));
-}
-
-void *align_page(void *a) {
-  if ((uintptr_t)a & (PAGE_SIZE - 1)) {
-    return next_page(a);
-  }
-
-  return a;
 }
 
 u32 first_free_frame(void) {
@@ -329,7 +316,13 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
   pd = (pd) ? pd : get_active_pagedirectory();
   size_t num_pages = n / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
-    Page *p = get_page((void *)(ptr + i * 0x1000), pd, PAGE_ALLOCATE, 1);
+    Page *p = get_page((void *)(ptr + i * 0x1000), pd, 0, 0);
+    if (p && p->present) {
+      p->rw = (flags & MMU_FLAG_RW);
+      p->user = !(flags & MMU_FLAG_KERNEL);
+      continue;
+    }
+    p = get_page((void *)(ptr + i * 0x1000), pd, PAGE_ALLOCATE, 1);
     assert(p);
     int rw = (flags & MMU_FLAG_RW);
     int kernel = (flags & MMU_FLAG_KERNEL);
@@ -338,6 +331,7 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
       return 0;
     }
   }
+  flush_tlb();
   return 1;
 }
 

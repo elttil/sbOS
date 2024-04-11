@@ -93,9 +93,8 @@ int print_string(FILE *f, const char *s, int *rc, int prefix, int right_padding,
         break;
       bl--;
     }
-    int r;
+    int r = 0;
     FILE_WRITE(f, (const unsigned char *)s, 1, &r);
-    assert(r != 0);
   }
   if (right_padding) {
     assert(-1 == precision); // FIXME: Is this correct?

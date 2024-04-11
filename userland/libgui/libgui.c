@@ -256,8 +256,15 @@ void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev)) {
   }
 }
 
+// This should really not be a constant. It is merely here so that each
+// window can be given a sufficently large buffer such that buffers
+// don't have to be resized if the window is resized.
+#define MAX_WINDOW_SIZE (1920 * 1080)
 void GUI_Resize(GUI_Window *w, uint32_t sx, uint32_t sy) {
-  ftruncate(w->bitmap_fd, sx * sy * sizeof(uint32_t));
+  if (sx * sy > MAX_WINDOW_SIZE) {
+    return;
+  }
+
   w->sx = sx;
   w->sy = sy;
   char buffer[sizeof(uint8_t) + sizeof(uint32_t) * 2];
@@ -298,8 +305,9 @@ GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
     printf("bitmap_fd: %x\n", w->bitmap_fd);
     assert(0);
   }
-  ftruncate(w->bitmap_fd, sx * sy * sizeof(uint32_t));
-  void *rc = mmap(NULL, sx * sy * sizeof(uint32_t), 0, 0, w->bitmap_fd, 0);
+  ftruncate(w->bitmap_fd, MAX_WINDOW_SIZE * sizeof(uint32_t));
+  void *rc =
+      mmap(NULL, MAX_WINDOW_SIZE * sizeof(uint32_t), 0, 0, w->bitmap_fd, 0);
   if (!((int)rc >= 0)) {
     printf("rc: %x\n", rc);
     assert(0);

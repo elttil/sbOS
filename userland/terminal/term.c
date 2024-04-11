@@ -14,6 +14,8 @@
 
 #define TERM_BACKGROUND 0x000000
 
+char terminal_char_buffer[1920 / 8][1080 / 8] = {0};
+
 int cmdfd;
 GUI_Window *global_w;
 uint32_t screen_pos_x = 0;
@@ -25,7 +27,7 @@ int shell_pid;
 int raw_mode = 0;
 
 void execsh(void) {
-  char *argv[] = {NULL};
+  char *argv[] = {"/sh", NULL};
   execv("/sh", argv);
 }
 
@@ -45,6 +47,7 @@ void screen_update_cursor() {
 void screen_putchar(uint32_t c) {
   if (raw_mode) {
     GUI_DrawFont(global_w, screen_pos_x, screen_pos_y, c);
+    terminal_char_buffer[screen_pos_y / 8][screen_pos_x / 8] = c;
     screen_remove_old_cursor();
     return;
   }
@@ -70,6 +73,7 @@ void screen_putchar(uint32_t c) {
     screen_pos_y -= 8;
   }
   GUI_DrawFont(global_w, screen_pos_x, screen_pos_y, c);
+  terminal_char_buffer[screen_pos_y / 8][screen_pos_x / 8] = c;
   screen_pos_x += 8;
   if (screen_pos_x >= global_w->sx - 8) {
     screen_pos_x = 0;
@@ -223,6 +227,15 @@ void handle_escape_codes_or_print(char *buffer, int len) {
   handle_escape_codes_or_print(buffer, len);
 }
 
+void terminal_resize(uint32_t sx, uint32_t sy) {
+  GUI_Resize(global_w, sx, sy);
+  for (int y = 0; y < sy; y += 8) {
+    for (int x = 0; x < sx; x += 8) {
+      GUI_DrawFont(global_w, x, y, terminal_char_buffer[y / 8][x / 8]);
+    }
+  }
+}
+
 void run() {
   char buffer[4096];
   struct pollfd fds[2];
@@ -253,10 +266,10 @@ void run() {
         exit(0);
         return;
       }
-      //      if (WINDOWSERVER_EVENT_WINDOW_RESIZE == e.type) {
-      //        GUI_Resize(global_w, e.vector[0], e.vector[1]);
-      //        continue;
-      //      }
+      if (WINDOWSERVER_EVENT_WINDOW_RESIZE == e.type) {
+        terminal_resize(e.vector[0], e.vector[1]);
+        continue;
+      }
       if (WINDOWSERVER_EVENT_KEYPRESS != e.type) {
         continue;
       }

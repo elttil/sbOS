@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
+#include <math.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <typedefs.h>
@@ -251,8 +252,8 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
     u8 *p = (u8 *)&tmp_entry;
     size_t l = sizeof(struct dirent);
 
-    l = (len < l) ? len : l;
-    memcpy(buffer, p, l);
+    l = min(len - rc, l);
+    memcpy(buffer + rc, p, l);
     len -= l;
     rc += l;
   }

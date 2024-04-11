@@ -54,9 +54,17 @@ vfs_vm_object_t *shm_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {
 
 int shm_ftruncate(vfs_fd_t *fd, size_t length) {
   vfs_vm_object_t *p = fd->inode->internal_object;
+  if (p->real_pointer) {
+    u8 *mem_region = p->real_pointer;
+    mmu_free_address_range(mem_region, align_page(p->size), NULL);
+  }
+
+  p->real_pointer = mmu_find_unallocated_virtual_range(NULL, length);
+  mmu_allocate_region(p->real_pointer, length, MMU_FLAG_RW, NULL);
   p->size = length;
-  p->real_pointer = krealloc(p->real_pointer, length + 0x2000);
-  p->virtual_object = align_page(p->real_pointer);
+
+  p->virtual_object = p->real_pointer;
+
   int n = (uintptr_t)align_page((void *)(u32)length) / 0x1000;
   p->object = krealloc(p->object, sizeof(void *) * n);
   for (int i = 0; i < n; i++) {
@@ -72,8 +80,6 @@ int shm_open(const char *name, int oflag, mode_t mode) {
   vfs_vm_object_t *internal_object =
       hashmap_get_entry(shared_memory_objects, name);
   if (!internal_object) {
-    //    if (!(oflag & O_CREAT))
-    //      return -EMFILE;
     internal_object = kcalloc(1, sizeof(vfs_vm_object_t));
     hashmap_add_entry(shared_memory_objects, name, internal_object, NULL, 0);
   }

@@ -1,62 +1,68 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tb/sb.h>
+#include <tb/sv.h>
 #include <unistd.h>
 
-// FIXME: This is nowhere near complete
 char *realpath(const char *filename, char *resolvedname) {
-  assert(resolvedname);
-  // FIXME: This really should have bounds checking
+  if (!filename) {
+    return -EINVAL;
+  }
+
   char cwd[256];
   getcwd(cwd, 256);
-  strcat(cwd, filename);
-  const char *path = cwd;
-  char *result = resolvedname;
-  // It has to be a absolute path
-  if ('/' != *path)
-    return 0;
-  const char *result_start = result;
-  int start_directory = 0;
-  int should_insert_slash = 0;
-  for (; *path; path++) {
-    if (start_directory) {
-      start_directory = 0;
-      if ('/' == *path) {
-        path++;
-      } else if (0 == memcmp(path, "./", 2) || 0 == memcmp(path, ".\0", 2)) {
-        path++;
-      } else if (0 == memcmp(path, "../", 3) || 0 == memcmp(path, "..\0", 3)) {
-        path += 2;
-        if (result_start + 2 > result) {
-          // The path is probably something like "/.." or
-          // "/../foo". A "/.." should become a "/"
-          // Therefore it skips going back to the parent
-          if (*path == '/') {
-            if (result_start == result)
-              return 0;
-            result--;
-          }
-        } else {
-          if ('/' != *path) {
-            should_insert_slash = 1;
-          }
-          result--;
-          result--;
-          for (; result_start <= result && '/' != *result; result--)
-            ;
-        }
-      }
+  strcat(cwd, filename); // FIXME: bounds check
+
+  struct sb string;
+  sb_init(&string);
+
+  struct sv path = C_TO_SV(cwd);
+
+  int ignore = 0;
+  int last_was_dotdot = 0;
+
+  int was_root = 0;
+  for (;;) {
+    ignore = 0;
+    was_root = 0;
+    struct sv dir = sv_end_split_delim(path, &path, '/');
+
+    if (sv_partial_eq(dir, C_TO_SV("/"))) {
+      was_root = 1;
     }
-    start_directory = ('/' == *path);
-    if ('\0' == *path)
+
+    if (sv_eq(dir, C_TO_SV("/"))) {
+      ignore = 1;
+    }
+
+    if (sv_eq(dir, C_TO_SV("/."))) {
+      ignore = 1;
+    }
+
+    if (sv_eq(dir, C_TO_SV("/.."))) {
+      last_was_dotdot = 1;
+      ignore = 1;
+    } else {
+      if (last_was_dotdot) {
+        ignore = 1;
+      }
+      last_was_dotdot = 0;
+    }
+
+    if (!ignore && !last_was_dotdot) {
+      sb_prepend_sv(&string, dir);
+    }
+
+    if (sv_isempty(path)) {
+      if (was_root && ignore && sb_isempty(&string)) {
+        sb_prepend_sv(&string, C_TO_SV("/"));
+      }
       break;
-    *result = *path;
-    result++;
+    }
   }
-  if (should_insert_slash) {
-    *result = '/';
-    result++;
-  }
-  *result = '\0';
-  return 1;
+  char *result = sv_copy_to_c(SB_TO_SV(string), resolvedname, 256);
+  sb_free(&string);
+  return result;
 }

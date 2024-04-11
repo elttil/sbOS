@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <typedefs.h>
@@ -22,6 +23,26 @@ u64 delta_page(u64 a) {
 MallocHeader *head = NULL;
 MallocHeader *final = NULL;
 u32 total_heap_size = 0;
+
+// printf without using malloc() so that it can be used internally by
+// malloc() such that it does not have a stack overflow.
+int debug_vprintf(const char *fmt, va_list ap) {
+  const char buffer[4096];
+  int rc = vsnprintf(buffer, 4096, fmt, ap);
+  if (0 > rc) {
+    return -1;
+  }
+  write(1, buffer, rc);
+  return rc;
+}
+
+int debug_printf(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  int rc = debug_vprintf(fmt, ap);
+  va_end(ap);
+  return rc;
+}
 
 int init_heap(void) {
   head = (MallocHeader *)sbrk(NEW_ALLOC_SIZE);
@@ -63,8 +84,10 @@ MallocHeader *next_header(MallocHeader *a) {
   assert(a->magic == 0xdde51ab9410268b1);
   if (a->n) {
     if (a->n->magic != 0xdde51ab9410268b1) {
-      printf("Real magic value is: %x\n", a->n->magic);
-      printf("location: %x\n", &(a->n->magic));
+      debug_printf("a->n: %x\n", a->n);
+      debug_printf("Real magic value is: %x\n", a->n->magic);
+      debug_printf("size: %x\n", a->n->size);
+      debug_printf("location: %x\n", &(a->n->magic));
       assert(0);
     }
     return a->n;
@@ -74,7 +97,7 @@ MallocHeader *next_header(MallocHeader *a) {
 
 MallocHeader *next_close_header(MallocHeader *a) {
   if (!a) {
-    printf("next close header fail\n");
+    debug_printf("next close header fail\n");
     for (;;)
       ;
   }
@@ -122,13 +145,16 @@ void merge_headers(MallocHeader *b) {
   b->size += n->size;
   b->flags |= n->flags & IS_FINAL;
   b->n = n->n;
+  assert(b->magic == 0xdde51ab9410268b1);
+  if (b->n) {
+    assert(b->n->magic == 0xdde51ab9410268b1);
+  }
   if (n == final) {
     final = b;
   }
 }
 
-void *malloc(size_t s) {
-  s += 0x1000;
+void *int_malloc(size_t s, int recursion) {
   size_t n = s;
   MallocHeader *free_entry = find_free_entry(s);
   if (!free_entry) {
@@ -136,7 +162,11 @@ void *malloc(size_t s) {
       assert(0);
       return NULL;
     }
-    return malloc(s);
+    if (recursion) {
+      debug_printf("RECURSION IN MALLOC :(\n");
+      assert(0);
+    }
+    return int_malloc(s, 1);
   }
 
   void *rc = (void *)(free_entry + 1);
@@ -158,10 +188,12 @@ void *malloc(size_t s) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
-  for (int i = 0; i < s; i++) {
-    *(char *)rc = 'A';
-  }
+   randomfill(rc, s);
   return rc;
+}
+
+void *malloc(size_t s) {
+  return int_malloc(s, 0);
 }
 
 size_t get_mem_size(void *ptr) {
@@ -216,13 +248,9 @@ void free(void *p) {
   if (!p) {
     return;
   }
-  // FIXME: This assumes that p is at the start of a allocated area.
-  // Could this be avoided in a simple way?
   MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
   assert(h->magic == 0xdde51ab9410268b1);
-  if (h->flags & IS_FREE) {
-    return;
-  }
+  assert(!(h->flags & IS_FREE));
 
   h->flags |= IS_FREE;
   merge_headers(h);

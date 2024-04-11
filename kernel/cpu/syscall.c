@@ -110,8 +110,6 @@ int syscall_getpid(void) {
   return current_task->pid;
 }
 
-void *align_page(void *a);
-
 int syscall_brk(void *addr) {
   void *end = current_task->data_segment_end;
   if (!mmu_allocate_region(end, addr - end, MMU_FLAG_RW, NULL)) {

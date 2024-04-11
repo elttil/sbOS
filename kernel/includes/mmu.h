@@ -9,8 +9,11 @@ typedef u8 mmu_flags;
 #define MMU_FLAG_RW (1 << 0)
 #define MMU_FLAG_KERNEL (1 << 1)
 
-void *next_page(void *a);
-void *align_page(void *a);
+#define PAGE_SIZE ((uintptr_t)0x1000)
+#define next_page(_ptr)                                                        \
+  ((_ptr) + (PAGE_SIZE - (((uintptr_t)_ptr) & (PAGE_SIZE - 1))))
+#define align_page(_ptr)                                                       \
+  (((((uintptr_t)_ptr) & (PAGE_SIZE - 1)) > 0) ? next_page((_ptr)) : (_ptr))
 
 typedef struct Page {
   u32 present : 1;
