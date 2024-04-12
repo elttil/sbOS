@@ -9,9 +9,6 @@
 #define INDEX_FROM_BIT(a) (a / (32))
 #define OFFSET_FROM_BIT(a) (a % (32))
 
-#define PAGE_ALLOCATE 1
-#define PAGE_NO_ALLOCATE 0
-
 PageDirectory *kernel_directory;
 PageDirectory real_kernel_directory;
 PageDirectory *active_directory = 0;
@@ -92,7 +89,7 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
 
     u32 physical;
     directory->tables[table_index] =
-        (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
+        (PageTable *)kmalloc_align(sizeof(PageTable), (void **)&physical);
     memset(directory->tables[table_index], 0, sizeof(PageTable));
     directory->physical_tables[table_index] =
         (u32)physical | ((set_user) ? 0x7 : 0x3);
@@ -157,7 +154,7 @@ PageDirectory *get_active_pagedirectory(void) {
 PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
                        u32 *physical_address) {
   PageTable *new_table =
-      ksbrk_physical(sizeof(PageTable), (void **)physical_address);
+      kmalloc_align(sizeof(PageTable), (void **)physical_address);
   PageTable *src = src_directory->tables[src_index];
 
   // Copy all the pages
@@ -214,7 +211,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
 
 PageTable *copy_table(PageTable *src, u32 *physical_address) {
   PageTable *new_table =
-      ksbrk_physical(sizeof(PageTable), (void **)physical_address);
+      kmalloc_align(sizeof(PageTable), (void **)physical_address);
 
   // copy all the pages
   for (u16 i = 0; i < 1024; i++) {
@@ -239,7 +236,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
 
   u32 physical_address;
   PageDirectory *new_directory =
-      ksbrk_physical(sizeof(PageDirectory), (void **)&physical_address);
+      kmalloc_align(sizeof(PageDirectory), (void **)&physical_address);
   u32 offset = (u32)new_directory->physical_tables - (u32)new_directory;
   new_directory->physical_address = physical_address + offset;
 
@@ -386,6 +383,34 @@ void *allocate_frame(Page *page, int rw, int is_kernel) {
   page->user = !is_kernel;
   page->frame = frame_address;
   return (void *)(frame_address * 0x1000);
+}
+
+void mmu_free_pagedirectory(PageDirectory *pd) {
+  for (int i = 0; i < 1024; i++) {
+    if (!pd->tables[i]) {
+      continue;
+    }
+    if (pd->tables[i] == kernel_directory->tables[i]) {
+      continue;
+    }
+
+    for (int j = 0; j < 1024; j++) {
+      Page *page = &(pd->tables[i]->pages[j]);
+      if (!page) {
+        continue;
+      }
+      if (!page->present) {
+        continue;
+      }
+      if (!page->frame) {
+        continue;
+      }
+      write_to_frame(((u32)page->frame) * 0x1000, 0);
+    }
+    kmalloc_align_free(pd->tables[i], sizeof(PageTable));
+    pd->tables[i] = NULL;
+  }
+  kmalloc_align_free(pd, sizeof(PageDirectory));
 }
 
 void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd) {
@@ -581,7 +606,7 @@ void create_table(int table_index) {
   u32 physical;
   kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   kernel_directory->tables[table_index] =
-      (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
+      (PageTable *)kmalloc_align(sizeof(PageTable), (void **)&physical);
   memset(kernel_directory->tables[table_index], 0, sizeof(PageTable));
   kernel_directory->physical_tables[table_index] = (u32)physical | 0x3;
 }

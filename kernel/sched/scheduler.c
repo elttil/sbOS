@@ -191,9 +191,6 @@ void free_process(process_t *p) {
     mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
   }
 
-  // NOTE: Kernel stuff begins at 0x90000000
-  mmu_free_address_range((void *)0x1000, 0x90000000, p->cr3);
-
   list_free(&p->read_list);
   list_free(&p->write_list);
   list_free(&p->disconnect_list);
@@ -202,9 +199,12 @@ void free_process(process_t *p) {
   list_free(&p->event_queue);
   list_free(&p->file_descriptors);
   kfree(p->tcb);
+
+  mmu_free_pagedirectory(p->cr3);
 }
 
 void exit_process(process_t *p, int status) {
+  disable_interrupts();
   assert(p->pid != 1);
   if (p->parent) {
     p->parent->halts[WAIT_CHILD_HALT] = 0;

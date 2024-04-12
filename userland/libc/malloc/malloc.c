@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <typedefs.h>
-#define NEW_ALLOC_SIZE 0x20000
+#define NEW_ALLOC_SIZE 0x5000
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)

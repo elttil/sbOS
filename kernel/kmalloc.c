@@ -2,11 +2,35 @@
 #include <kmalloc.h>
 #include <ksbrk.h>
 #include <math.h>
+#include <mmu.h>
 #include <random.h>
 #define NEW_ALLOC_SIZE 0x5000
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)
+
+void *kmalloc_align(size_t s, void **physical) {
+  // TODO: It should reuse virtual regions so that it does not run out
+  // of address space.
+  return ksbrk_physical(s, physical);
+}
+
+void kmalloc_align_free(void *p, size_t s) {
+  for (int i = 0; i < s; i += 0x1000) {
+    Page *page = get_page((char *)p + i, NULL, PAGE_NO_ALLOCATE, 0);
+    if (!page) {
+      continue;
+    }
+    if (!page->present) {
+      continue;
+    }
+    if (!page->frame) {
+      continue;
+    }
+    write_to_frame(((u32)page->frame) * 0x1000, 0);
+    page->present = 0;
+  }
+}
 
 typedef struct MallocHeader {
   u64 magic;

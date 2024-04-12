@@ -9,6 +9,9 @@ typedef u8 mmu_flags;
 #define MMU_FLAG_RW (1 << 0)
 #define MMU_FLAG_KERNEL (1 << 1)
 
+#define PAGE_ALLOCATE 1
+#define PAGE_NO_ALLOCATE 0
+
 #define PAGE_SIZE ((uintptr_t)0x1000)
 #define next_page(_ptr)                                                        \
   ((_ptr) + (PAGE_SIZE - (((uintptr_t)_ptr) & (PAGE_SIZE - 1))))
@@ -37,6 +40,7 @@ typedef struct PageDirectory {
 
 int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
                         PageDirectory *pd);
+void mmu_free_pagedirectory(PageDirectory *pd);
 void mmu_allocate_shared_kernel_region(void *rc, size_t n);
 void *mmu_find_unallocated_virtual_range(void *addr, size_t length);
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);
