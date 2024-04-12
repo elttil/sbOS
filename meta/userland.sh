@@ -3,21 +3,21 @@ scriptdir="$(dirname "$0")"
 cd "$scriptdir"
 export PATH="$PATH:$(pwd)/../toolchain/bin/bin"
 cd ..
-make -C ./userland/libgui
-make -C ./userland/libc
+make -j`nproc` -C ./userland/libgui
+make -j`nproc` -C ./userland/libc
 mkdir -p ./sysroot/lib
 make install -C ./userland/libc
-make -C ./userland/sh
-make -C ./userland/terminal
-make -C ./userland/snake
-make -C ./userland/ante
-make -C ./userland/windowserver
-make -C ./userland/test
-make -C ./userland/minibox
-make -C ./userland/libppm
-make -C ./userland/rtl8139
-make -C ./userland/smol_http
-make -C ./userland/irc
+make -j`nproc` -C ./userland/sh
+make -j`nproc` -C ./userland/terminal
+make -j`nproc` -C ./userland/snake
+make -j`nproc` -C ./userland/ante
+make -j`nproc` -C ./userland/windowserver
+make -j`nproc` -C ./userland/test
+make -j`nproc` -C ./userland/minibox
+make -j`nproc` -C ./userland/libppm
+make -j`nproc` -C ./userland/rtl8139
+make -j`nproc` -C ./userland/smol_http
+make -j`nproc` -C ./userland/irc
 
 mkdir sysroot
 sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
