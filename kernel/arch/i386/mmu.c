@@ -117,8 +117,9 @@ void mmu_free_pages(void *a, u32 n) {
   }
 }
 
+u32 start_frame_search = 1;
 u32 first_free_frame(void) {
-  u32 i = 1;
+  u32 i = start_frame_search;
   for (; i < INDEX_FROM_BIT(num_array_frames * 32); i++) {
     if (tmp_small_frames[i] == 0xFFFFFFFF) {
       continue;
@@ -126,6 +127,7 @@ u32 first_free_frame(void) {
 
     for (u32 c = 0; c < 32; c++) {
       if (!(tmp_small_frames[i] & ((u32)1 << c))) {
+        start_frame_search = i;
         return i * 32 + c;
       }
     }
@@ -142,6 +144,7 @@ void write_to_frame(u32 frame_address, u8 on) {
         ((u32)0x1 << OFFSET_FROM_BIT(frame));
   } else {
     num_allocated_frames--;
+    start_frame_search = min(start_frame_search, INDEX_FROM_BIT(frame));
     tmp_small_frames[INDEX_FROM_BIT(frame)] &=
         ~((u32)0x1 << OFFSET_FROM_BIT(frame));
   }
