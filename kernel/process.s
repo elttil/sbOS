@@ -67,7 +67,10 @@ internal_fork:
     push eax
     call create_process
     add esp, 0xC
-
+    cmp eax, 0
+    jnz internal_fork_ret
+    mov eax, 1
+internal_fork_ret:
     pop ebp
     ret
 after_internal_fork:

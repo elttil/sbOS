@@ -41,7 +41,7 @@ typedef struct PageDirectory {
 int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
                         PageDirectory *pd);
 void mmu_free_pagedirectory(PageDirectory *pd);
-void mmu_allocate_shared_kernel_region(void *rc, size_t n);
+int mmu_allocate_shared_kernel_region(void *rc, size_t n);
 void *mmu_find_unallocated_virtual_range(void *addr, size_t length);
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);
 void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd);
@@ -59,9 +59,7 @@ void *mmu_is_valid_user_c_string(const char *ptr, size_t *size);
 void flush_tlb(void);
 void paging_init(u64 memsize, multiboot_info_t *mb);
 PageDirectory *get_active_pagedirectory(void);
-void move_stack(u32 new_stack_address, u32 size);
 void switch_page_directory(PageDirectory *directory);
-void *allocate_frame(Page *page, int rw, int is_kernel);
 PageDirectory *clone_directory(PageDirectory *original);
 void *virtual_to_physical(void *address, PageDirectory *directory);
 void *ksbrk(size_t s);

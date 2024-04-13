@@ -111,8 +111,15 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
             sizeof(current_task->program_name));
   }
 
-  r->cr3 = (p) ? clone_directory(get_active_pagedirectory())
-               : get_active_pagedirectory();
+  if (p) {
+    r->cr3 = clone_directory(p->cr3);
+    if (!r->cr3) {
+      kfree(r);
+      return NULL;
+    }
+  } else {
+    r->cr3 = get_active_pagedirectory();
+  }
   r->parent = p;
 
   r->tcb = kcalloc(1, sizeof(struct TCB));
@@ -168,6 +175,7 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
 
 void tasking_init(void) {
   current_task = ready_queue = create_process(NULL, 0, 0);
+  assert(current_task);
   current_task_TCB = current_task->tcb;
   current_task->tcb->CR3 = current_task->cr3->physical_address;
 }
@@ -321,8 +329,13 @@ process_t *internal_fork(process_t *parent);
 int fork(void) {
   process_t *new_task;
   new_task = internal_fork(current_task);
-  if (NULL == new_task) {
+  if (0 == new_task) {
     return 0;
+  }
+  if ((process_t *)1 == new_task) {
+    return -ENOMEM; // FIXME: This is probably the reason it failed now but is
+                    // not the only reason it could fail(at least in the
+                    // future).
   }
 
   process_t *tmp_task = (process_t *)ready_queue;

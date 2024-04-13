@@ -6,7 +6,6 @@
 #include <typedefs.h>
 
 void *load_elf_file(const char *f, u32 *ds) {
-  //  ELFHeader *header = kmalloc(sizeof(ELFHeader));
   ELFHeader header;
   int fd = vfs_open(f, O_RDONLY, 0);
   if (fd < 0) {
@@ -46,10 +45,10 @@ void *load_elf_file(const char *f, u32 *ds) {
     pages_to_allocate -= p_vaddr - (p_vaddr % 0x1000);
     pages_to_allocate /= 0x1000;
 
-    mmu_allocate_region((void *)p_vaddr, pages_to_allocate * 0x1000,
-                        MMU_FLAG_RW, NULL);
-
-    flush_tlb();
+    if(!mmu_allocate_region((void *)p_vaddr, pages_to_allocate * 0x1000,
+                        MMU_FLAG_RW, NULL)) {
+      return NULL;
+    }
 
     uintptr_t e = program_header.p_vaddr + program_header.p_memsz;
     if (e > end_of_code) {

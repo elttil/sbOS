@@ -60,7 +60,9 @@ int shm_ftruncate(vfs_fd_t *fd, size_t length) {
   }
 
   p->real_pointer = mmu_find_unallocated_virtual_range(NULL, length);
-  mmu_allocate_region(p->real_pointer, length, MMU_FLAG_RW, NULL);
+  if (!mmu_allocate_region(p->real_pointer, length, MMU_FLAG_RW, NULL)) {
+    return -ENOMEM;
+  }
   p->size = length;
 
   p->virtual_object = p->real_pointer;

@@ -26,7 +26,8 @@ u32 *tmp_small_frames = tmp_array;
 extern uintptr_t data_end;
 
 void change_frame(u32 frame, int on);
-u32 get_free_frame(void);
+int get_free_frame(u32 *frame);
+int allocate_frame(Page *page, int rw, int is_kernel);
 
 void *ksbrk(size_t s) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
@@ -55,9 +56,11 @@ void *ksbrk(size_t s) {
         active_directory->physical_tables[table_index];
     return ksbrk(s);
   }
-  mmu_allocate_shared_kernel_region((void *)rc, (data_end - (uintptr_t)rc));
+  if (!mmu_allocate_shared_kernel_region((void *)rc,
+                                         (data_end - (uintptr_t)rc))) {
+    return NULL;
+  }
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
-
   return (void *)rc;
 }
 
@@ -118,7 +121,7 @@ void mmu_free_pages(void *a, u32 n) {
 }
 
 u32 start_frame_search = 1;
-u32 first_free_frame(void) {
+int get_free_frame(u32 *frame) {
   u32 i = start_frame_search;
   for (; i < INDEX_FROM_BIT(num_array_frames * 32); i++) {
     if (tmp_small_frames[i] == 0xFFFFFFFF) {
@@ -128,11 +131,13 @@ u32 first_free_frame(void) {
     for (u32 c = 0; c < 32; c++) {
       if (!(tmp_small_frames[i] & ((u32)1 << c))) {
         start_frame_search = i;
-        return i * 32 + c;
+        *frame = i * 32 + c;
+        return 1;
       }
     }
   }
-  assert(0);
+  klog("MMU: Ran out of free frames. TODO: free up memory", LOG_WARN);
+  *frame = 0;
   return 0;
 }
 
@@ -166,7 +171,11 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
       new_table->pages[i].present = 0;
       continue;
     }
-    u32 frame_address = first_free_frame();
+    u32 frame_address;
+    if (!get_free_frame(&frame_address)) {
+      kmalloc_align_free(new_table, sizeof(PageTable));
+      return NULL;
+    }
     write_to_frame(frame_address * 0x1000, 1);
     new_table->pages[i].frame = frame_address;
 
@@ -254,6 +263,10 @@ PageDirectory *clone_directory(PageDirectory *original) {
     if (i >= 635 && i <= 641) {
       u32 physical;
       new_directory->tables[i] = clone_table(i, original, &physical);
+      if (!new_directory->tables[i]) {
+        mmu_free_pagedirectory(new_directory);
+        return NULL;
+      }
       new_directory->physical_tables[i] =
           physical | (original->physical_tables[i] & 0xFFF);
       continue;
@@ -270,6 +283,10 @@ PageDirectory *clone_directory(PageDirectory *original) {
 
     u32 physical;
     new_directory->tables[i] = clone_table(i, original, &physical);
+    if (!new_directory->tables[i]) {
+      mmu_free_pagedirectory(new_directory);
+      return NULL;
+    }
     new_directory->physical_tables[i] =
         physical | (original->physical_tables[i] & 0xFFF);
   }
@@ -277,14 +294,18 @@ PageDirectory *clone_directory(PageDirectory *original) {
   return new_directory;
 }
 
-void mmu_allocate_shared_kernel_region(void *rc, size_t n) {
+int mmu_allocate_shared_kernel_region(void *rc, size_t n) {
   size_t num_pages = n / PAGE_SIZE;
   for (size_t i = 0; i <= num_pages; i++) {
     Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
     if (!p->present || !p->frame) {
-      allocate_frame(p, 0, 1);
+      if (!allocate_frame(p, 0, 1)) {
+        mmu_free_address_range(rc, n, NULL);
+        return 0;
+      }
     }
   }
+  return 1;
 }
 
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length) {
@@ -327,7 +348,7 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
     int rw = (flags & MMU_FLAG_RW);
     int kernel = (flags & MMU_FLAG_KERNEL);
     if (!allocate_frame(p, rw, kernel)) {
-      klog("MMU: Frame allocation failed", LOG_WARN);
+      mmu_free_address_range(ptr, n, pd);
       return 0;
     }
   }
@@ -370,22 +391,23 @@ void *mmu_map_frames(void *const ptr, size_t s) {
   return r;
 }
 
-void *allocate_frame(Page *page, int rw, int is_kernel) {
+int allocate_frame(Page *page, int rw, int is_kernel) {
   if (page->present) {
-    dump_backtrace(5);
     klog("Page is already set", 1);
-    for (;;)
-      ;
+    assert(0);
     return 0;
   }
-  u32 frame_address = first_free_frame();
+  u32 frame_address;
+  if (!get_free_frame(&frame_address)) {
+    return 0;
+  }
   write_to_frame(frame_address * 0x1000, 1);
 
   page->present = 1;
   page->rw = rw;
   page->user = !is_kernel;
   page->frame = frame_address;
-  return (void *)(frame_address * 0x1000);
+  return 1;
 }
 
 void mmu_free_pagedirectory(PageDirectory *pd) {
@@ -518,9 +540,11 @@ void *virtual_to_physical(void *address, PageDirectory *directory) {
 }
 
 extern u32 inital_esp;
-void move_stack(u32 new_stack_address, u32 size) {
-  mmu_allocate_region((void *)(new_stack_address - size), size, MMU_FLAG_KERNEL,
-                      NULL);
+int move_stack(u32 new_stack_address, u32 size) {
+  if (!mmu_allocate_region((void *)(new_stack_address - size), size,
+                           MMU_FLAG_KERNEL, NULL)) {
+    return 0;
+  }
 
   u32 old_stack_pointer, old_base_pointer;
 
@@ -548,6 +572,7 @@ void move_stack(u32 new_stack_address, u32 size) {
   // Actually change the stack
   set_sp(new_stack_pointer + 8);
   set_sbp(new_base_pointer);
+  return 1;
 }
 
 // C strings have a unknown length so it does not makes sense to check
@@ -675,10 +700,15 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
     create_table(770 + i);
   }
   kernel_directory = clone_directory(kernel_directory);
+  assert(kernel_directory);
 
   switch_page_directory(kernel_directory);
-  switch_page_directory(clone_directory(kernel_directory));
-  move_stack(0xA0000000, 0x80000);
+  {
+    PageDirectory *tmp = clone_directory(kernel_directory);
+    assert(tmp);
+    switch_page_directory(tmp);
+  }
+  assert(move_stack(0xA0000000, 0x80000));
 
   available_memory_kb = memsize;
 
