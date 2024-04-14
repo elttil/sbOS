@@ -23,9 +23,9 @@ struct stat {
                  // For other file types, the use of this field is
                  // unspecified.
 
-  struct timespec st_atim; // Last data access timestamp.
-  struct timespec st_mtim; // Last data modification timestamp.
-  struct timespec st_ctim; // Last file status change timestamp.
+  time_t st_atime; // Last data access timestamp.
+  time_t st_mtime; // Last data modification timestamp.
+  time_t st_ctime; // Last file status change timestamp.
 
   blksize_t st_blksize; //  A file system-specific preferred I/O block size
                         // for this object. In some file system types, this
