@@ -712,6 +712,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
 
   available_memory_kb = memsize;
 
+  num_of_frames = max(num_of_frames, num_array_frames);
   void *new = kmalloc(num_of_frames * sizeof(u32));
   memset(new, 0xFF, num_of_frames * sizeof(u32));
   memcpy(new, tmp_small_frames, num_array_frames * sizeof(u32));

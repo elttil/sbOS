@@ -101,7 +101,7 @@ void page_fault(reg_t *regs) {
     kprintf("Attempted instruction fetch\n");
   }
 
-  dump_backtrace(8);
+  dump_backtrace(20);
   halt();
 }
 

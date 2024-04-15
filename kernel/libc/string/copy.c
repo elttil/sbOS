@@ -4,12 +4,13 @@
 #include <string.h>
 
 char *copy_and_allocate_string(const char *s) {
-  size_t l = strlen(s);
-  char *r = kmalloc(l + 1);
+  size_t l = strlen(s) + 1;
+  char *r = kmalloc(l);
   if (!r) {
     return NULL;
   }
-  return strncpy(r, s, l);
+  memcpy(r, s, l);
+  return r;
 }
 
 char *copy_and_allocate_user_string(const char *s) {
@@ -24,6 +25,6 @@ char *copy_and_allocate_user_string(const char *s) {
   if (!r) {
     return NULL;
   }
-  strlcpy(r, s, len);
+  memcpy(r, s, len+1);
   return r;
 }

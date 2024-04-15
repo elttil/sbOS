@@ -102,12 +102,13 @@ void insert_eip_on_stack(u32 cr3, u32 address, u32 value);
 process_t *create_process(process_t *p, u32 esp, u32 eip) {
   process_t *r;
   r = kcalloc(1, sizeof(process_t));
-  r->pid = next_pid++;
+  r->pid = next_pid;
+  next_pid++;
   if (!p) {
     assert(1 == next_pid);
-    strncpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
+    strlcpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
   } else {
-    strncpy(r->program_name, "[Not yet named]",
+    strlcpy(r->program_name, "[Not yet named]",
             sizeof(current_task->program_name));
   }
 
@@ -182,8 +183,6 @@ void tasking_init(void) {
 
 int i = 0;
 void free_process(process_t *p) {
-  kprintf("pid: %x\n", p->pid);
-  kprintf("Exiting process: %s\n", p->program_name);
   // free_process() will purge all contents such as allocated frames
   // out of the current process. This will be called by exit() and
   // exec*().
@@ -304,7 +303,7 @@ int exec(const char *filename, char **argv, int dealloc_argv,
     return 0;
   }
 
-  strncpy(current_task->program_name, filename,
+  strlcpy(current_task->program_name, filename,
           sizeof(current_task->program_name));
 
   current_task->data_segment_end = align_page((void *)end_of_code);
@@ -402,13 +401,6 @@ int is_halted(process_t *process) {
   for (int i = 0; i < 2; i++) {
     if (process->halts[i]) {
       return 1;
-    }
-  }
-
-  if (process->is_halted) {
-    if (ipc_has_data(process)) {
-      kprintf("ipc had data\n");
-      return 0;
     }
   }
 

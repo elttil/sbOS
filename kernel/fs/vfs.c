@@ -315,6 +315,9 @@ int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   if (!(vfs_fd->flags & O_READ)) {
     return -EBADF;
   }
+  assert(vfs_fd);
+  assert(vfs_fd->inode);
+  assert(vfs_fd->inode->read);
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
 }
 

@@ -152,7 +152,6 @@ void merge_headers(MallocHeader *b) {
 }
 
 void *int_kmalloc(size_t s) {
-  s += 0x1000;
   size_t n = s;
   MallocHeader *free_entry = find_free_entry(s);
   if (!free_entry) {

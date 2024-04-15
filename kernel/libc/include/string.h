@@ -13,7 +13,6 @@ int isequal(const char *s1, const char *s2);
 int isequal_n(const char *s1, const char *s2, u32 n);
 char *copy_and_allocate_string(const char *s);
 char *copy_and_allocate_user_string(const char *s);
-char *strncpy(char *dest, const char *src, size_t n);
 size_t strlcpy(char *dst, const char *src, size_t dsize);
 char *strcat(char *s1, const char *s2);
 #endif

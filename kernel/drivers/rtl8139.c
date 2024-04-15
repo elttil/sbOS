@@ -3,7 +3,6 @@
 #include <cpu/io.h>
 #include <drivers/pci.h>
 #include <drivers/rtl8139.h>
-#include <ipc.h>
 #include <mmu.h>
 #include <network/arp.h>
 #include <network/ethernet.h>

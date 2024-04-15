@@ -41,27 +41,23 @@
 #define SYS_ISATTY 33
 #define SYS_RANDOMFILL 34
 
-#define SYS_IPC_REGISTER_ENDPOINT 35
-#define SYS_IPC_READ 36
-#define SYS_IPC_WRITE 37
-#define SYS_IPC_WRITE_TO_PROCESS 38
-#define SYS_OUTW 39
-#define SYS_INL 40
-#define SYS_OUTL 41
-#define SYS_MAP_FRAMES 42
-#define SYS_VIRTUAL_TO_PHYSICAL 43
-#define SYS_INSTALL_IRQ 44
-#define SYS_TMP_KERNEL_HANDLE_PACKET 45
+#define SYS_OUTW 35
+#define SYS_INL 36
+#define SYS_OUTL 37
+#define SYS_MAP_FRAMES 38
+#define SYS_VIRTUAL_TO_PHYSICAL 39
+#define SYS_INSTALL_IRQ 40
+#define SYS_TMP_KERNEL_HANDLE_PACKET 41
 
-#define SYS_TCP_CONNECT 46
-#define SYS_TCP_WRITE 47
-#define SYS_TCP_READ 48
+#define SYS_TCP_CONNECT 42
+#define SYS_TCP_WRITE 43
+#define SYS_TCP_READ 44
 
-#define SYS_QUEUE_CREATE 49
-#define SYS_QUEUE_ADD 50
-#define SYS_QUEUE_WAIT 51
-#define SYS_MUNMAP 52
-#define SYS_OPEN_PROCESS 53
+#define SYS_QUEUE_CREATE 45
+#define SYS_QUEUE_ADD 46
+#define SYS_QUEUE_WAIT 47
+#define SYS_MUNMAP 48
+#define SYS_OPEN_PROCESS 49
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

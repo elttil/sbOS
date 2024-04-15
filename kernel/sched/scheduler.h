@@ -3,7 +3,6 @@ typedef struct Process process_t;
 #define SCHEDULER_H
 #include <fs/ext2.h>
 #include <fs/vfs.h>
-#include <ipc.h>
 #include <lib/list.h>
 #include <lib/stack.h>
 #include <mmu.h>
@@ -61,7 +60,6 @@ struct Process {
   void *signal_handlers[32];
   void *interrupt_handler;
   PageDirectory *cr3;
-  struct IpcMailbox ipc_mailbox;
 
   struct list file_descriptors;
 
