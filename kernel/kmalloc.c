@@ -59,7 +59,7 @@ int init_heap(void) {
 }
 
 int add_heap_memory(size_t min_desired) {
-  min_desired += sizeof(MallocHeader) + 0x2000;
+  min_desired += sizeof(MallocHeader);
   size_t allocation_size = max(min_desired, NEW_ALLOC_SIZE);
   allocation_size += delta_page(allocation_size);
   void *p;
@@ -157,7 +157,6 @@ void *int_kmalloc(size_t s) {
   if (!free_entry) {
     if (!add_heap_memory(s)) {
       klog("Ran out of memory.", LOG_ERROR);
-      assert(0);
       return NULL;
     }
     return kmalloc(s);

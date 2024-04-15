@@ -308,10 +308,7 @@ GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
   ftruncate(w->bitmap_fd, MAX_WINDOW_SIZE * sizeof(uint32_t));
   void *rc =
       mmap(NULL, MAX_WINDOW_SIZE * sizeof(uint32_t), 0, 0, w->bitmap_fd, 0);
-  if (!((int)rc >= 0)) {
-    printf("rc: %x\n", rc);
-    assert(0);
-  }
+  assert(rc != (void *)(-1));
   w->bitmap_ptr = rc;
 
   // Send the request to the windowserver

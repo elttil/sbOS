@@ -6,7 +6,7 @@ struct list {
   int tail_index;
 };
 
-int list_init(struct list *list);
+void list_init(struct list *list);
 void list_reset(struct list *list);
 void list_free(struct list *list);
 int list_clone(struct list *in, struct list *out);

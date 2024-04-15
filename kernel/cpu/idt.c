@@ -53,6 +53,10 @@ void general_protection_fault(reg_t *regs) {
   klog("General Protetion Fault", 0x1);
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
+  if (current_task) {
+    kprintf("PID: %x\n", current_task->pid);
+    kprintf("Name: %s\n", current_task->program_name);
+  }
   dump_backtrace(12);
   halt();
   EOI(0xD - 8);

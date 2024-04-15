@@ -100,12 +100,19 @@ void set_signal_handler(int sig, void (*handler)(int)) {
 void insert_eip_on_stack(u32 cr3, u32 address, u32 value);
 
 process_t *create_process(process_t *p, u32 esp, u32 eip) {
-  process_t *r;
-  r = kcalloc(1, sizeof(process_t));
+  process_t *r = kcalloc(1, sizeof(process_t));
+  if (!r) {
+    return NULL;
+  }
+  r->tcb = kcalloc(1, sizeof(struct TCB));
+  if (!r->tcb) {
+    kfree(r);
+    return NULL;
+  }
   r->pid = next_pid;
   next_pid++;
   if (!p) {
-    assert(1 == next_pid);
+    assert(0 == r->pid);
     strlcpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
   } else {
     strlcpy(r->program_name, "[Not yet named]",
@@ -113,21 +120,11 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   }
 
   if (p) {
-    r->cr3 = clone_directory(p->cr3);
-    if (!r->cr3) {
+    if (!list_clone(&p->file_descriptors, &r->file_descriptors)) {
+      kfree(r->tcb);
       kfree(r);
       return NULL;
     }
-  } else {
-    r->cr3 = get_active_pagedirectory();
-  }
-  r->parent = p;
-
-  r->tcb = kcalloc(1, sizeof(struct TCB));
-  r->tcb->CR3 = r->cr3->physical_address;
-
-  if (p) {
-    list_clone(&p->file_descriptors, &r->file_descriptors);
     for (int i = 0;; i++) {
       vfs_fd_t *out;
       if (!list_get(&p->file_descriptors, i, (void **)&out)) {
@@ -140,6 +137,21 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   } else {
     list_init(&r->file_descriptors);
   }
+
+  if (p) {
+    r->cr3 = clone_directory(p->cr3);
+    if (!r->cr3) {
+      kfree(r->tcb);
+      kfree(r);
+      return NULL;
+    }
+  } else {
+    r->cr3 = get_active_pagedirectory();
+  }
+  r->parent = p;
+
+  r->tcb->CR3 = r->cr3->physical_address;
+
   list_init(&r->read_list);
   list_init(&r->write_list);
   list_init(&r->disconnect_list);
@@ -149,18 +161,10 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
 
   list_init(&r->event_queue);
 
-  // Temporarily switch to the page directory to be able to place the
-  // "entry_instruction_pointer" onto the stack.
-
   if (esp) {
     esp -= 4;
     insert_eip_on_stack(r->cr3->physical_address, esp, eip);
-    esp -= 4;
-    insert_eip_on_stack(r->cr3->physical_address, esp, 0x1337);
-    esp -= 4;
-    insert_eip_on_stack(r->cr3->physical_address, esp, 0x1488);
-    esp -= 4;
-    esp -= 4;
+    esp -= 16;
     insert_eip_on_stack(r->cr3->physical_address, esp, 0xF00DBABE);
     r->tcb->ESP = esp;
   }
