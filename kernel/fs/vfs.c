@@ -9,6 +9,10 @@ vfs_mounts_t mounts[10];
 int num_mounts = 0;
 
 vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
+  if (fd < 0) {
+    return NULL;
+  }
+
   if (!p) {
     p = current_task;
   }
@@ -265,7 +269,7 @@ int vfs_open(const char *file, int flags, int mode) {
   vfs_resolve_path(file, resolved_path);
   vfs_inode_t *inode = vfs_internal_open(resolved_path);
   if (0 == inode) {
-    if (mode & O_CREAT) {
+    if (flags & O_CREAT) {
       if (vfs_create_file(resolved_path)) {
         klog("VFS: File created", LOG_NOTE);
         return vfs_open(file, flags, mode);

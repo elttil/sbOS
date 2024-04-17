@@ -1,4 +1,5 @@
 // FIXME: This is mostlikely incredibly inefficent and insecure.
+#include <assert.h>
 #include <crypto/ChaCha20/chacha20.h>
 #include <crypto/SHA1/sha1.h>
 #include <crypto/xoshiro256plusplus/xoshiro256plusplus.h>

@@ -2,6 +2,6 @@
 #include <unistd.h>
 
 int putchar(int c) {
-  printf("%c", (char)c);
+  write(1, (char *)&c, 1);
   return c;
 }
