@@ -358,8 +358,7 @@ int get_free_block(int allocate) {
           block_group.num_unallocated_blocks_in_group--;
           write_group_descriptor(g, &block_group);
           superblock->num_blocks_unallocated--;
-          write_lba(EXT2_SUPERBLOCK_SECTOR, (void *)superblock, 2 * SECTOR_SIZE,
-                    0);
+          raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
         }
         return i + g * superblock->num_blocks_in_group + 1;
       }
@@ -389,8 +388,7 @@ int get_free_inode(int allocate) {
           block_group.num_unallocated_inodes_in_group--;
           write_group_descriptor(g, &block_group);
           superblock->num_inodes_unallocated--;
-          write_lba(EXT2_SUPERBLOCK_SECTOR, (void *)superblock, 2 * SECTOR_SIZE,
-                    0);
+          raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
         }
         return i + g * superblock->num_inodes_in_group + 1;
       }
@@ -403,6 +401,7 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
                 int append) {
   (void)file_size;
   u8 inode_buffer[inode_size];
+  memset(inode_buffer, 0, inode_size);
   ext2_get_inode_header(inode_num, (inode_t *)inode_buffer);
   inode_t *inode = (inode_t *)inode_buffer;
 
@@ -414,13 +413,14 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   u32 block_start = offset / block_byte_size;
   u32 block_offset = offset % block_byte_size;
 
-  int num_blocks_used = inode->num_disk_sectors / (BLOCK_SIZE / SECTOR_SIZE);
+  int num_blocks_used =
+      inode->num_disk_sectors / (block_byte_size / SECTOR_SIZE);
 
   if (size + offset > fsize) {
     fsize = size + offset;
   }
 
-  int num_blocks_required = BLOCKS_REQUIRED(fsize, BLOCK_SIZE);
+  int num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
 
   for (int i = num_blocks_used; i < num_blocks_required; i++) {
     if (i > 12) {
@@ -431,7 +431,8 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
     inode->block_pointers[i] = b;
   }
 
-  inode->num_disk_sectors = num_blocks_required * (BLOCK_SIZE / SECTOR_SIZE);
+  inode->num_disk_sectors =
+      num_blocks_required * (block_byte_size / SECTOR_SIZE);
 
   int bytes_written = 0;
   for (int i = block_start; size; i++) {
@@ -526,15 +527,12 @@ int resolve_link(int inode_num) {
 }
 
 int ext2_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  u64 file_size;
-  int rc;
   int inode_num = fd->inode->inode_num;
   assert(fd->inode->type != FS_TYPE_DIRECTORY);
   if (fd->inode->type == FS_TYPE_LINK) {
     inode_num = resolve_link(inode_num);
   }
-  rc = write_inode(inode_num, buffer, len, offset, &file_size, 0);
-  return rc;
+  return write_inode(inode_num, buffer, len, offset, NULL, 0);
 }
 
 int ext2_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
