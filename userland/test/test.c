@@ -9,7 +9,9 @@
 #include <string.h>
 
 #if 1
-void dbgln(const char *fmt) { printf("%s\n", fmt); }
+void dbgln(const char *fmt) {
+  printf("%s\n", fmt);
+}
 #else
 void dbgln(const char *fmt, ...) {
   printf("| ");
@@ -623,7 +625,9 @@ void printf_test(void) {
   dbgln("printf TEST PASSED");
 }
 
-int cmpfunc(const void *a, const void *b) { return (*(char *)a - *(char *)b); }
+int cmpfunc(const void *a, const void *b) {
+  return (*(char *)a - *(char *)b);
+}
 
 void qsort_test(void) {
   dbgln("qsort TEST");
@@ -735,6 +739,18 @@ void realpath_test(void) {
   dbgln("realpath TEST PASSED");
 }
 
+void memchr_test(void) {
+  dbgln("memchr TEST");
+  {
+    char buffer[] = "012345";
+    assert(NULL == memchr(buffer, '6', sizeof(buffer)));
+    assert(&buffer[0] == memchr(buffer, '0', sizeof(buffer)));
+    assert(&buffer[1] == memchr(buffer, '1', sizeof(buffer)));
+    assert(&buffer[5] == memchr(buffer, '5', sizeof(buffer)));
+  }
+  dbgln("memchr TEST PASSED");
+}
+
 void randomfill_test(void) {
   dbgln("randomfill TEST");
   {
@@ -794,6 +810,7 @@ int main(void) {
   dirname_test();
   getline_test();
   realpath_test();
+  memchr_test();
   randomfill_test();
   // TODO: Add mkstemp
   return 0;

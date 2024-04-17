@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+void *memchr(const void *s, int c, size_t n);
 char *strerror(int errnum);
 void *memset(void *s, int c, size_t n);
 void *memcpy(void *dest, const void *src, uint32_t n);
