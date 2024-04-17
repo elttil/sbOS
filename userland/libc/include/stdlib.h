@@ -18,6 +18,7 @@ void srand(unsigned int seed);
 unsigned long strtoul(const char *restrict str, char **restrict endptr,
                       int base);
 long strtol(const char *str, char **restrict endptr, int base);
+long long strtoll(const char *str, char **restrict endptr, int base);
 void abort(void);
 int abs(int i);
 void qsort(void *base, size_t nel, size_t width,
@@ -30,4 +31,6 @@ double atof(const char *str);
 double strtod(const char *restrict nptr, char **restrict endptr);
 int atoi(const char *str);
 char *realpath(const char *filename, char *resolvedname);
+long atol(const char *nptr);
+long long atoll(const char *nptr);
 #endif

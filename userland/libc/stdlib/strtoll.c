@@ -6,9 +6,9 @@
 
 int get_value(char c, long base);
 
-// https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtol.html
-long strtol(const char *str, char **restrict endptr, int base) {
-  long ret_value = 0;
+// https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtoll.html
+long long strtoll(const char *str, char **restrict endptr, int base) {
+  long long ret_value = 0;
   if (endptr)
     *endptr = (char *)str;
   // Ignore inital white-space sequence
@@ -34,15 +34,15 @@ long strtol(const char *str, char **restrict endptr, int base) {
 
   if (2 <= base && 36 >= base) {
     for (; *str; str++) {
-      if (ret_value > LONG_MAX / base) {
+      if (ret_value > LLONG_MAX / base) {
         errno = ERANGE;
-        return LONG_MAX;
+        return LLONG_MAX;
       }
       ret_value *= base;
       int val = get_value(*str, base);
-      if (ret_value > LONG_MAX - val) {
+      if (ret_value > LLONG_MAX - val) {
         errno = ERANGE;
-        return LONG_MAX;
+        return LLONG_MAX;
       }
       ret_value += val;
     }

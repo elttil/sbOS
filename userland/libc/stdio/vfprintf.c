@@ -15,7 +15,7 @@ const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
     *(int *)(_r) += _rc;                                                       \
   }
 
-int fprint_num(FILE *f, int n, int base, char *char_set, int prefix,
+int fprint_num(FILE *f, long long n, int base, char *char_set, int prefix,
                int zero_padding, int right_padding) {
   int c = 0;
   if (0 == n) {
@@ -58,19 +58,19 @@ int fprint_num(FILE *f, int n, int base, char *char_set, int prefix,
   return c;
 }
 
-int fprint_int(FILE *f, int n, int prefix, int zero_padding,
+int fprint_int(FILE *f, long long n, int prefix, int zero_padding,
                int right_padding) {
   return fprint_num(f, n, 10, "0123456789", prefix, zero_padding,
                     right_padding);
 }
 
-int fprint_hex(FILE *f, int n, int prefix, int zero_padding,
+int fprint_hex(FILE *f, long long n, int prefix, int zero_padding,
                int right_padding) {
   return fprint_num(f, n, 16, "0123456789abcdef", prefix, zero_padding,
                     right_padding);
 }
 
-int fprint_octal(FILE *f, int n, int prefix, int zero_padding,
+int fprint_octal(FILE *f, long long n, int prefix, int zero_padding,
                  int right_padding) {
   return fprint_num(f, n, 8, "012345678", prefix, zero_padding, right_padding);
 }
@@ -131,6 +131,8 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
   const char *s = fmt;
   int prefix = 0;
 
+  int long_level = 0;
+
   int zero_padding = 0;
   int right_padding = 0;
 
@@ -183,6 +185,10 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       prefix += (*s) - '0';
       cont = 1;
       break;
+    case 'l':
+      long_level++;
+      assert(long_level <= 2);
+      break;
     case 'i':
     case 'd':
       if (-1 != precision) {
@@ -190,7 +196,17 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
         prefix = precision;
         right_padding = 0;
       }
-      rc += fprint_int(f, va_arg(ap, int), prefix, zero_padding, right_padding);
+      if (2 == long_level) {
+        rc += fprint_int(f, va_arg(ap, long long), prefix, zero_padding,
+                         right_padding);
+      } else if (1 == long_level) {
+        rc += fprint_int(f, va_arg(ap, long long), prefix, zero_padding,
+                         right_padding);
+      } else {
+        rc +=
+            fprint_int(f, va_arg(ap, int), prefix, zero_padding, right_padding);
+      }
+      long_level = 0;
       cont = 0;
       break;
     case 'u':

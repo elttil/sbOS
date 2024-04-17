@@ -2,6 +2,7 @@
 #include <fcntl.h>
 //#include <json.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -383,6 +384,22 @@ void strtol_test(void) {
     assert(e == (s + 4));
   }
   dbgln("strtol TEST PASSED");
+}
+
+void strtoll_test(void) {
+  dbgln("strtoll TEST");
+  {
+    char *s = "9223372036854775807";
+    char *e;
+    long r;
+    assert(9223372036854775807 == strtoll(s, &e, 10));
+    assert(ERANGE != errno);
+    assert(e == (s + strlen(s)));
+    char *super_long = "92233720368547758070";
+    assert(LLONG_MAX == strtoll(super_long, &e, 10));
+    assert(ERANGE == errno);
+  }
+  dbgln("strtoll TEST PASSED");
 }
 
 void strcmp_test(void) {
@@ -796,6 +813,7 @@ int main(void) {
   strndup_test();
   strspn_test();
   strtol_test();
+  strtoll_test();
   strcmp_test();
   strncmp_test();
   strcasecmp_test();
