@@ -28,7 +28,7 @@
 #define SYS_SOCKET 20
 #define SYS_SHM_OPEN 21
 #define SYS_FTRUNCATE 22
-#define SYS_STAT 23
+#define SYS_FSTAT 23
 #define SYS_MSLEEP 24
 #define SYS_UPTIME 25
 #define SYS_MKDIR 26
@@ -167,9 +167,4 @@ typedef struct SYS_FTRUNCATE_PARAMS {
   int fildes;
   size_t length;
 } __attribute__((packed)) SYS_FTRUNCATE_PARAMS;
-
-typedef struct SYS_STAT_PARAMS {
-  const char *pathname;
-  struct stat *statbuf;
-} __attribute__((packed)) SYS_STAT_PARAMS;
 #endif

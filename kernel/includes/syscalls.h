@@ -123,11 +123,6 @@ typedef struct SYS_SOCKET_PARAMS {
 
 int syscall_socket(SYS_SOCKET_PARAMS *args);
 
-typedef struct SYS_STAT_PARAMS {
-  const char *pathname;
-  struct stat *statbuf;
-} __attribute__((packed)) SYS_STAT_PARAMS;
-
-int syscall_stat(SYS_STAT_PARAMS *args);
+int syscall_fstat(int fd, struct stat *buf);
 u32 syscall_uptime(void);
 int syscall_isatty(int fd);

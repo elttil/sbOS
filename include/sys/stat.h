@@ -35,5 +35,6 @@ struct stat {
 };
 #ifndef KERNEL
 int stat(const char *path, struct stat *buf);
+int fstat(int fd, struct stat *buf);
 #endif
 #endif

@@ -167,7 +167,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_poll,         (void(*))syscall_mmap,
     (void(*))syscall_accept,       (void(*))syscall_bind,
     (void(*))syscall_socket,       (void(*))syscall_shm_open,
-    (void(*))syscall_ftruncate,    (void(*))syscall_stat,
+    (void(*))syscall_ftruncate,    (void(*))syscall_fstat,
     (void(*))syscall_msleep,       (void(*))syscall_uptime,
     (void(*))syscall_mkdir,        (void(*))syscall_recvfrom,
     (void(*))syscall_sendto,       (void(*))syscall_kill,
