@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tb/sv.h>
+#include <math.h>
 
 char *SV_TO_C(struct sv s) {
   char *c_string = malloc(s.length + 1);

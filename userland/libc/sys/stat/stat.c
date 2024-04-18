@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <syscall.h>
+#include <unistd.h>
 
 int stat(const char *path, struct stat *buf) {
   int fd = open(path, O_RDONLY);

@@ -2,8 +2,12 @@
 #include <math.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/random.h>
 #include <typedefs.h>
+#include <unistd.h>
 #define NEW_ALLOC_SIZE 0x5000
 
 #define IS_FREE (1 << 0)
@@ -27,7 +31,7 @@ u32 total_heap_size = 0;
 // printf without using malloc() so that it can be used internally by
 // malloc() such that it does not have a stack overflow.
 int debug_vprintf(const char *fmt, va_list ap) {
-  const char buffer[4096];
+  char buffer[4096];
   int rc = vsnprintf(buffer, 4096, fmt, ap);
   if (0 > rc) {
     return -1;
@@ -188,7 +192,7 @@ void *int_malloc(size_t s, int recursion) {
   free_entry->flags = 0;
   free_entry->n = new_entry;
   free_entry->magic = 0xdde51ab9410268b1;
-   randomfill(rc, s);
+  randomfill(rc, s);
   return rc;
 }
 

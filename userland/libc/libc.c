@@ -223,10 +223,6 @@ int fork(void) {
   return s_syscall(SYS_FORK);
 }
 
-void dputc(int fd, const char c) {
-  pwrite(fd, &c, 1, 0);
-}
-
 int brk(void *addr) {
   return syscall(SYS_BRK, addr, 0, 0, 0, 0);
 }

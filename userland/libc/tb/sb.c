@@ -33,7 +33,7 @@ void sb_append_char(struct sb *ctx, char c) {
   ctx->length++;
 }
 
-int sb_delete_right(struct sb *ctx, int n) {
+int sb_delete_right(struct sb *ctx, size_t n) {
   n = min(n, ctx->length);
   ctx->length -= n;
   return n;
