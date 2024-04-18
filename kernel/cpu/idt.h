@@ -322,5 +322,8 @@ typedef struct reg {
 
 void idt_init(void);
 __attribute__((no_caller_saved_registers)) void EOI(unsigned char irq);
-void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry);
+
+typedef void (*interrupt_handler)(reg_t *);
+void install_handler(interrupt_handler handler_function, u16 type_attribute,
+                     u8 entry);
 #endif

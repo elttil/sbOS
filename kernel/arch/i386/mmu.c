@@ -649,7 +649,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
   {
     multiboot_memory_map_t *map =
         (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
-    for (int length = 0; length < mb->mmap_length;) {
+    for (size_t length = 0; length < mb->mmap_length;) {
       if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
         num_of_frames = max(num_of_frames, map->addr + map->len);
         for (size_t i = 0; i < map->len; i += 0x20000) {
@@ -720,7 +720,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
   {
     multiboot_memory_map_t *map =
         (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
-    for (int length = 0; length < mb->mmap_length;) {
+    for (size_t length = 0; length < mb->mmap_length;) {
       if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
         for (size_t i = 0; i < map->len - 0x1000; i += 0x20000) {
           u32 frame = (map->addr + i) / 0x1000;

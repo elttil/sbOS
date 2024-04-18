@@ -77,14 +77,14 @@ const signal_t *process_pop_signal(process_t *p) {
   return stack_pop(&p->signal_stack);
 }
 
-bool get_task_from_pid(u32 pid, process_t **out) {
+int get_task_from_pid(pid_t pid, process_t **out) {
   for (process_t *tmp = ready_queue; tmp; tmp = tmp->next) {
     if (tmp->pid == pid) {
       *out = tmp;
-      return true;
+      return 1;
     }
   }
-  return false;
+  return 0;
 }
 
 void set_signal_handler(int sig, void (*handler)(int)) {

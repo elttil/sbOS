@@ -217,8 +217,6 @@ void *isr_list[] = {
     isr252, isr253, isr254, isr255,
 };
 
-typedef int (*interrupt_handler)(reg_t *);
-
 interrupt_handler list_of_handlers[256];
 
 void int_handler(reg_t *r) {
@@ -246,7 +244,8 @@ void int_handler(reg_t *r) {
   }
 }
 
-void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry) {
+void install_handler(interrupt_handler handler_function, u16 type_attribute,
+                     u8 entry) {
   format_descriptor((u32)isr_list[entry], KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
   list_of_handlers[entry] = (interrupt_handler)handler_function;
@@ -255,9 +254,12 @@ void install_handler(void (*handler_function)(), u16 type_attribute, u8 entry) {
 void idt_init(void) {
   memset(list_of_handlers, 0, sizeof(void *) * 256);
 
-  install_handler(page_fault, INT_32_INTERRUPT_GATE(0x0), 0xE);
-  install_handler(double_fault, INT_32_INTERRUPT_GATE(0x0), 0x8);
-  install_handler(general_protection_fault, INT_32_INTERRUPT_GATE(0x0), 0xD);
+  install_handler((interrupt_handler)page_fault, INT_32_INTERRUPT_GATE(0x0),
+                  0xE);
+  install_handler((interrupt_handler)double_fault, INT_32_INTERRUPT_GATE(0x0),
+                  0x8);
+  install_handler((interrupt_handler)general_protection_fault,
+                  INT_32_INTERRUPT_GATE(0x0), 0xD);
 
   PIC_remap(0x20);
   IRQ_clear_mask(0xb);

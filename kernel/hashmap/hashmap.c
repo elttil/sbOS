@@ -192,7 +192,7 @@ int hashmap_delete_entry(HashMap *m, const char *key) {
 }
 
 void hashmap_free(HashMap *m) {
-  for (int i = 0; i < m->size; i++) {
+  for (size_t i = 0; i < m->size; i++) {
     if (!m->entries[i]) {
       continue;
     }

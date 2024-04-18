@@ -140,7 +140,10 @@ void install_mouse(void) {
   mouse_write(0xF4);
   mouse_read(); // Acknowledge
 
-  install_handler(int_mouse, INT_32_INTERRUPT_GATE(0x3), 12 + 0x20);
-  install_handler(what, INT_32_INTERRUPT_GATE(0x3), 0xe + 0x20);
-  install_handler(what, INT_32_INTERRUPT_GATE(0x3), 0xf + 0x20);
+  install_handler((interrupt_handler)int_mouse, INT_32_INTERRUPT_GATE(0x3),
+                  12 + 0x20);
+  install_handler((interrupt_handler)what, INT_32_INTERRUPT_GATE(0x3),
+                  0xe + 0x20);
+  install_handler((interrupt_handler)what, INT_32_INTERRUPT_GATE(0x3),
+                  0xf + 0x20);
 }

@@ -16,7 +16,7 @@ void *kmalloc_align(size_t s, void **physical) {
 }
 
 void kmalloc_align_free(void *p, size_t s) {
-  for (int i = 0; i < s; i += 0x1000) {
+  for (size_t i = 0; i < s; i += 0x1000) {
     Page *page = get_page((char *)p + i, NULL, PAGE_NO_ALLOCATE, 0);
     if (!page) {
       continue;

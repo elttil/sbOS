@@ -45,8 +45,8 @@ void *load_elf_file(const char *f, u32 *ds) {
     pages_to_allocate -= p_vaddr - (p_vaddr % 0x1000);
     pages_to_allocate /= 0x1000;
 
-    if(!mmu_allocate_region((void *)p_vaddr, pages_to_allocate * 0x1000,
-                        MMU_FLAG_RW, NULL)) {
+    if (!mmu_allocate_region((void *)p_vaddr, pages_to_allocate * 0x1000,
+                             MMU_FLAG_RW, NULL)) {
       return NULL;
     }
 

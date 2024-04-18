@@ -54,7 +54,7 @@ void process_push_signal(process_t *p, signal_t s);
 const signal_t *process_pop_signal(process_t *p);
 
 struct Process {
-  u32 pid;
+  pid_t pid;
   char program_name[100];
   char current_working_directory[MAX_PATH];
   void *signal_handlers[32];
@@ -95,7 +95,7 @@ struct Process {
   int dead;
 };
 
-bool get_task_from_pid(u32 pid, process_t **out);
+int get_task_from_pid(pid_t pid, process_t **out);
 void free_process(process_t *p);
 void *get_free_virtual_memory(size_t length);
 #endif
