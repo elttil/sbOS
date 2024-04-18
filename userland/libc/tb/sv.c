@@ -135,11 +135,14 @@ struct sv sv_clone(struct sv s) {
 
 char *sv_copy_to_c(struct sv s, char *out, size_t buffer_length) {
   int copy_len = min(s.length + 1, buffer_length);
+  if(0 == copy_len) {
+    return NULL;
+  }
   if (!out) {
     out = malloc(copy_len);
   }
   memcpy(out, s.s, copy_len - 1);
-  out[copy_len] = '\0';
+  out[copy_len - 1] = '\0';
   return out;
 }
 
