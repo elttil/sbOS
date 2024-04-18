@@ -126,3 +126,4 @@ int syscall_socket(SYS_SOCKET_PARAMS *args);
 int syscall_fstat(int fd, struct stat *buf);
 u32 syscall_uptime(void);
 int syscall_isatty(int fd);
+off_t syscall_lseek(int fd, off_t offset, int whence);
