@@ -5,6 +5,11 @@
 
 #define STAT_REG (1 << 0)
 #define STAT_DIR (1 << 1)
+#define STAT_FIFO (1 << 2)
+
+#define S_ISREG(_v) (((_v) >> 0) & 1)
+#define S_ISDIR(_v) (((_v) >> 1) & 1)
+#define S_ISFIFO(_v) (((_v) >> 2) & 1)
 
 struct stat {
   dev_t st_dev;     // Device ID of device containing file.

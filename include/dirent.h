@@ -9,9 +9,6 @@
 #include <unistd.h>
 #endif
 
-#define S_ISREG(_m) (_m & (STAT_REG))
-#define S_ISDIR(_m) (_m & (STAT_DIR))
-
 struct dirent {
   ino_t d_ino;           // File serial number.
   char d_name[PATH_MAX]; // Filename string of entry.
