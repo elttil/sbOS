@@ -115,7 +115,7 @@ void mmu_free_pages(void *a, u32 n) {
   for (; n > 0; n--) {
     Page *p = get_page(a, NULL, PAGE_NO_ALLOCATE, 0);
     p->present = 0;
-    write_to_frame(p->frame * 0x1000, 0);
+    (void)write_to_frame(p->frame * 0x1000, 0);
     a += 0x1000;
   }
 }
@@ -141,9 +141,14 @@ int get_free_frame(u32 *frame) {
   return 0;
 }
 
-void write_to_frame(u32 frame_address, u8 on) {
+int write_to_frame(u32 frame_address, u8 on) {
   u32 frame = frame_address / 0x1000;
   if (on) {
+    int frame_is_used = (0 != (tmp_small_frames[INDEX_FROM_BIT(frame)] &
+          ((u32)0x1 << OFFSET_FROM_BIT(frame))));
+    if (frame_is_used) {
+      return 0;
+    }
     num_allocated_frames++;
     tmp_small_frames[INDEX_FROM_BIT(frame)] |=
         ((u32)0x1 << OFFSET_FROM_BIT(frame));
@@ -153,6 +158,7 @@ void write_to_frame(u32 frame_address, u8 on) {
     tmp_small_frames[INDEX_FROM_BIT(frame)] &=
         ~((u32)0x1 << OFFSET_FROM_BIT(frame));
   }
+  return 1;
 }
 
 PageDirectory *get_active_pagedirectory(void) {
@@ -176,7 +182,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
       kmalloc_align_free(new_table, sizeof(PageTable));
       return NULL;
     }
-    write_to_frame(frame_address * 0x1000, 1);
+    assert(write_to_frame(frame_address * 0x1000, 1));
     new_table->pages[i].frame = frame_address;
 
     new_table->pages[i].present |= src->pages[i].present;
@@ -369,7 +375,7 @@ void *mmu_map_user_frames(void *const ptr, size_t s) {
     p->user = !is_kernel;
     p->frame = (uintptr_t)(ptr + i * 0x1000) / 0x1000;
     kprintf("mapped user frame: %x\n", p->frame);
-    write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
+    (void)write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
   }
   return r;
 }
@@ -386,7 +392,7 @@ void *mmu_map_frames(void *const ptr, size_t s) {
     p->rw = rw;
     p->user = !is_kernel;
     p->frame = (uintptr_t)(ptr + i * 0x1000) / 0x1000;
-    write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
+    (void)write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
   }
   return r;
 }
@@ -401,7 +407,7 @@ int allocate_frame(Page *page, int rw, int is_kernel) {
   if (!get_free_frame(&frame_address)) {
     return 0;
   }
-  write_to_frame(frame_address * 0x1000, 1);
+  assert(write_to_frame(frame_address * 0x1000, 1));
 
   page->present = 1;
   page->rw = rw;
@@ -430,7 +436,7 @@ void mmu_free_pagedirectory(PageDirectory *pd) {
       if (!page->frame) {
         continue;
       }
-      write_to_frame(((u32)page->frame) * 0x1000, 0);
+      (void)write_to_frame(((u32)page->frame) * 0x1000, 0);
     }
     kmalloc_align_free(pd->tables[i], sizeof(PageTable));
     pd->tables[i] = NULL;
@@ -451,7 +457,7 @@ void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd) {
     if (!page->frame) {
       continue;
     }
-    write_to_frame(((u32)page->frame) * 0x1000, 0);
+    (void)write_to_frame(((u32)page->frame) * 0x1000, 0);
     page->present = 0;
     page->rw = 0;
     page->user = 0;
@@ -485,7 +491,7 @@ void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
     p->rw = 1;
     p->user = 1;
     p->frame = (uintptr_t)physical / PAGE_SIZE;
-    write_to_frame((uintptr_t)physical, 1);
+    (void)write_to_frame((uintptr_t)physical, 1);
   }
 }
 
@@ -651,7 +657,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
         (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
     for (size_t length = 0; length < mb->mmap_length;) {
       if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
-        num_of_frames = max(num_of_frames, map->addr + map->len);
+        num_of_frames = max(num_of_frames, map->addr + map->len + 0x1000);
         for (size_t i = 0; i < map->len; i += 0x20000) {
           u32 frame = (map->addr + i) / 0x1000;
           if (frame < (num_array_frames * 32)) {
@@ -682,14 +688,14 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
 
     // Loop through the pages in the table
     PageTable *table = kernel_directory->tables[i];
-    write_to_frame(kernel_directory->physical_tables[i], 1);
+    (void)write_to_frame(kernel_directory->physical_tables[i], 1);
     for (size_t j = 0; j < 1024; j++) {
       if (!table->pages[j].present) {
         continue;
       }
       // Add the frame to our bitmap to ensure it does not get used by
       // another newly created page.
-      write_to_frame(table->pages[j].frame * 0x1000, 1);
+      (void)write_to_frame(table->pages[j].frame * 0x1000, 1);
     }
   }
 
@@ -725,7 +731,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
         for (size_t i = 0; i < map->len - 0x1000; i += 0x20000) {
           u32 frame = (map->addr + i) / 0x1000;
           if (frame > (num_array_frames * 32)) {
-            assert(INDEX_FROM_BIT(frame) <= num_of_frames);
+            assert(INDEX_FROM_BIT(frame) < num_of_frames);
             tmp_small_frames[INDEX_FROM_BIT(frame)] = 0;
           }
         }

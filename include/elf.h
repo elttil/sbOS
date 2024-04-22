@@ -1,9 +1,29 @@
 #ifndef ELF_H
 #define ELF_H
 #include <assert.h>
+#ifdef KERNEL
 #include <fs/vfs.h>
 #include <mmu.h>
+#endif
 #include <typedefs.h>
+
+#define EI_NIDENT 16
+
+#define SHN_UNDEF 0
+#define SHN_LORESERVE 0xff00
+#define SHN_LOPROC 0xff00
+#define SHN_HIPROC 0xff1f
+#define SHN_ABS 0xfff1
+#define SHN_COMMON 0xfff2
+#define SHN_HIRESERVE 0xffff
+
+#define ELF32_R_SYM(i) ((i) >> 8)
+#define ELF32_R_TYPE(i) ((unsigned char)(i))
+#define ELF32_R_INFO(s, t) (((s) << 8) + (unsigned char)(t))
+
+#define ELF32_ST_BIND(i) ((i)>>4)
+#define ELF32_ST_TYPE(i) ((i)&0xf)
+#define ELF32_ST_INFO(b,t) (((b)<<4)+((t)&0xf))
 
 #define ET_NONE 0        // No file type
 #define ET_REL 1         // Relocatable file
@@ -35,6 +55,45 @@
 #define Elf32_Sword u32 // Signed large integer
 #define Elf32_Word u32  // Unsigned large integer
 
+#define STT_NOTYPE 0
+#define STT_OBJECT 1
+#define STT_FUNC 2
+#define STT_SECTION 3
+#define STT_FILE 4
+#define STT_LOPROC 13
+#define STT_HIPROC 15
+
+#define SHF_WRITE 0x1
+#define SHF_ALLOC 0x2
+#define SHF_EXECINSTR 0x4
+#define SHF_MASKPROC 0xf0000000
+
+#define ELFCLASSNONE 0
+#define ELFCLASS32 1
+#define ELFCLASS64 2
+
+#define STB_LOCAL 0
+#define STB_GLOBAL 1
+#define STB_WEAK 2
+#define STB_LOPROC 13
+#define STB_HIPROC 15
+
+#define ELFDATANONE 0
+#define ELFDATA2LSB 1
+#define ELFDATA2MSB 2
+
+#define R_386_NONE 0
+#define R_386_32 1
+#define R_386_PC32 2
+#define R_386_GOT32 3
+#define R_386_PLT32 4
+#define R_386_COPY 5
+#define R_386_GLOB_DAT 6
+#define R_386_JMP_SLOT 7
+#define R_386_RELATIVE 8
+#define R_386_GOTOFF 9
+#define R_386_GOTPC 10
+
 #define ELF_EXEC (1 << 0)
 #define ELF_WRITE (1 << 1)
 #define ELF_READ (1 << 2)
@@ -57,6 +116,37 @@ typedef struct {
   Elf32_Half e_shnum;
   Elf32_Half e_shstrndx;
 } __attribute__((packed)) ELFHeader;
+
+typedef struct {
+  Elf32_Addr r_offset;
+  Elf32_Word r_info;
+} Elf32_Rel;
+
+typedef struct {
+  Elf32_Word st_name;
+  Elf32_Addr st_value;
+  Elf32_Word st_size;
+  unsigned char st_info;
+  unsigned char st_other;
+  Elf32_Half st_shndx;
+} Elf32_Sym;
+
+typedef struct {
+  unsigned char e_ident[EI_NIDENT];
+  Elf32_Half e_type;
+  Elf32_Half e_machine;
+  Elf32_Word e_version;
+  Elf32_Addr e_entry;
+  Elf32_Off e_phoff;
+  Elf32_Off e_shoff;
+  Elf32_Word e_flags;
+  Elf32_Half e_ehsize;
+  Elf32_Half e_phentsize;
+  Elf32_Half e_phnum;
+  Elf32_Half e_shentsize;
+  Elf32_Half e_shnum;
+  Elf32_Half e_shstrndx;
+} Elf32_Ehdr;
 
 // Section header
 typedef struct {

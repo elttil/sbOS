@@ -64,7 +64,7 @@ PageDirectory *clone_directory(PageDirectory *original);
 void *virtual_to_physical(void *address, PageDirectory *directory);
 void *ksbrk(size_t s);
 void *ksbrk_physical(size_t s, void **physical);
-void write_to_frame(u32 frame_address, u8 on);
+int write_to_frame(u32 frame_address, u8 on);
 
 Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
                int set_user);
