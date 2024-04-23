@@ -84,7 +84,8 @@ void add_stdout(void) {
 }
 
 vfs_inode_t *devfs_mount(void) {
-  vfs_inode_t *root = kmalloc(sizeof(vfs_inode_t));
+  vfs_inode_t *root = kcalloc(1, sizeof(vfs_inode_t));
+  root->ref++;
   root->open = devfs_open;
   root->read = devfs_read;
   root->write = devfs_write;

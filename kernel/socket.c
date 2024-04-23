@@ -240,7 +240,8 @@ int uds_open(const char *path) {
   s->ptr_socket_fd->inode->has_data = 1;
 
   s->incoming_fd = get_vfs_fd(fd[1], NULL);
-  // vfs_close(fd[1]);
+  s->incoming_fd->reference_count++;
+  vfs_close(fd[1]);
   return fd[0];
 }
 
@@ -263,7 +264,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
 
   int index;
   assert(list_add(&current_task->file_descriptors, s->incoming_fd, &index));
-  s->incoming_fd->reference_count++;
+  assert(1 <= s->incoming_fd->reference_count);
   s->incoming_fd = NULL;
   //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
   //    ;

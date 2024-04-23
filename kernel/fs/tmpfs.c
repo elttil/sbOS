@@ -58,12 +58,15 @@ void dual_pipe(int fd[2]) {
         vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd_ptrs[i]);
     assert(-1 != fd[i]);
   }
+
   vfs_inode_t *f_inode = fd_ptrs[0]->inode;
   vfs_inode_t *s_inode = fd_ptrs[1]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;
+  s_inode->ref++;
   s_pipe->read_inode = f_inode;
+  f_inode->ref++;
   f_pipe->is_closed = 0;
   s_pipe->is_closed = 0;
 }
@@ -89,12 +92,15 @@ void pipe(int fd[2]) {
     fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptrs[i]);
     assert(-1 != fd[i]);
   }
+
   vfs_inode_t *f_inode = fd_ptrs[0]->inode;
   vfs_inode_t *s_inode = fd_ptrs[1]->inode;
   tmp_inode *f_pipe = f_inode->internal_object;
   tmp_inode *s_pipe = s_inode->internal_object;
   f_pipe->read_inode = s_inode;
+  s_inode->ref++;
   s_pipe->read_inode = f_inode;
+  f_inode->ref++;
   f_pipe->is_closed = 0;
   s_pipe->is_closed = 0;
 }

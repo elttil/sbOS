@@ -63,26 +63,6 @@ FIFO_FILE *create_fifo_object(void) {
   return n;
 }
 
-int create_fifo(void) {
-
-  vfs_fd_t *fd = kmalloc(sizeof(vfs_fd_t));
-  int fd_n;
-  assert(list_add(&current_task->file_descriptors, fd, &fd_n));
-
-  fd->flags = O_RDWR | O_NONBLOCK;
-  fd->inode = kmalloc(sizeof(vfs_inode_t));
-
-  fd->inode->internal_object = (void *)create_fifo_object();
-  fd->inode->open = NULL;
-  fd->inode->read = fifo_read;
-  fd->inode->write = fifo_write;
-  fd->inode->close = fifo_close;
-  fd->inode->get_vm_object = NULL;
-  fd->inode->is_open = 1;
-
-  return fd_n;
-}
-
 int fifo_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   FIFO_FILE *file = (FIFO_FILE *)fd->inode->internal_object;

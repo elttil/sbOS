@@ -14,7 +14,6 @@ struct S_FIFO_FILE {
   u8 can_write;
 };
 
-int create_fifo(void);
 FIFO_FILE *create_fifo_object(void);
 int fifo_object_write(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file);
 int fifo_object_read(u8 *buffer, u64 offset, u64 len, FIFO_FILE *file);

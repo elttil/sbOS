@@ -55,7 +55,7 @@ vfs_inode_t *vfs_create_inode(
   r->truncate = truncate;
   r->stat = stat;
   r->send_signal = send_signal;
-  r->ref = 1;
+  r->ref = 0;
   return r;
 }
 
@@ -415,11 +415,13 @@ int vfs_dup2(int org_fd, int new_fd) {
     assert(0);
     return -1;
   }
+  assert(1 <= orig->reference_count);
   if (!list_set(&current_task->file_descriptors, new_fd, orig)) {
     assert(0);
     return -1;
   }
   orig->reference_count++;
+  assert(2 <= orig->reference_count);
   return 1;
 }
 
