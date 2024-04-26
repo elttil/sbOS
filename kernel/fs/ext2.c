@@ -148,7 +148,7 @@ int ext2_last_inode_read = -1;
 inode_t ext2_last_inode;
 
 void ext2_get_inode_header(int inode_index, u8 *data) {
-  memset(data+sizeof(inode_t), 0, inode_size-sizeof(inode_t));
+  memset(data + sizeof(inode_t), 0, inode_size - sizeof(inode_t));
   // Very simple cache. If the inode_index is a inode already read then
   // just copy the old data.
   if (ext2_last_inode_read == inode_index) {

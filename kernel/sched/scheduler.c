@@ -115,8 +115,8 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     assert(0 == r->pid);
     strlcpy(r->program_name, "[kernel]", sizeof(current_task->program_name));
   } else {
-    strlcpy(r->program_name, "[Not yet named]",
-            sizeof(current_task->program_name));
+    strlcpy(r->program_name, "[child]", sizeof(current_task->program_name));
+    strcat(r->program_name, p->program_name);
   }
 
   if (p) {
