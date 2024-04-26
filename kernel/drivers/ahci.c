@@ -485,6 +485,11 @@ int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   return rc;
 }
 
+int ahci_has_data(vfs_inode_t *inode) {
+  (void)inode;
+  return 1;
+}
+
 void add_devfs_drive_file(u8 port) {
   static u8 num_drives_added = 0;
   char *path = "/sda";
@@ -492,7 +497,7 @@ void add_devfs_drive_file(u8 port) {
   num_drives_added++;
   vfs_inode_t *inode =
       devfs_add_file(path, ahci_read, ahci_write, NULL /*get_vm_object*/,
-                     1 /*has_data*/, 0 /*can_write*/, FS_TYPE_BLOCK_DEVICE);
+                     ahci_has_data, NULL /*can_write*/, FS_TYPE_BLOCK_DEVICE);
   inode->inode_num = port;
 }
 

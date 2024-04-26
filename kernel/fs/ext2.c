@@ -604,7 +604,7 @@ vfs_inode_t *ext2_open(const char *path) {
     break;
   }
 
-  return vfs_create_inode(inode_num, type, 1 /*has_data*/, 1 /*can_write*/,
+  return vfs_create_inode(inode_num, type, NULL, NULL,
                           1 /*is_open*/, NULL /*internal_object*/, file_size,
                           ext2_open, ext2_create_file, ext2_read, ext2_write,
                           ext2_close, ext2_create_directory,
@@ -805,7 +805,7 @@ vfs_inode_t *ext2_mount(void) {
     return NULL;
   }
   int fd = vfs_open("/dev/sda", O_RDWR, 0);
-  if(0 > fd) {
+  if (0 > fd) {
     kfree(cache);
     return NULL;
   }

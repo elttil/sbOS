@@ -19,26 +19,25 @@ struct mouse_event {
   u8 y;
 };
 
+int fs_mouse_has_data(vfs_inode_t *inode) {
+  FIFO_FILE *f = inode->internal_object;
+  return f->has_data;
+}
+
 int fs_mouse_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  int rc = fifo_object_write(buffer, offset, len, fd->inode->internal_object);
   FIFO_FILE *f = fd->inode->internal_object;
-  mouse_inode->has_data = f->has_data;
-  return rc;
+  return fifo_object_write(buffer, offset, len, f);
 }
 
 int fs_mouse_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   FIFO_FILE *f = fd->inode->internal_object;
-  if (!mouse_inode->has_data) {
-    return 0;
-  }
-  int rc = fifo_object_read(buffer, offset, len, f);
-  mouse_inode->has_data = f->has_data;
-  return rc;
+  return fifo_object_read(buffer, offset, len, f);
 }
 
 void add_mouse(void) {
-  mouse_inode = devfs_add_file("/mouse", fs_mouse_read, fs_mouse_write, NULL, 0,
-                               0, FS_TYPE_CHAR_DEVICE);
+  mouse_inode =
+      devfs_add_file("/mouse", fs_mouse_read, fs_mouse_write, NULL,
+                     fs_mouse_has_data, always_can_write, FS_TYPE_CHAR_DEVICE);
   mouse_inode->internal_object = create_fifo_object();
   // Don't look at this
   int fd = vfs_open("/dev/mouse", O_RDWR, 0);

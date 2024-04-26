@@ -57,8 +57,10 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
         kprintf("queue: Invalid fd given\n");
         continue;
       }
-      if (fd->inode->has_data) {
-        return 0;
+      if (fd->inode->_has_data) {
+        if (fd->inode->_has_data(fd->inode)) {
+          return 0;
+        }
       }
     } else if (EVENT_TYPE_TCP_SOCKET == ev->type) {
       struct TcpConnection *con = tcp_get_connection(ev->internal_id, q->p);

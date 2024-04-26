@@ -382,8 +382,10 @@ int isset_fdhalt(process_t *p, int *empty) {
       break;
     }
     *empty = 0;
-    if (inode->has_data) {
-      return 0;
+    if (inode->_has_data) {
+      if (inode->_has_data(inode)) {
+        return 0;
+      }
     }
     blocked = 1;
   }
@@ -393,8 +395,10 @@ int isset_fdhalt(process_t *p, int *empty) {
       break;
     }
     *empty = 0;
-    if (inode->can_write) {
-      return 0;
+    if (inode->_can_write) {
+      if (inode->_can_write(inode)) {
+        return 0;
+      }
     }
     blocked = 1;
   }
@@ -647,8 +651,8 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
   }
   void *rc = create_physical_mapping(vmobject->object, length);
   if (!rc) {
-      kprintf("ENOMEM\n");
-      return (void *)-ENOMEM;
+    kprintf("ENOMEM\n");
+    return (void *)-ENOMEM;
   }
   free_map->u_address = rc;
   free_map->k_address = NULL;

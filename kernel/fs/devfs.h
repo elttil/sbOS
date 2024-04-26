@@ -19,6 +19,10 @@ vfs_inode_t *devfs_add_file(
     char *path, int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
-    u8 has_data, u8 can_write, int type);
+    int (*has_data)(vfs_inode_t *inode), int (*can_write)(vfs_inode_t *inode),
+    int type);
 
+
+int always_has_data(vfs_inode_t *inode);
+int always_can_write(vfs_inode_t *inode);
 #endif

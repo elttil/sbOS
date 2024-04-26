@@ -55,8 +55,8 @@ struct vfs_inode {
   int inode_num;
   int type;
   int ref;
-  u8 has_data;
-  u8 can_write;
+  int (*_has_data)(vfs_inode_t *iinode);
+  int (*_can_write)(vfs_inode_t *iinode);
   u8 is_open;
   void *internal_object;
   u64 file_size;
@@ -92,9 +92,9 @@ int vfs_ftruncate(int fd, size_t length);
 int vfs_chdir(const char *path);
 int vfs_fstat(int fd, struct stat *buf);
 vfs_inode_t *vfs_create_inode(
-    int inode_num, int type, u8 has_data, u8 can_write, u8 is_open,
-    void *internal_object, u64 file_size,
-    vfs_inode_t *(*open)(const char *path),
+    int inode_num, int type, int (*has_data)(vfs_inode_t *inode),
+    int (*can_write)(vfs_inode_t *inode), u8 is_open, void *internal_object,
+    u64 file_size, vfs_inode_t *(*open)(const char *path),
     int (*create_file)(const char *path, int mode),
     int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),

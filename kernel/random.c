@@ -155,8 +155,8 @@ int random_read(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void add_random_devices(void) {
-  devfs_add_file("/random", random_read, random_write, NULL, 1, 1,
-                 FS_TYPE_CHAR_DEVICE);
-  devfs_add_file("/urandom", random_read, random_write, NULL, 1, 1,
-                 FS_TYPE_CHAR_DEVICE);
+  devfs_add_file("/random", random_read, random_write, NULL, always_has_data,
+                 always_can_write, FS_TYPE_CHAR_DEVICE);
+  devfs_add_file("/urandom", random_read, random_write, NULL, always_has_data,
+                 always_can_write, FS_TYPE_CHAR_DEVICE);
 }

@@ -57,11 +57,15 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
         fds[i].revents |= POLLHUP;
       }
     } else {
-      if (f->inode->has_data && fds[i].events & POLLIN) {
-        fds[i].revents |= POLLIN;
+      if (f->inode->_has_data) {
+        if (f->inode->_has_data(f->inode) && fds[i].events & POLLIN) {
+          fds[i].revents |= POLLIN;
+        }
       }
-      if (f->inode->can_write && fds[i].events & POLLOUT) {
-        fds[i].revents |= POLLOUT;
+      if (f->inode->_can_write) {
+        if (f->inode->_can_write(f->inode) && fds[i].events & POLLOUT) {
+          fds[i].revents |= POLLOUT;
+        }
       }
       if (!(f->inode->is_open) && fds[i].events & POLLHUP) {
         fds[i].revents |= POLLHUP;

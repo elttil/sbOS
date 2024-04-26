@@ -155,9 +155,11 @@ void int_keyboard(reg_t *frame) {
   ev.mode |= is_alt_down << 1;
   ev.mode |= is_ctrl_down << 2;
   fifo_object_write((u8 *)&ev, 0, sizeof(ev), keyboard_fifo);
-  if (kb_inode) {
-    kb_inode->has_data = keyboard_fifo->has_data;
-  }
+}
+
+int keyboard_has_data(vfs_inode_t *inode) {
+  (void)inode;
+  return keyboard_fifo->has_data;
 }
 
 void install_keyboard(void) {
@@ -168,15 +170,14 @@ void install_keyboard(void) {
 int keyboard_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
 
-  if (0 == fd->inode->has_data) {
+  int rc = fifo_object_read(buffer, 0, len, keyboard_fifo);
+  if (0 == rc) {
     return -EAGAIN;
   }
-  int rc = fifo_object_read(buffer, 0, len, keyboard_fifo);
-  fd->inode->has_data = keyboard_fifo->has_data;
   return rc;
 }
 
 void add_keyboard(void) {
-  kb_inode = devfs_add_file("/keyboard", keyboard_read, NULL, NULL, 0, 0,
-                            FS_TYPE_CHAR_DEVICE);
+  kb_inode = devfs_add_file("/keyboard", keyboard_read, NULL, NULL,
+                            keyboard_has_data, NULL, FS_TYPE_CHAR_DEVICE);
 }

@@ -37,7 +37,7 @@ int display_driver_init(multiboot_info_t *mbi) {
   framebuffer_physical = mbi->framebuffer_addr;
   framebuffer =
       mmu_map_frames((void *)(u32)mbi->framebuffer_addr, framebuffer_size);
-  if(!framebuffer) {
+  if (!framebuffer) {
     return 0;
   }
 
@@ -68,8 +68,8 @@ int display_info_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void add_vbe_device(void) {
-  devfs_add_file("/vbe", NULL, NULL, vbe_get_vm_object, 1, 1,
-                 FS_TYPE_BLOCK_DEVICE);
-  devfs_add_file("/display_info", display_info_read, NULL, NULL, 1, 0,
-                 FS_TYPE_BLOCK_DEVICE);
+  devfs_add_file("/vbe", NULL, NULL, vbe_get_vm_object, always_has_data,
+                 always_can_write, FS_TYPE_BLOCK_DEVICE);
+  devfs_add_file("/display_info", display_info_read, NULL, NULL,
+                 always_has_data, NULL, FS_TYPE_BLOCK_DEVICE);
 }

@@ -31,7 +31,6 @@ struct TcpConnection *tcp_find_connection(u16 port) {
       if (!list_get(connections, i, (void **)&c)) {
         break;
       }
-      kprintf("got port: %d\n", c->incoming_port);
       if (c->incoming_port == port) {
         return c;
       }
@@ -237,7 +236,6 @@ int uds_open(const char *path) {
 
   char c = 'i';
   fifo_object_write((u8 *)&c, 1, 0, s->fifo_file);
-  s->ptr_socket_fd->inode->has_data = 1;
 
   s->incoming_fd = get_vfs_fd(fd[1], NULL);
   s->incoming_fd->reference_count++;
@@ -253,7 +251,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   vfs_inode_t *inode = fd_ptr->inode;
   SOCKET *s = (SOCKET *)inode->internal_object;
 
-  if (NULL == s->incoming_fd) {
+  for (; NULL == s->incoming_fd;) {
     // Wait until we have gotten a connection
     struct pollfd fds[1];
     fds[0].fd = socket;
@@ -268,10 +266,19 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   s->incoming_fd = NULL;
   //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
   //    ;
-  inode->has_data = 0;
   //  s->ptr_fifo_fd->inode->has_data = 0;
 
   return index;
+}
+
+int bind_has_data(vfs_inode_t *inode) {
+  SOCKET *socket = inode->internal_object;
+  return socket->incoming_fd;
+}
+
+int bind_can_write(vfs_inode_t *inode) {
+  (void)inode;
+  return 1;
 }
 
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
@@ -305,26 +312,34 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     us->path = s->path;
     us->s = s;
     s->child = us;
-    devfs_add_file(us->path, NULL, NULL, NULL, 1, 1, FS_TYPE_UNIX_SOCKET);
+    devfs_add_file(us->path, NULL, NULL, NULL, NULL, bind_can_write,
+                   FS_TYPE_UNIX_SOCKET);
     return 0;
   }
   return 0;
 }
 
+int socket_has_data(vfs_inode_t *inode) {
+  SOCKET *s = (SOCKET *)inode->internal_object;
+  FIFO_FILE *file = s->fifo_file;
+  return file->has_data;
+}
+
+int socket_can_write(vfs_inode_t *inode) {
+  (void)inode;
+  return 1;
+}
+
 int socket_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   SOCKET *s = (SOCKET *)fd->inode->internal_object;
   FIFO_FILE *file = s->fifo_file;
-  int rc = fifo_object_write(buffer, 0, len, file);
-  fd->inode->has_data = file->has_data;
-  return rc;
+  return fifo_object_write(buffer, 0, len, file);
 }
 
 int socket_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   SOCKET *s = (SOCKET *)fd->inode->internal_object;
   FIFO_FILE *file = s->fifo_file;
-  int rc = fifo_object_read(buffer, 0, len, file);
-  fd->inode->has_data = file->has_data;
-  return rc;
+  return fifo_object_read(buffer, 0, len, file);
 }
 
 void socket_close(vfs_fd_t *fd) {
@@ -338,7 +353,7 @@ int socket(int domain, int type, int protocol) {
 
   SOCKET *new_socket = kmalloc(sizeof(SOCKET));
   vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, 0 /*has_data*/, 1 /*can_write*/,
+      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, bind_has_data, socket_can_write,
       1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
       NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
       socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
