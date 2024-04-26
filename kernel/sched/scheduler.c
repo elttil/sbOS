@@ -257,9 +257,13 @@ void exit(int status) {
   switch_task();
 }
 
-u32 setup_stack(u32 stack_pointer, int argc, char **argv) {
-  mmu_allocate_region(STACK_LOCATION - STACK_SIZE, STACK_SIZE, MMU_FLAG_RW,
-                      NULL);
+u32 setup_stack(u32 stack_pointer, int argc, char **argv, int *err) {
+  *err = 0;
+  if (!mmu_allocate_region(STACK_LOCATION - STACK_SIZE, STACK_SIZE, MMU_FLAG_RW,
+                           NULL)) {
+    *err = 1;
+    return 0;
+  }
   flush_tlb();
 
   u32 ptr = stack_pointer;
@@ -316,7 +320,11 @@ int exec(const char *filename, char **argv, int dealloc_argv,
 
   current_task->data_segment_end = align_page((void *)end_of_code);
 
-  u32 ptr = setup_stack(0x90000000, argc, argv);
+  int err;
+  u32 ptr = setup_stack(0x90000000, argc, argv, &err);
+  if (err) {
+    return 0;
+  }
 
   if (dealloc_argv) {
     for (int i = 0; i < argc; i++) {
@@ -557,32 +565,27 @@ void *allocate_virtual_user_memory(size_t length, int prot, int flags) {
   (void)prot;
   (void)flags;
   void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc) {
-    return (void *)-1;
+  if (!rc) {
+    return NULL;
   }
 
-  mmu_allocate_region(rc, length, MMU_FLAG_RW, NULL);
-  return rc;
-}
-
-void *user_kernel_mapping(void *kernel_addr, size_t length) {
-  void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc) {
-    return (void *)-1;
+  if (!mmu_allocate_region(rc, length, MMU_FLAG_RW, NULL)) {
+    return NULL;
   }
-
-  mmu_map_directories(rc, NULL, kernel_addr, NULL, length);
   return rc;
 }
 
 void *create_physical_mapping(void **physical_addresses, size_t length) {
   void *rc = get_free_virtual_memory(length);
-  if ((void *)-1 == rc) {
-    return (void *)-1;
+  if (!rc) {
+    return NULL;
   }
   int n = (uintptr_t)align_page((void *)length) / 0x1000;
   for (int i = 0; i < n; i++) {
-    mmu_map_physical(rc + (i * 0x1000), NULL, physical_addresses[i], 0x1000);
+    if (!mmu_map_physical(rc + (i * 0x1000), NULL, physical_addresses[i],
+                          0x1000)) {
+      return NULL;
+    }
   }
   return rc;
 }
@@ -616,7 +619,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
 
   if (-1 == fd) {
     void *rc = allocate_virtual_user_memory(length, prot, flags);
-    if ((void *)-1 == rc) {
+    if (!rc) {
       kprintf("ENOMEM\n");
       return (void *)-ENOMEM;
     }
@@ -643,6 +646,10 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
     length = vmobject->size;
   }
   void *rc = create_physical_mapping(vmobject->object, length);
+  if (!rc) {
+      kprintf("ENOMEM\n");
+      return (void *)-ENOMEM;
+  }
   free_map->u_address = rc;
   free_map->k_address = NULL;
   free_map->length = length;

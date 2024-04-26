@@ -24,7 +24,7 @@ struct DISPLAY_INFO {
 
 struct DISPLAY_INFO vbe_info;
 
-void display_driver_init(multiboot_info_t *mbi) {
+int display_driver_init(multiboot_info_t *mbi) {
   assert(CHECK_FLAG(mbi->flags, 12));
   framebuffer_width = mbi->framebuffer_width;
   framebuffer_height = mbi->framebuffer_height;
@@ -37,10 +37,14 @@ void display_driver_init(multiboot_info_t *mbi) {
   framebuffer_physical = mbi->framebuffer_addr;
   framebuffer =
       mmu_map_frames((void *)(u32)mbi->framebuffer_addr, framebuffer_size);
+  if(!framebuffer) {
+    return 0;
+  }
 
   vbe_info.width = framebuffer_width;
   vbe_info.height = framebuffer_height;
   vbe_info.bpp = mbi->framebuffer_bpp;
+  return 1;
 }
 
 vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {

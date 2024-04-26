@@ -800,8 +800,15 @@ int ext2_create_file(const char *path, int mode) {
 }
 
 vfs_inode_t *ext2_mount(void) {
-  int fd = vfs_open("/dev/sda", O_RDWR, 0);
   cache = kcalloc(3000, sizeof(struct BLOCK_CACHE));
+  if (!cache) {
+    return NULL;
+  }
+  int fd = vfs_open("/dev/sda", O_RDWR, 0);
+  if(0 > fd) {
+    kfree(cache);
+    return NULL;
+  }
   // TODO: Can this be done better? Maybe create a seperate function in
   // the VFS?
   mount_fd = get_vfs_fd(fd, NULL);

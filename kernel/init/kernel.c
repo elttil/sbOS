@@ -58,6 +58,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   paging_init(memsize_kb, mb);
   klog("Paging Initalized", LOG_SUCCESS);
   mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
+  assert(mb);
 
   gdt_init();
   klog("GDT Initalized", LOG_SUCCESS);
@@ -85,8 +86,10 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   klog("PS2 Keyboard driver installed", LOG_SUCCESS);
 
   vfs_mount("/dev", devfs_mount());
-  ahci_init();
-  vfs_mount("/", ext2_mount());
+  assert(ahci_init());
+  vfs_inode_t *ext2_mount_point = ext2_mount();
+  assert(ext2_mount_point);
+  vfs_mount("/", ext2_mount_point);
 
   add_stdout();
   add_serial();
@@ -108,7 +111,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
 
   gen_ipv4(&ip_address, 10, 0, 2, 15);
 
-  display_driver_init(mb);
+  assert(display_driver_init(mb));
   add_vbe_device();
   int pid;
   if (0 == (pid = fork())) {

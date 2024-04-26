@@ -58,7 +58,7 @@ void *ksbrk(size_t s) {
   }
   if (!mmu_allocate_shared_kernel_region((void *)rc,
                                          (data_end - (uintptr_t)rc))) {
-    return NULL;
+    return (void *)-1;
   }
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
   return (void *)rc;
@@ -372,7 +372,6 @@ void *mmu_map_user_frames(void *const ptr, size_t s) {
     p->rw = rw;
     p->user = !is_kernel;
     p->frame = (uintptr_t)(ptr + i * 0x1000) / 0x1000;
-    kprintf("mapped user frame: %x\n", p->frame);
     (void)write_to_frame((uintptr_t)ptr + i * 0x1000, 1);
   }
   return r;
@@ -383,7 +382,10 @@ void *mmu_map_frames(void *const ptr, size_t s) {
   size_t num_pages = s / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
     Page *p = get_page((void *)(r + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
-    assert(p);
+    if (!p) {
+      mmu_free_address_range(r, i * 0x1000, NULL);
+      return NULL;
+    }
     int rw = 1;
     int is_kernel = 1;
     p->present = 1;
@@ -463,36 +465,24 @@ void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd) {
   }
 }
 
-void mmu_map_directories(void *dst, PageDirectory *d, void *src,
-                         PageDirectory *s, size_t length) {
-  d = (!d) ? get_active_pagedirectory() : d;
-  s = (!s) ? get_active_pagedirectory() : s;
-  size_t num_pages = (u32)align_page((void *)length) / 0x1000;
-  for (size_t i = 0; i < num_pages; i++, dst += 0x1000, src += 0x1000) {
-    Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
-    assert(p);
-    p->present = 1;
-    p->rw = 1;
-    p->user = 1;
-    void *physical = virtual_to_physical(src, s);
-    p->frame = (u32)physical / PAGE_SIZE;
-  }
-  flush_tlb();
-}
-
-void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
-                      size_t length) {
+int mmu_map_physical(void *dst, PageDirectory *d, void *physical,
+                     size_t length) {
+  void *const dst_orig = dst;
   d = (!d) ? get_active_pagedirectory() : d;
   size_t num_pages = (u32)align_page((void *)length) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, dst += 0x1000, physical += 0x1000) {
     Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
-    assert(p);
+    if (!p) {
+      mmu_free_address_range(dst_orig, i * 0x1000, d);
+      return 0;
+    }
     p->present = 1;
     p->rw = 1;
     p->user = 1;
     p->frame = (uintptr_t)physical / PAGE_SIZE;
     (void)write_to_frame((uintptr_t)physical, 1);
   }
+  return 1;
 }
 
 struct PhysVirtMap {
@@ -542,6 +532,9 @@ void *virtual_to_physical(void *address, PageDirectory *directory) {
     directory = get_active_pagedirectory();
   }
   Page *p = get_page((void *)address, directory, PAGE_NO_ALLOCATE, 0);
+  if (!p) {
+    return NULL;
+  }
   return (void *)((u32)p->frame * 0x1000) + (((uintptr_t)address) & 0xFFF);
 }
 

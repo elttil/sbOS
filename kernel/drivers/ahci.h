@@ -1,1 +1,1 @@
-void ahci_init(void);
+int ahci_init(void);

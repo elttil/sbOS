@@ -12,7 +12,11 @@
 void *kmalloc_align(size_t s, void **physical) {
   // TODO: It should reuse virtual regions so that it does not run out
   // of address space.
-  return ksbrk_physical(s, physical);
+  void *rc;
+  if ((void *)-1 == (rc = ksbrk_physical(s, physical))) {
+    return NULL;
+  }
+  return rc;
 }
 
 void kmalloc_align_free(void *p, size_t s) {

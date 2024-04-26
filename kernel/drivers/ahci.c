@@ -496,10 +496,10 @@ void add_devfs_drive_file(u8 port) {
   inode->inode_num = port;
 }
 
-void ahci_init(void) {
+int ahci_init(void) {
   struct PCI_DEVICE device;
   if (!pci_devices_by_id(0x01, 0x06, &device)) {
-    return;
+    return 0;
   }
   kprintf("vendor: %x\n", device.vendor);
   kprintf("device: %x\n", device.device);
@@ -509,6 +509,9 @@ void ahci_init(void) {
   pci_get_bar(&device, 5, &bar);
 
   u8 *HBA_base = mmu_map_frames((void *)bar.address, bar.size);
+  if (!HBA_base) {
+    return 0;
+  }
   hba = (volatile struct HBA_MEM *)(HBA_base);
   for (u8 i = 0; i < 32; i++) {
     if (!((hba->pi >> i) & 1)) {
@@ -535,4 +538,5 @@ void ahci_init(void) {
       break;
     }
   }
+  return 1;
 }

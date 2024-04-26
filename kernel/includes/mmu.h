@@ -45,11 +45,9 @@ int mmu_allocate_shared_kernel_region(void *rc, size_t n);
 void *mmu_find_unallocated_virtual_range(void *addr, size_t length);
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);
 void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd);
-void mmu_map_directories(void *dst, PageDirectory *d, void *src,
-                         PageDirectory *s, size_t length);
 u32 mmu_get_number_of_allocated_frames(void);
 void *mmu_map_frames(void *ptr, size_t s);
-void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
+int mmu_map_physical(void *dst, PageDirectory *d, void *physical,
                       size_t length);
 void mmu_free_pages(void *a, u32 n);
 void *mmu_map_user_frames(void *const ptr, size_t s);
