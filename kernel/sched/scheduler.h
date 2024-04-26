@@ -98,4 +98,5 @@ struct Process {
 int get_task_from_pid(pid_t pid, process_t **out);
 void free_process(process_t *p);
 void *get_free_virtual_memory(size_t length);
+void signal_process(process_t *p, int sig);
 #endif

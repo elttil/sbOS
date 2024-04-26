@@ -216,6 +216,7 @@ void free_process(process_t *p) {
 
 void exit_process(process_t *p, int status) {
   disable_interrupts();
+  int killing_itself = (p == current_task);
   assert(p->pid != 1);
   if (p->parent) {
     p->parent->halts[WAIT_CHILD_HALT] = 0;
@@ -245,6 +246,9 @@ void exit_process(process_t *p, int status) {
       break;
     }
     tmp = tmp->next;
+  }
+  if (killing_itself) {
+    switch_task();
   }
 }
 
@@ -474,9 +478,14 @@ void signal_process(process_t *p, int sig) {
     if (SIGTERM == sig) {
       kprintf("HAS NO SIGTERM\n");
       exit_process(p, 1 /*TODO: what should the status be?*/);
+      ASSERT_NOT_REACHED;
+    } else if (SIGSEGV == sig) {
+      kprintf("HAS NO SIGSEGV\n");
+      exit_process(p, 1 /*TODO: what should the status be?*/);
+      ASSERT_NOT_REACHED;
     } else {
       // TODO: Should also exit proess(I think)
-      assert(0);
+      ASSERT_NOT_REACHED;
     }
   }
   signal_t signal = {.handler_ip = (uintptr_t)p->signal_handlers[sig]};

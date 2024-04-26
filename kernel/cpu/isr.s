@@ -11,6 +11,13 @@
     push \num
     jmp isr_common_stub
 .endm
+.macro ISR_ERRCODE num
+  .global isr\num
+  isr\num:
+    cli 
+    push \num
+    jmp isr_common_stub
+.endm
 
 ISR_NOERRCODE 0
 ISR_NOERRCODE 1
@@ -26,7 +33,7 @@ ISR_NOERRCODE 10
 ISR_NOERRCODE 11
 ISR_NOERRCODE 12
 ISR_NOERRCODE 13
-ISR_NOERRCODE 14
+ISR_ERRCODE 14
 ISR_NOERRCODE 15
 ISR_NOERRCODE 16
 ISR_NOERRCODE 17

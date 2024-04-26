@@ -76,6 +76,13 @@ void page_fault(reg_t *regs) {
     process_pop_restore_context(NULL, regs);
     return;
   }
+
+  int is_userspace = (regs->error_code & (1 << 2));
+  if (is_userspace) {
+    signal_process(current_task, SIGSEGV);
+    return;
+  }
+
   klog("Page Fault", LOG_ERROR);
   kprintf("CR2: %x\n", cr2);
   if (current_task) {
@@ -97,15 +104,11 @@ void page_fault(reg_t *regs) {
     kprintf("read access\n");
   }
 
-  if (regs->error_code & (1 << 2)) {
-    kprintf("CPL = 3\n");
-  }
-
   if (regs->error_code & (1 << 4)) {
     kprintf("Attempted instruction fetch\n");
   }
 
-  dump_backtrace(20);
+  dump_backtrace(15);
   halt();
 }
 
