@@ -93,6 +93,9 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
     u32 physical;
     directory->tables[table_index] =
         (PageTable *)kmalloc_align(sizeof(PageTable), (void **)&physical);
+    if (!directory->tables[table_index]) {
+      return NULL;
+    }
     memset(directory->tables[table_index], 0, sizeof(PageTable));
     directory->physical_tables[table_index] =
         (u32)physical | ((set_user) ? 0x7 : 0x3);
@@ -169,6 +172,9 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
                        u32 *physical_address) {
   PageTable *new_table =
       kmalloc_align(sizeof(PageTable), (void **)physical_address);
+  if (!new_table) {
+    return NULL;
+  }
   PageTable *src = src_directory->tables[src_index];
 
   // Copy all the pages
@@ -227,26 +233,6 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
   return 0;
 }
 
-PageTable *copy_table(PageTable *src, u32 *physical_address) {
-  PageTable *new_table =
-      kmalloc_align(sizeof(PageTable), (void **)physical_address);
-
-  // copy all the pages
-  for (u16 i = 0; i < 1024; i++) {
-    if (!src->pages[i].present) {
-      new_table->pages[i].present = 0;
-      continue;
-    }
-    new_table->pages[i].frame = src->pages[i].frame;
-    new_table->pages[i].present = src->pages[i].present;
-    new_table->pages[i].rw = src->pages[i].rw;
-    new_table->pages[i].user = src->pages[i].user;
-    new_table->pages[i].accessed = src->pages[i].accessed;
-    new_table->pages[i].dirty = src->pages[i].dirty;
-  }
-  return new_table;
-}
-
 PageDirectory *clone_directory(PageDirectory *original) {
   if (!original) {
     original = get_active_pagedirectory();
@@ -255,6 +241,9 @@ PageDirectory *clone_directory(PageDirectory *original) {
   u32 physical_address;
   PageDirectory *new_directory =
       kmalloc_align(sizeof(PageDirectory), (void **)&physical_address);
+  if (!new_directory) {
+    return NULL;
+  }
   u32 offset = (u32)new_directory->physical_tables - (u32)new_directory;
   new_directory->physical_address = physical_address + offset;
 
@@ -304,14 +293,19 @@ int mmu_allocate_shared_kernel_region(void *rc, size_t n) {
   size_t num_pages = n / PAGE_SIZE;
   for (size_t i = 0; i <= num_pages; i++) {
     Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
+    if (!p) {
+      goto mmu_allocate_shared_kernel_region_error;
+    }
     if (!p->present || !p->frame) {
       if (!allocate_frame(p, 0, 1)) {
-        mmu_free_address_range(rc, n, NULL);
-        return 0;
+        goto mmu_allocate_shared_kernel_region_error;
       }
     }
   }
   return 1;
+mmu_allocate_shared_kernel_region_error:
+  mmu_free_address_range(rc, n, NULL);
+  return 0;
 }
 
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length) {
@@ -343,23 +337,27 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
   pd = (pd) ? pd : get_active_pagedirectory();
   size_t num_pages = n / 0x1000;
   for (size_t i = 0; i <= num_pages; i++) {
-    Page *p = get_page((void *)(ptr + i * 0x1000), pd, 0, 0);
+    Page *p = get_page((void *)(ptr + i * 0x1000), pd, PAGE_NO_ALLOCATE, 0);
     if (p && p->present) {
       p->rw = (flags & MMU_FLAG_RW);
       p->user = !(flags & MMU_FLAG_KERNEL);
       continue;
     }
     p = get_page((void *)(ptr + i * 0x1000), pd, PAGE_ALLOCATE, 1);
-    assert(p);
+    if (!p) {
+      goto mmu_allocate_region_error;
+    }
     int rw = (flags & MMU_FLAG_RW);
     int kernel = (flags & MMU_FLAG_KERNEL);
     if (!allocate_frame(p, rw, kernel)) {
-      mmu_free_address_range(ptr, n, pd);
-      return 0;
+      goto mmu_allocate_region_error;
     }
   }
   flush_tlb();
   return 1;
+mmu_allocate_region_error:
+  mmu_free_address_range(ptr, n, pd);
+  return 0;
 }
 
 void *mmu_map_user_frames(void *const ptr, size_t s) {
@@ -472,6 +470,7 @@ void mmu_map_directories(void *dst, PageDirectory *d, void *src,
   size_t num_pages = (u32)align_page((void *)length) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, dst += 0x1000, src += 0x1000) {
     Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
+    assert(p);
     p->present = 1;
     p->rw = 1;
     p->user = 1;
@@ -487,6 +486,7 @@ void mmu_map_physical(void *dst, PageDirectory *d, void *physical,
   size_t num_pages = (u32)align_page((void *)length) / 0x1000;
   for (size_t i = 0; i < num_pages; i++, dst += 0x1000, physical += 0x1000) {
     Page *p = get_page(dst, d, PAGE_ALLOCATE, 1);
+    assert(p);
     p->present = 1;
     p->rw = 1;
     p->user = 1;
@@ -633,16 +633,19 @@ void switch_page_directory(PageDirectory *directory) {
   set_cr3(directory->physical_address);
 }
 
-void create_table(int table_index) {
+int create_table(int table_index) {
   if (kernel_directory->tables[table_index]) {
-    return;
+    return 0;
   }
   u32 physical;
-  kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   kernel_directory->tables[table_index] =
       (PageTable *)kmalloc_align(sizeof(PageTable), (void **)&physical);
+  if (!kernel_directory->tables[table_index]) {
+    return 0;
+  }
   memset(kernel_directory->tables[table_index], 0, sizeof(PageTable));
   kernel_directory->physical_tables[table_index] = (u32)physical | 0x3;
+  return 1;
 }
 
 void paging_init(u64 memsize, multiboot_info_t *mb) {
@@ -701,9 +704,11 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
 
   switch_page_directory(kernel_directory);
   // Make null dereferences crash.
-  get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0)->present = 0;
+  Page *null_page = get_page(NULL, kernel_directory, PAGE_ALLOCATE, 0);
+  assert(null_page);
+  null_page->present = 0;
   for (int i = 0; i < 25; i++) {
-    create_table(770 + i);
+    assert(create_table(771 + i));
   }
   kernel_directory = clone_directory(kernel_directory);
   assert(kernel_directory);
