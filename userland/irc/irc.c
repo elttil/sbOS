@@ -227,6 +227,9 @@ void handle_msg(struct irc_server *server, struct sv msg) {
     irc_add_message(server, channel, C_TO_SV("*"), SB_TO_SV(join_message));
     sb_free(&join_message);
   }
+  HANDLE_CMD(C_TO_SV("PING")) {
+    tcp_write(server->socket, "PONG", 4, NULL);
+  }
   HANDLE_CMD(C_TO_SV("PRIVMSG")) {
     struct sv channel = sv_split_delim(command_parameters, &msg, ' ');
     struct sv nick = sv_trim_left(message_origin, 1);
@@ -412,7 +415,6 @@ int irc_connect_server(struct irc_server *server, u32 ip, u16 port) {
   int err;
   u32 socket = tcp_connect_ipv4(ip, port, &err);
   if (err) {
-    assert(0);
     return 0;
   }
   server->socket = socket;
@@ -426,8 +428,6 @@ void refresh_screen(void) {
 }
 
 int main(void) {
-  clear_screen();
-
   u32 id;
   queue_create(&id);
 
@@ -438,7 +438,12 @@ int main(void) {
 
   u32 ip = gen_ipv4(10, 0, 2, 2);
   struct irc_server server_ctx;
-  irc_connect_server(&server_ctx, ip, 6667);
+  if (!irc_connect_server(&server_ctx, ip, 6667)) {
+    printf("Failed to connect to the irc server\n");
+    return 1;
+  }
+
+  clear_screen();
 
   selected_channel = &server_ctx.channels[0];
 
