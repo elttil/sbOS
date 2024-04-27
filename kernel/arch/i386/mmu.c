@@ -29,6 +29,26 @@ void change_frame(u32 frame, int on);
 int get_free_frame(u32 *frame);
 int allocate_frame(Page *page, int rw, int is_kernel);
 
+static void create_kernel_table(int table_index) {
+  u32 physical;
+  active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
+  PageTable *new_table =
+      (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
+  memset(new_table, 0, sizeof(PageTable));
+  kernel_directory->tables[table_index] = new_table;
+  kernel_directory->physical_tables[table_index] = physical | 0x3;
+  if (!current_task) {
+    active_directory->tables[table_index] = new_table;
+    active_directory->physical_tables[table_index] = physical | 0x3;
+    return;
+  }
+  for (process_t *p = ready_queue; p; p = p->next) {
+    PageDirectory *pd = p->cr3;
+    pd->tables[table_index] = new_table;
+    pd->physical_tables[table_index] = physical | 0x3;
+  }
+}
+
 void *ksbrk(size_t s) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
   data_end += s;
@@ -43,17 +63,7 @@ void *ksbrk(size_t s) {
   // Determine whether we are approaching a unallocated table
   int table_index = 1 + (rc / (1024 * 0x1000));
   if (!kernel_directory->tables[table_index]) {
-    u32 physical;
-    active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
-    active_directory->tables[table_index] =
-        (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
-    memset(active_directory->tables[table_index], 0, sizeof(PageTable));
-    active_directory->physical_tables[table_index] = (u32)physical | 0x3;
-
-    kernel_directory->tables[table_index] =
-        active_directory->tables[table_index];
-    kernel_directory->physical_tables[table_index] =
-        active_directory->physical_tables[table_index];
+    create_kernel_table(table_index);
     return ksbrk(s);
   }
   if (!mmu_allocate_shared_kernel_region((void *)rc,
@@ -216,7 +226,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
     // For each page in the table copy all the data over.
     for (u32 c = 0; c < 1024; c++) {
       // Only copy pages that are used.
-      if (!src->pages[c].frame || !src->pages[c].present) {
+      if (!src->pages[c].present) {
         continue;
       }
 

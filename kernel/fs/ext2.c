@@ -36,7 +36,7 @@ struct BLOCK_CACHE {
   u8 block[1024];
 };
 
-#define NUM_BLOCK_CACHE 3000
+#define NUM_BLOCK_CACHE 100
 struct BLOCK_CACHE *cache;
 
 u32 cold_cache_hits = 0;
@@ -800,7 +800,7 @@ int ext2_create_file(const char *path, int mode) {
 }
 
 vfs_inode_t *ext2_mount(void) {
-  cache = kcalloc(3000, sizeof(struct BLOCK_CACHE));
+  cache = kcalloc(NUM_BLOCK_CACHE, sizeof(struct BLOCK_CACHE));
   if (!cache) {
     return NULL;
   }
