@@ -14,5 +14,6 @@ void *krealloc(void *ptr, size_t size);
 void *kreallocarray(void *ptr, size_t nmemb, size_t size);
 void *kallocarray(size_t nmemb, size_t size);
 void *kcalloc(size_t nelem, size_t elsize);
+void *krecalloc(void *ptr, size_t nelem, size_t elsize);
 void kfree(void *p);
 int init_heap(void);

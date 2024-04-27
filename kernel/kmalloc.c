@@ -236,6 +236,27 @@ void *kallocarray(size_t nmemb, size_t size) {
   return kreallocarray(NULL, nmemb, size);
 }
 
+void *krecalloc(void *ptr, size_t nelem, size_t elsize) {
+  if ((nelem >= MUL_NO_OVERFLOW || elsize >= MUL_NO_OVERFLOW) && nelem > 0 &&
+      SIZE_MAX / nelem < elsize) {
+    return NULL;
+  }
+  if (!ptr) {
+    return kcalloc(nelem, elsize);
+  }
+  size_t new_size = nelem * elsize;
+  void *rc = int_kmalloc(new_size);
+  if (!rc) {
+    return NULL;
+  }
+  size_t l = get_mem_size(ptr);
+  size_t to_copy = min(l, new_size);
+  memset(rc, 0, new_size);
+  memcpy(rc, ptr, to_copy);
+  kfree(ptr);
+  return rc;
+}
+
 void *kcalloc(size_t nelem, size_t elsize) {
   if ((nelem >= MUL_NO_OVERFLOW || elsize >= MUL_NO_OVERFLOW) && nelem > 0 &&
       SIZE_MAX / nelem < elsize) {

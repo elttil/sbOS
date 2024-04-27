@@ -1,15 +1,18 @@
 #include <assert.h>
 #include <kmalloc.h>
 #include <lib/relist.h>
+#include <math.h>
 
 void relist_init(struct relist *list) {
-  list->bitmap_capacity = 100;
+  list->bitmap_capacity = 1;
   list->bitmap = kcalloc(sizeof(u64), list->bitmap_capacity);
   if (!list->bitmap) {
     goto relist_init_error;
   }
-  list->entries = kallocarray(sizeof(void *), (sizeof(u64) * 8));
+  list->entries =
+      kallocarray(sizeof(void *) * sizeof(u64) * 8, list->bitmap_capacity);
   if (!list->entries) {
+    kfree(list->bitmap);
     goto relist_init_error;
   }
   return;
@@ -28,18 +31,27 @@ void relist_reset(struct relist *list) {
 }
 
 int relist_clone(struct relist *in, struct relist *out) {
-  relist_init(out);
-  for (int i = 0;; i++) {
-    void *output;
-    if (!relist_get(in, i, &output)) {
-      break;
-    }
-    if (!relist_add(out, output, NULL)) {
-      relist_free(out);
-      return 0;
-    }
+  out->bitmap_capacity = in->bitmap_capacity;
+  out->bitmap = kcalloc(sizeof(u64), out->bitmap_capacity);
+  if (!out->bitmap) {
+    goto relist_clone_error;
   }
+  out->entries =
+      kallocarray(sizeof(void *) * sizeof(u64) * 8, out->bitmap_capacity);
+  if (!out->entries) {
+    kfree(out->bitmap);
+    goto relist_clone_error;
+  }
+  memcpy(out->bitmap, in->bitmap, sizeof(u64) * out->bitmap_capacity);
+  memcpy(out->entries, in->entries,
+         sizeof(void *) * sizeof(u64) * 8 * out->bitmap_capacity);
   return 1;
+
+relist_clone_error:
+  out->bitmap_capacity = 0;
+  out->entries = NULL;
+  out->bitmap = NULL;
+  return 0;
 }
 
 static int relist_find_free_entry(struct relist *list, u32 *entry) {
@@ -62,7 +74,26 @@ static int relist_find_free_entry(struct relist *list, u32 *entry) {
 int relist_add(struct relist *list, void *value, u32 *index) {
   u32 entry;
   if (!relist_find_free_entry(list, &entry)) {
-    assert(0);
+    u32 new_capacity = list->bitmap_capacity + 1;
+    u64 *new_allocation = kcalloc(sizeof(u64), new_capacity);
+    if (!new_allocation) {
+      return 0;
+    }
+    void *new_entry = krecalloc(list->entries, sizeof(void *) * sizeof(u64) * 8,
+                                new_capacity);
+    if (!new_entry) {
+      kfree(new_allocation);
+      return 0;
+    }
+    if (list->bitmap) {
+      size_t to_copy = min(list->bitmap_capacity, new_capacity) * sizeof(u64);
+      memcpy(new_allocation, list->bitmap, to_copy);
+      kfree(list->bitmap);
+    }
+    list->bitmap = new_allocation;
+    list->bitmap_capacity = new_capacity;
+    list->entries = new_entry;
+    assert(relist_find_free_entry(list, &entry));
   }
   list->entries[entry] = value;
   if (index) {
@@ -73,7 +104,7 @@ int relist_add(struct relist *list, void *value, u32 *index) {
 }
 
 int relist_remove(struct relist *list, u32 index) {
-  if ((index / 64) > list->bitmap_capacity) {
+  if (index >= list->bitmap_capacity * 64) {
     assert(0);
     return 0;
   }
@@ -87,8 +118,7 @@ int relist_remove(struct relist *list, u32 index) {
 }
 
 int relist_set(struct relist *list, u32 index, void *value) {
-  assert(value);
-  if ((index / 64) > list->bitmap_capacity) {
+  if (index >= list->bitmap_capacity * 64) {
     assert(0);
     return 0;
   }
@@ -98,9 +128,14 @@ int relist_set(struct relist *list, u32 index, void *value) {
   return 1;
 }
 
-int relist_get(const struct relist *list, u32 index, void **out) {
-  if ((index / 64) > list->bitmap_capacity) {
-    assert(0);
+int relist_get(const struct relist *list, u32 index, void **out, int *end) {
+  if (end) {
+    *end = 0;
+  }
+  if (index >= list->bitmap_capacity * 64) {
+    if (end) {
+      *end = 1;
+    }
     return 0;
   }
   int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64)));

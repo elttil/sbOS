@@ -18,7 +18,7 @@ vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
   }
 
   vfs_fd_t *r;
-  if (!relist_get(&p->file_descriptors, fd, (void **)&r)) {
+  if (!relist_get(&p->file_descriptors, fd, (void **)&r, NULL)) {
     return NULL;
   }
   return r;
@@ -411,7 +411,8 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
 
 int vfs_dup2(int org_fd, int new_fd) {
   vfs_fd_t *orig;
-  if (!relist_get(&current_task->file_descriptors, org_fd, (void **)&orig)) {
+  if (!relist_get(&current_task->file_descriptors, org_fd, (void **)&orig,
+                  NULL)) {
     assert(0);
     return -1;
   }

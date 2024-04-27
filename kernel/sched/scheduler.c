@@ -127,8 +127,12 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     }
     for (int i = 0;; i++) {
       vfs_fd_t *out;
-      if (!relist_get(&r->file_descriptors, i, (void **)&out)) {
-        break;
+      int empty;
+      if (!relist_get(&r->file_descriptors, i, (void **)&out, &empty)) {
+        if (empty) {
+          break;
+        }
+        continue;
       }
       if (out) {
         out->reference_count++;
