@@ -120,14 +120,14 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   }
 
   if (p) {
-    if (!list_clone(&p->file_descriptors, &r->file_descriptors)) {
+    if (!relist_clone(&p->file_descriptors, &r->file_descriptors)) {
       kfree(r->tcb);
       kfree(r);
       return NULL;
     }
     for (int i = 0;; i++) {
       vfs_fd_t *out;
-      if (!list_get(&p->file_descriptors, i, (void **)&out)) {
+      if (!relist_get(&r->file_descriptors, i, (void **)&out)) {
         break;
       }
       if (out) {
@@ -135,7 +135,7 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
       }
     }
   } else {
-    list_init(&r->file_descriptors);
+    relist_init(&r->file_descriptors);
   }
 
   if (p) {
@@ -208,7 +208,7 @@ void free_process(process_t *p) {
   list_free(&p->tcp_sockets);
   list_free(&p->tcp_listen);
   list_free(&p->event_queue);
-  list_free(&p->file_descriptors);
+  relist_free(&p->file_descriptors);
   kfree(p->tcb);
 
   mmu_free_pagedirectory(p->cr3);

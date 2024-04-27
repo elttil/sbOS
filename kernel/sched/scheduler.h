@@ -5,6 +5,7 @@ typedef struct Process process_t;
 #include <fs/vfs.h>
 #include <lib/list.h>
 #include <lib/stack.h>
+#include <lib/relist.h>
 #include <mmu.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -61,7 +62,7 @@ struct Process {
   void *interrupt_handler;
   PageDirectory *cr3;
 
-  struct list file_descriptors;
+  struct relist file_descriptors;
 
   struct list read_list;
   struct list write_list;

@@ -814,7 +814,7 @@ vfs_inode_t *ext2_mount(void) {
   mount_fd = get_vfs_fd(fd, NULL);
   // Remove the FD from the current task
   // FIXME: This is a hacky solution
-  list_set(&current_task->file_descriptors, fd, NULL);
+  relist_remove(&current_task->file_descriptors, fd);
   parse_superblock();
   return vfs_create_inode(
       0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/,

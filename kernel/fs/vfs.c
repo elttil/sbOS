@@ -18,7 +18,7 @@ vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
   }
 
   vfs_fd_t *r;
-  if (!list_get(&p->file_descriptors, fd, (void **)&r)) {
+  if (!relist_get(&p->file_descriptors, fd, (void **)&r)) {
     return NULL;
   }
   return r;
@@ -73,7 +73,7 @@ int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
     *fd = r;
   }
   int index;
-  list_add(&current_task->file_descriptors, r, &index);
+  relist_add(&current_task->file_descriptors, r, &index);
   return index;
 }
 
@@ -294,7 +294,7 @@ int vfs_close_process(process_t *p, int fd) {
   assert(0 < fd_ptr->reference_count);
   // Remove process reference
   fd_ptr->reference_count--;
-  list_set(&p->file_descriptors, fd, NULL);
+  assert(relist_remove(&p->file_descriptors, fd));
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
     if (fd_ptr->inode->close) {
@@ -411,12 +411,12 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
 
 int vfs_dup2(int org_fd, int new_fd) {
   vfs_fd_t *orig;
-  if (!list_get(&current_task->file_descriptors, org_fd, (void **)&orig)) {
+  if (!relist_get(&current_task->file_descriptors, org_fd, (void **)&orig)) {
     assert(0);
     return -1;
   }
   assert(1 <= orig->reference_count);
-  if (!list_set(&current_task->file_descriptors, new_fd, orig)) {
+  if (!relist_set(&current_task->file_descriptors, new_fd, orig)) {
     assert(0);
     return -1;
   }

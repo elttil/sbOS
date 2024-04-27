@@ -261,7 +261,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   }
 
   int index;
-  assert(list_add(&current_task->file_descriptors, s->incoming_fd, &index));
+  assert(relist_add(&current_task->file_descriptors, s->incoming_fd, &index));
   assert(1 <= s->incoming_fd->reference_count);
   s->incoming_fd = NULL;
   //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
