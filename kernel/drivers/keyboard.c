@@ -7,6 +7,7 @@
 #include <fs/vfs.h>
 #include <sched/scheduler.h>
 #include <typedefs.h>
+#include <lib/ringbuffer.h>
 
 #define PS2_REG_DATA 0x60
 #define PS2_REG_STATUS 0x64
@@ -26,8 +27,6 @@
 #define PS2_CMD_SET_MAKE_RELEASE 0xF8 // has rsp
 
 u8 kb_scancodes[3] = {0x43, 0x41, 0x3f};
-
-FIFO_FILE *keyboard_fifo;
 
 u8 ascii_table[] = {
     'e', '\x1B', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 8,
@@ -154,24 +153,24 @@ void int_keyboard(reg_t *frame) {
   ev.mode |= is_shift_down << 0;
   ev.mode |= is_alt_down << 1;
   ev.mode |= is_ctrl_down << 2;
-  fifo_object_write((u8 *)&ev, 0, sizeof(ev), keyboard_fifo);
+  ringbuffer_write(kb_inode->internal_object, (u8 *)&ev, sizeof(ev));
 }
 
 int keyboard_has_data(vfs_inode_t *inode) {
-  (void)inode;
-  return keyboard_fifo->has_data;
+  const struct ringbuffer *rb = inode->internal_object;
+  return !ringbuffer_isempty(rb);
 }
 
 void install_keyboard(void) {
-  keyboard_fifo = create_fifo_object();
   install_handler(int_keyboard, INT_32_INTERRUPT_GATE(0x3), 0x21);
 }
 
 int keyboard_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
 
-  int rc = fifo_object_read(buffer, 0, len, keyboard_fifo);
-  if (0 == rc) {
+  struct ringbuffer *rb = fd->inode->internal_object;
+  u32 rc = ringbuffer_read(rb, buffer, len);
+  if (0 == rc && len > 0) {
     return -EAGAIN;
   }
   return rc;
@@ -180,4 +179,6 @@ int keyboard_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 void add_keyboard(void) {
   kb_inode = devfs_add_file("/keyboard", keyboard_read, NULL, NULL,
                             keyboard_has_data, NULL, FS_TYPE_CHAR_DEVICE);
+  kb_inode->internal_object = kmalloc(sizeof(struct ringbuffer));
+  ringbuffer_init(kb_inode->internal_object, 128);
 }

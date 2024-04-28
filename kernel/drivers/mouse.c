@@ -1,5 +1,6 @@
 #include <cpu/idt.h>
 #include <drivers/mouse.h>
+#include <errno.h>
 #include <fs/devfs.h>
 #include <fs/fifo.h>
 #include <fs/vfs.h>
@@ -11,7 +12,6 @@ u8 mouse_u8[3];
 u8 mouse_x = 0;
 u8 mouse_y = 0;
 vfs_inode_t *mouse_inode;
-vfs_fd_t *mouse_fd;
 
 struct mouse_event {
   u8 buttons;
@@ -20,29 +20,25 @@ struct mouse_event {
 };
 
 int fs_mouse_has_data(vfs_inode_t *inode) {
-  FIFO_FILE *f = inode->internal_object;
-  return f->has_data;
-}
-
-int fs_mouse_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  FIFO_FILE *f = fd->inode->internal_object;
-  return fifo_object_write(buffer, offset, len, f);
+  const struct ringbuffer *rb = inode->internal_object;
+  return !ringbuffer_isempty(rb);
 }
 
 int fs_mouse_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  FIFO_FILE *f = fd->inode->internal_object;
-  return fifo_object_read(buffer, offset, len, f);
+  struct ringbuffer *rb = fd->inode->internal_object;
+  u32 rc = ringbuffer_read(rb, buffer, len);
+  if (0 == rc && len > 0) {
+    return -EAGAIN;
+  }
+  return rc;
 }
 
 void add_mouse(void) {
   mouse_inode =
-      devfs_add_file("/mouse", fs_mouse_read, fs_mouse_write, NULL,
-                     fs_mouse_has_data, always_can_write, FS_TYPE_CHAR_DEVICE);
-  mouse_inode->internal_object = create_fifo_object();
-  // Don't look at this
-  int fd = vfs_open("/dev/mouse", O_RDWR, 0);
-  mouse_fd = get_vfs_fd(fd, NULL);
-  relist_remove(&current_task->file_descriptors, fd);
+      devfs_add_file("/mouse", fs_mouse_read, NULL, NULL, fs_mouse_has_data,
+                     always_can_write, FS_TYPE_CHAR_DEVICE);
+  mouse_inode->internal_object = kmalloc(sizeof(struct ringbuffer));
+  ringbuffer_init(mouse_inode->internal_object, 4096);
 }
 
 void what(registers_t *r) {
@@ -74,7 +70,8 @@ void int_mouse(reg_t *r) {
     e.buttons = mouse_u8[0];
     e.x = mouse_x;
     e.y = mouse_y;
-    raw_vfs_pwrite(mouse_fd, &e, sizeof(e), 0);
+    struct ringbuffer *rb = mouse_inode->internal_object;
+    ringbuffer_write(rb, (u8 *)&e, sizeof(e));
     break;
   }
 }
