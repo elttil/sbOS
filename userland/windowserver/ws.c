@@ -163,7 +163,7 @@ void setup(void) {
   fds[keyboard_fd_poll].fd = keyboard_fd;
   fds[keyboard_fd_poll].events = POLLIN;
   fds[keyboard_fd_poll].revents = 0;
-  int mouse_fd = open("/dev/mouse", O_RDONLY, 0);
+  int mouse_fd = open("/dev/mouse", O_RDONLY | O_NONBLOCK, 0);
   assert(mouse_fd >= 0);
   mouse_fd_poll = 2;
   fds[mouse_fd_poll].fd = mouse_fd;
@@ -365,8 +365,8 @@ void parse_mouse_event(int fd) {
   int middle_button = 0;
   int right_button = 0;
   int left_button = 0;
+  struct mouse_event e[100];
   for (;;) {
-    struct mouse_event e[100];
     int rc = read(fd, e, sizeof(e));
     if (rc <= 0)
       break;
