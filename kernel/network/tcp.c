@@ -186,7 +186,6 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
   }
 
   struct TcpConnection *incoming_connection = tcp_find_connection(dst_port);
-  kprintf("dst_port: %d\n", dst_port);
   if (!incoming_connection) {
     kprintf("unable to find open port for incoming connection\n");
   }
@@ -214,10 +213,9 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
     }
     u16 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
     if (tcp_payload_length > 0) {
-      int len = fifo_object_write(
-          (u8 *)(payload + header->data_offset * sizeof(u32)), 0,
-          tcp_payload_length, incoming_connection->data_file);
-      assert(len >= 0);
+      const u8 *tcp_payload = payload + header->data_offset * sizeof(u32);
+      u32 len = ringbuffer_write(&incoming_connection->buffer, tcp_payload,
+                                 tcp_payload_length);
       assert(len == tcp_payload_length);
       incoming_connection->ack += len;
       tcp_send_ack(incoming_connection);

@@ -80,7 +80,7 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
   con->incoming_port = dst_port; // FIXME: Should be different for each
                                  // connection
 
-  con->data_file = create_fifo_object();
+  ringbuffer_init(&con->buffer, 8192);
   stack_push(&listen->incoming_connections, (void *)connection_id);
   return con;
 }
@@ -141,7 +141,7 @@ u32 tcp_connect_ipv4(u32 ip, u16 port, int *error) {
   con->outgoing_ip = ip;
   con->outgoing_port = port;
 
-  con->data_file = create_fifo_object();
+  ringbuffer_init(&con->buffer, 8192);
 
   tcp_send_syn(con);
 
@@ -190,14 +190,9 @@ int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
     return 0;
   }
 
-  int rc = fifo_object_read(buffer, 0, buffer_size, con->data_file);
-  if (rc <= 0) {
-    enable_interrupts();
-    rc = 0;
-    return 0;
-  }
+  u32 len = ringbuffer_read(&con->buffer, buffer, buffer_size);
   if (out) {
-    *out = rc;
+    *out = len;
   }
   return 1;
 }

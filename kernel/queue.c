@@ -65,8 +65,7 @@ int queue_should_block(struct event_queue *q, int *is_empty) {
     } else if (EVENT_TYPE_TCP_SOCKET == ev->type) {
       struct TcpConnection *con = tcp_get_connection(ev->internal_id, q->p);
       assert(con);
-      assert(con->data_file);
-      if (con->data_file->has_data) {
+      if (!ringbuffer_isempty(&con->buffer)) {
         return 0;
       }
     }

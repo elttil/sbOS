@@ -65,6 +65,10 @@ u32 ringbuffer_read(struct ringbuffer *rb, u8 *buffer, u32 len) {
   return orig_len - len;
 }
 
+int ringbuffer_isempty(const struct ringbuffer *rb) {
+  return (rb->write_ptr == rb->read_ptr);
+}
+
 void ringbuffer_free(struct ringbuffer *rb) {
   kfree(rb->buffer);
   rb->buffer = NULL;

@@ -3,6 +3,7 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <lib/buffered_write.h>
+#include <lib/ringbuffer.h>
 #include <lib/stack.h>
 #include <stddef.h>
 #include <typedefs.h>
@@ -40,8 +41,7 @@ struct TcpConnection {
   u16 outgoing_port;
 
   int unhandled_packet;
-
-  FIFO_FILE *data_file;
+  struct ringbuffer buffer;
 
   u32 seq;
   u32 ack;
