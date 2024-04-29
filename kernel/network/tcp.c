@@ -121,6 +121,10 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   send_ipv4_packet((ipv4_t){.d = con->outgoing_ip}, 6, send_buffer, send_len);
 }
 
+void tcp_close_connection(struct TcpConnection *con) {
+  tcp_send_empty_payload(con, FIN | ACK);
+}
+
 void tcp_send_ack(struct TcpConnection *con) {
   tcp_send_empty_payload(con, ACK);
 }
@@ -170,7 +174,6 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
   u8 flags = header->flags;
 
   u16 src_port = htons(n_src_port);
-  (void)src_port;
   u16 dst_port = htons(n_dst_port);
   u32 seq_num = htonl(n_seq_num);
   u32 ack_num = htonl(n_ack_num);
@@ -182,10 +185,12 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
     assert(con);
     con->ack = seq_num + 1;
     tcp_send_empty_payload(con, SYN | ACK);
+    con->seq++;
     return;
   }
 
-  struct TcpConnection *incoming_connection = tcp_find_connection(dst_port);
+  struct TcpConnection *incoming_connection =
+      tcp_find_connection(src_ip, src_port, dst_port);
   if (!incoming_connection) {
     kprintf("unable to find open port for incoming connection\n");
   }
@@ -214,8 +219,8 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
     u16 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
     if (tcp_payload_length > 0) {
       const u8 *tcp_payload = payload + header->data_offset * sizeof(u32);
-      u32 len = ringbuffer_write(&incoming_connection->buffer, tcp_payload,
-                                 tcp_payload_length);
+      u32 len = ringbuffer_write(&incoming_connection->incoming_buffer,
+                                 tcp_payload, tcp_payload_length);
       assert(len == tcp_payload_length);
       incoming_connection->ack += len;
       tcp_send_ack(incoming_connection);
@@ -224,6 +229,7 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
       incoming_connection->ack++;
 
       tcp_send_empty_payload(incoming_connection, FIN | ACK);
+      incoming_connection->seq++;
 
       incoming_connection->dead = 1; // FIXME: It should wait for a ACK
                                      // of the FIN before the connection

@@ -9,6 +9,14 @@
 #include <sched/scheduler.h>
 #include <socket.h>
 
+struct list open_tcp_connections;
+struct list open_tcp_listen;
+
+void global_socket_init(void) {
+  list_init(&open_tcp_connections);
+  list_init(&open_tcp_listen);
+}
+
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
 
 void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
@@ -18,44 +26,29 @@ void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
   ip->a[3] = i4;
 }
 
-struct TcpConnection *tcp_find_connection(u16 port) {
-  process_t *p = current_task;
-  p = p->next;
-  for (int i = 0; i < 100; i++, p = p->next) {
-    if (!p) {
-      p = ready_queue;
+struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
+                                          u16 dst_port) {
+  (void)src_ip;
+  for (int i = 0;; i++) {
+    struct TcpConnection *c;
+    if (!list_get(&open_tcp_connections, i, (void **)&c)) {
+      break;
     }
-    struct list *connections = &p->tcp_sockets;
-    for (int i = 0;; i++) {
-      struct TcpConnection *c;
-      if (!list_get(connections, i, (void **)&c)) {
-        break;
-      }
-      if (c->incoming_port == port) {
-        return c;
-      }
+    if (c->incoming_port == dst_port && c->outgoing_port == src_port) {
+      return c;
     }
   }
   return NULL;
 }
 
 struct TcpListen *tcp_find_listen(u16 port) {
-  process_t *p = current_task;
-  process_t *s = p;
-  p = p->next;
-  for (; p != s; p = p->next) {
-    if (!p) {
-      p = ready_queue;
+  for (int i = 0;; i++) {
+    struct TcpListen *c;
+    if (!list_get(&open_tcp_listen, i, (void **)&c)) {
+      break;
     }
-    struct list *listen_list = &p->tcp_listen;
-    for (int i = 0;; i++) {
-      struct TcpListen *c;
-      if (!list_get(listen_list, i, (void **)&c)) {
-        break;
-      }
-      if (c->port == port) {
-        return c;
-      }
+    if (c->port == port) {
+      return c;
     }
   }
   return NULL;
@@ -71,134 +64,125 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
   struct TcpConnection *con = kcalloc(1, sizeof(struct TcpConnection));
 
   int connection_id;
-  struct list *connections = &current_task->tcp_sockets;
-  list_add(connections, con, &connection_id);
+  list_add(&open_tcp_connections, con, &connection_id);
 
   con->outgoing_ip = src_ip;
   con->outgoing_port = src_port;
-  //  con->incoming_ip = dst_ip;
-  con->incoming_port = dst_port; // FIXME: Should be different for each
-                                 // connection
+  con->incoming_ip = dst_ip;
+  con->incoming_port = dst_port;
 
-  ringbuffer_init(&con->buffer, 8192);
-  stack_push(&listen->incoming_connections, (void *)connection_id);
+  ringbuffer_init(&con->incoming_buffer, 8192);
+  ringbuffer_init(&con->outgoing_buffer, 8192);
+  stack_push(&listen->incoming_connections, con);
   return con;
 }
 
-u32 tcp_listen_ipv4(u32 ip, u16 port, int *error) {
-  *error = 0;
-
-  struct TcpListen *listener = kcalloc(1, sizeof(struct TcpListen));
-  listener->ip = ip;
-  listener->port = port;
-  stack_init(&listener->incoming_connections);
-
-  struct list *listen_list = &current_task->tcp_listen;
-  int index;
-  list_add(listen_list, listener, &index);
-  return index;
-}
-
-struct TcpConnection *tcp_get_connection(u32 socket, process_t *p) {
-  if (!p) {
-    p = current_task;
+int tcp_sync_buffer(vfs_fd_t *fd) {
+  struct TcpConnection *con = fd->inode->internal_object;
+  assert(con);
+  if (con->dead) {
+    return -EBADF; // TODO: Check if this is correct.
   }
-  const struct list *connections = &p->tcp_sockets;
-  struct TcpConnection *con;
-  if (!list_get(connections, socket, (void **)&con)) {
-    return NULL;
-  }
-  return con;
-}
 
-u32 tcp_accept(u32 listen_socket, int *error) {
-  *error = 0;
-  struct list *listen_list = &current_task->tcp_listen;
-  struct TcpListen *l;
-  if (!list_get(listen_list, listen_socket, (void **)&l)) {
-    *error = 1;
+  struct ringbuffer *rb = &con->outgoing_buffer;
+  u32 send_buffer_len = ringbuffer_used(rb);
+  if (0 == send_buffer_len) {
     return 0;
   }
-  for (;;) {
-    // TODO: halt the process
-    if (NULL != l->incoming_connections.head) {
-      void *out = stack_pop(&l->incoming_connections);
-      return (u32)out; // TODO: Should a pointer store a u32?
-    }
-  }
-  ASSERT_NOT_REACHED;
+  char *send_buffer = kmalloc(send_buffer_len);
+  assert(ringbuffer_read(rb, send_buffer, send_buffer_len) == send_buffer_len);
+  send_tcp_packet(con, send_buffer, send_buffer_len);
+  kfree(send_buffer);
+  return 0;
 }
 
-u32 tcp_connect_ipv4(u32 ip, u16 port, int *error) {
-  struct list *connections = &current_task->tcp_sockets;
-  *error = 0;
+void tcp_close(vfs_fd_t *fd) {
+  struct TcpConnection *con = fd->inode->internal_object;
 
+  tcp_sync_buffer(fd);
+
+  tcp_close_connection(con);
+}
+
+int tcp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  struct TcpConnection *con = fd->inode->internal_object;
+  assert(con);
+  if (con->dead) {
+    return -EBADF; // TODO: Check if this is correct.
+  }
+
+  u32 rc = ringbuffer_read(&con->incoming_buffer, buffer, len);
+  if (0 == rc && len > 0) {
+    return -EWOULDBLOCK;
+  }
+  return rc;
+}
+
+int tcp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  (void)offset;
+  struct TcpConnection *con = fd->inode->internal_object;
+  assert(con);
+  if (con->dead) {
+    return -EBADF; // TODO: Check if this is correct.
+  }
+
+  struct ringbuffer *rb = &con->outgoing_buffer;
+  if (ringbuffer_unused(rb) < len) {
+    tcp_sync_buffer(fd);
+    send_tcp_packet(con, buffer, len);
+    len = 0;
+  } else {
+    assert(ringbuffer_write(rb, buffer, len) == len);
+  }
+  return len;
+}
+
+int tcp_has_data(vfs_inode_t *inode) {
+  struct TcpConnection *con = inode->internal_object;
+  return !(ringbuffer_isempty(&con->incoming_buffer));
+}
+
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+  vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
+  assert(fd);
+
+  if (fd->inode->internal_object) {
+    return -EISCONN;
+  }
+
+  assert(AF_INET == addr->sa_family);
+  const struct sockaddr_in *in_addr = (const struct sockaddr_in *)addr;
   struct TcpConnection *con = kcalloc(1, sizeof(struct TcpConnection));
-  int index;
-  list_add(connections, con, &index);
+  if (!con) {
+    return -ENOMEM;
+  }
 
   con->incoming_port = 1337; // TODO
-  con->outgoing_ip = ip;
-  con->outgoing_port = port;
+  con->outgoing_ip = in_addr->sin_addr.s_addr;
+  con->outgoing_port = in_addr->sin_port;
 
-  ringbuffer_init(&con->buffer, 8192);
+  ringbuffer_init(&con->incoming_buffer, 8192);
+  ringbuffer_init(&con->outgoing_buffer, 8192);
+  list_add(&open_tcp_connections, con, NULL);
 
   tcp_send_syn(con);
 
   for (;;) {
     tcp_wait_reply(con);
     if (con->dead) { // Port is probably closed
-      *error = 1;
-      return 0;
+      return -ECONNREFUSED;
     }
     if (0 != con->handshake_state) {
       break;
     }
   }
 
-  return index;
-}
-
-int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out) {
-  if (out) {
-    *out = 0;
-  }
-  struct TcpConnection *con = tcp_get_connection(socket, NULL);
-  if (!con) {
-    return 0;
-  }
-  if (con->dead) {
-    return 0;
-  }
-
-  send_tcp_packet(con, buffer, len);
-  if (out) {
-    *out = len;
-  }
-  return 1;
-}
-
-int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
-  if (out) {
-    *out = 0;
-  }
-  struct TcpConnection *con = tcp_get_connection(socket, NULL);
-  if (!con) {
-    return 0;
-  }
-  if (con->dead) {
-    return 0;
-  }
-
-  u32 len = ringbuffer_read(&con->buffer, buffer, buffer_size);
-  if (out) {
-    *out = len;
-  }
-  return 1;
-}
-
-void tcp_close(u32 socket) {
-  assert(NULL);
+  fd->inode->_has_data = tcp_has_data;
+  fd->inode->write = tcp_write;
+  fd->inode->read = tcp_read;
+  fd->inode->close = tcp_close;
+  fd->inode->internal_object = con;
+  return 0;
 }
 
 int uds_open(const char *path) {
@@ -238,6 +222,12 @@ int uds_open(const char *path) {
   return fd[0];
 }
 
+int tcp_listen_has_data(vfs_inode_t *inode) {
+  const SOCKET *s = (SOCKET *)inode->internal_object;
+  const struct TcpListen *tcp_listen = s->object;
+  return !stack_isempty(&tcp_listen->incoming_connections);
+}
+
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   (void)address;
   (void)address_len;
@@ -245,25 +235,50 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   assert(fd_ptr);
   vfs_inode_t *inode = fd_ptr->inode;
   SOCKET *s = (SOCKET *)inode->internal_object;
+  if (AF_UNIX == s->domain) {
+    for (; NULL == s->incoming_fd;) {
+      // Wait until we have gotten a connection
+      struct pollfd fds[1];
+      fds[0].fd = socket;
+      fds[0].events = POLLIN;
+      fds[0].revents = 0;
+      poll(fds, 1, 0);
+    }
 
-  for (; NULL == s->incoming_fd;) {
-    // Wait until we have gotten a connection
-    struct pollfd fds[1];
-    fds[0].fd = socket;
-    fds[0].events = POLLIN;
-    fds[0].revents = 0;
-    poll(fds, 1, 0);
+    int index;
+    assert(relist_add(&current_task->file_descriptors, s->incoming_fd, &index));
+    assert(1 <= s->incoming_fd->reference_count);
+    s->incoming_fd = NULL;
+    return index;
   }
-
-  int index;
-  assert(relist_add(&current_task->file_descriptors, s->incoming_fd, &index));
-  assert(1 <= s->incoming_fd->reference_count);
-  s->incoming_fd = NULL;
-  //  for (char c; 0 < vfs_pread(s->fifo_fd, &c, 1, 0);)
-  //    ;
-  //  s->ptr_fifo_fd->inode->has_data = 0;
-
-  return index;
+  if (AF_INET == s->domain) {
+    struct TcpListen *tcp_listen = s->object;
+    assert(tcp_listen);
+    if (stack_isempty(&tcp_listen->incoming_connections)) {
+      if (fd_ptr->flags & O_NONBLOCK) {
+        return -EWOULDBLOCK;
+      }
+      struct pollfd fds[1];
+      fds[0].fd = socket;
+      fds[0].events = POLLIN;
+      fds[0].revents = 0;
+      poll(fds, 1, 0);
+    }
+    struct TcpConnection *connection =
+        stack_pop(&tcp_listen->incoming_connections);
+    assert(connection);
+    vfs_inode_t *inode = vfs_create_inode(
+        0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, tcp_has_data,
+        always_can_write, 1, connection, 0 /*file_size*/, NULL /*open*/,
+        NULL /*create_file*/, tcp_read, tcp_write,
+        tcp_close /*close*/, NULL /*create_directory*/,
+        NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
+        NULL /*send_signal*/);
+    assert(inode);
+    return vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, NULL);
+  }
+  ASSERT_NOT_REACHED;
+  return 0;
 }
 
 int bind_has_data(vfs_inode_t *inode) {
@@ -285,6 +300,9 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   vfs_inode_t *inode = fd->inode;
   if (!inode) {
     return -EBADF;
+  }
+  if (FS_TYPE_UNIX_SOCKET != inode->type) {
+    return -ENOTSOCK;
   }
   SOCKET *s = (SOCKET *)inode->internal_object;
   if (AF_UNIX == s->domain) {
@@ -310,8 +328,25 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     devfs_add_file(us->path, NULL, NULL, NULL, NULL, bind_can_write,
                    FS_TYPE_UNIX_SOCKET);
     return 0;
+  } else if (AF_INET == s->domain) {
+    struct sockaddr_in *in = (struct sockaddr_in *)addr;
+
+    struct TcpListen *tcp_listen = kmalloc(sizeof(struct TcpListen));
+    if (!tcp_listen) {
+      return -ENOMEM;
+    }
+    tcp_listen->ip = in->sin_addr.s_addr;
+    tcp_listen->port = ntohs(in->sin_port);
+    stack_init(&tcp_listen->incoming_connections);
+
+    s->object = tcp_listen;
+
+    inode->_has_data = tcp_listen_has_data;
+
+    list_add(&open_tcp_listen, tcp_listen, NULL);
+    return 0;
   }
-  return 0;
+  ASSERT_NOT_REACHED;
 }
 
 int socket_has_data(vfs_inode_t *inode) {
@@ -342,29 +377,68 @@ void socket_close(vfs_fd_t *fd) {
 }
 
 int socket(int domain, int type, int protocol) {
+  int rc = 0;
+  vfs_inode_t *inode = NULL;
+  SOCKET *new_socket = NULL;
   if (!(AF_UNIX == domain || AF_INET == domain)) {
-    return -EINVAL;
+    rc = -EINVAL;
+    goto socket_error;
   }
 
-  SOCKET *new_socket = kmalloc(sizeof(SOCKET));
-  vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, bind_has_data, socket_can_write,
-      1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
-      NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
-      socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
-
-  vfs_fd_t *fd;
-  int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
-
+  new_socket = kmalloc(sizeof(SOCKET));
+  if (!new_socket) {
+    rc = -ENOMEM;
+    goto socket_error;
+  }
   new_socket->domain = domain;
   new_socket->type = type;
   new_socket->protocol = protocol;
   new_socket->path = NULL;
   new_socket->incoming_fd = NULL;
+  if (AF_UNIX == domain) {
+    vfs_inode_t *inode = vfs_create_inode(
+        0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, bind_has_data, socket_can_write,
+        1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
+        NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
+        socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
+        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
+    if (!inode) {
+      rc = -ENOMEM;
+      goto socket_error;
+    }
 
-  new_socket->fifo_file = create_fifo_object();
+    vfs_fd_t *fd;
+    int n = vfs_create_fd(O_RDWR | O_NONBLOCK, 0, 0 /*is_tty*/, inode, &fd);
+    if (n < 0) {
+      rc = n;
+      goto socket_error;
+    }
 
-  new_socket->ptr_socket_fd = fd;
-  return n;
+    new_socket->fifo_file = create_fifo_object();
+
+    new_socket->ptr_socket_fd = fd;
+    return n;
+  }
+  if (AF_INET == domain) {
+    vfs_inode_t *inode = vfs_create_inode(
+        0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1,
+        new_socket, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, NULL,
+        NULL, NULL /*close*/, NULL /*create_directory*/, NULL /*get_vm_object*/,
+        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
+    if (!inode) {
+      rc = -ENOMEM;
+      goto socket_error;
+    }
+    int n = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, NULL);
+    if (n < 0) {
+      rc = n;
+      goto socket_error;
+    }
+    return n;
+  }
+  ASSERT_NOT_REACHED;
+socket_error:
+  kfree(inode);
+  kfree(new_socket);
+  return rc;
 }

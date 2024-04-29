@@ -7,6 +7,10 @@ void stack_init(struct stack *s) {
   s->head = NULL;
 }
 
+int stack_isempty(const struct stack *s) {
+  return (NULL == s->head);
+}
+
 // 1 = Success
 // 0 = Failure
 int stack_push(struct stack *s, void *data) {

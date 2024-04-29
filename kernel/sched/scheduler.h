@@ -68,9 +68,6 @@ struct Process {
   struct list write_list;
   struct list disconnect_list;
 
-  struct list tcp_sockets;
-  struct list tcp_listen;
-
   struct list event_queue;
 
   struct stack restore_context_stack;

@@ -16,6 +16,23 @@ int ringbuffer_init(struct ringbuffer *rb, u32 buffer_size) {
   return 1;
 }
 
+u32 ringbuffer_used(const struct ringbuffer *rb) {
+  if (rb->write_ptr < rb->read_ptr) {
+    u32 c = rb->buffer_size - rb->read_ptr;
+    c += rb->write_ptr;
+    return c;
+  }
+  return rb->write_ptr - rb->read_ptr;
+}
+
+u32 ringbuffer_capacity(const struct ringbuffer *rb) {
+  return rb->buffer_size - 1;
+}
+
+u32 ringbuffer_unused(const struct ringbuffer *rb) {
+  return ringbuffer_capacity(rb) - ringbuffer_used(rb);
+}
+
 u32 ringbuffer_write(struct ringbuffer *rb, const u8 *buffer, u32 len) {
   const u32 orig_len = len;
   for (; len > 0;) {

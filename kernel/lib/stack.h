@@ -13,6 +13,7 @@ struct stack {
 };
 
 void stack_init(struct stack *s);
+int stack_isempty(const struct stack *s);
 int stack_push(struct stack *s, void *data);
 void *stack_pop(struct stack *s);
 #endif

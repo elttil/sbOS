@@ -20,13 +20,6 @@
 #define MSG_WAITALL 1
 
 void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4);
-u32 tcp_connect_ipv4(u32 ip, u16 port, int *error);
-
-u32 tcp_listen_ipv4(u32 ip, u16 port, int *error);
-u32 tcp_accept(u32 listen_socket, int *error);
-
-int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out);
-int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out);
 
 struct TcpListen {
   u32 ip;
@@ -37,11 +30,13 @@ struct TcpListen {
 struct TcpConnection {
   int dead;
   u16 incoming_port;
+  u32 incoming_ip;
   u32 outgoing_ip;
   u16 outgoing_port;
 
   int unhandled_packet;
-  struct ringbuffer buffer;
+  struct ringbuffer incoming_buffer;
+  struct ringbuffer outgoing_buffer;
 
   u32 seq;
   u32 ack;
@@ -53,7 +48,8 @@ struct TcpConnection *tcp_get_connection(u32 socket, process_t *p);
 struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
                                             u32 dst_ip, u16 dst_port);
 
-struct TcpConnection *tcp_find_connection(u16 port);
+struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
+                                          u16 dst_port);
 
 typedef struct {
   vfs_fd_t *ptr_socket_fd;
@@ -67,6 +63,8 @@ typedef struct {
   // UNIX socket
   char *path;
   vfs_fd_t *incoming_fd;
+
+  void *object;
 } SOCKET;
 
 typedef struct {
@@ -115,4 +113,7 @@ struct INCOMING_TCP_CONNECTION *
 handle_incoming_tcp_connection(u8 ip[4], u16 n_port, u16 dst_port);
 struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
                                                             u16 n_port);
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+void global_socket_init(void);
+u16 tcp_get_free_port(void);
 #endif

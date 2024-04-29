@@ -13,6 +13,7 @@
 #define SIGKILL 9
 #define SIGFPE 10
 #define SIGTERM 15
+#define SIG_DFL 16
 
 typedef int pid_t;
 typedef int sigset_t;

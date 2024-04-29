@@ -140,49 +140,64 @@ int syscall_openpty(SYS_OPENPTY_PARAMS *args) {
                  args->winp);
 }
 
-u32 syscall_tcp_connect(u32 ip, u16 port, int *error) {
-  // TODO: Make sure error is a user address
-  return tcp_connect_ipv4(ip, port, error);
-}
-
-int syscall_tcp_write(u32 socket, const u8 *buffer, u32 len, u64 *out) {
-  // TODO: Make sure out is a user address
-  return tcp_write(socket, buffer, len, out);
-}
-
-int syscall_tcp_read(u32 socket, u8 *buffer, u32 buffer_size, u64 *out) {
-  // TODO: Make sure out is a user address
-  return tcp_read(socket, buffer, buffer_size, out);
+int syscall_connect(int sockfd, const struct sockaddr *addr,
+                    socklen_t addrlen) {
+  return connect(sockfd, addr, addrlen);
 }
 
 int (*syscall_functions[])() = {
-    (void(*))syscall_open,         (void(*))syscall_mread,
-    (void(*))syscall_write,        (void(*))syscall_pread,
-    (void(*))syscall_pwrite,       (void(*))syscall_fork,
-    (void(*))syscall_exec,         (void(*))syscall_getpid,
-    (void(*))syscall_exit,         (void(*))syscall_wait,
-    (void(*))syscall_brk,          (void(*))syscall_sbrk,
-    (void(*))syscall_pipe,         (void(*))syscall_dup2,
-    (void(*))syscall_close,        (void(*))syscall_openpty,
-    (void(*))syscall_poll,         (void(*))syscall_mmap,
-    (void(*))syscall_accept,       (void(*))syscall_bind,
-    (void(*))syscall_socket,       (void(*))syscall_shm_open,
-    (void(*))syscall_ftruncate,    (void(*))syscall_fstat,
-    (void(*))syscall_msleep,       (void(*))syscall_uptime,
-    (void(*))syscall_mkdir,        (void(*))syscall_recvfrom,
-    (void(*))syscall_sendto,       (void(*))syscall_kill,
-    (void(*))syscall_sigaction,    (void(*))syscall_chdir,
-    (void(*))syscall_getcwd,       (void(*))syscall_isatty,
-    (void(*))syscall_randomfill,   (void(*))syscall_outw,
-    (void(*))syscall_inl,          (void(*))syscall_outl,
-    (void(*))syscall_map_frames,   (void(*))syscall_virtual_to_physical,
-    (void(*))syscall_install_irq,  (void(*))syscall_tmp_handle_packet,
-    (void(*))syscall_tcp_connect,  (void(*))syscall_tcp_write,
-    (void(*))syscall_tcp_read,
-    (void(*))syscall_queue_create, (void(*))syscall_queue_add,
-    (void(*))syscall_queue_wait,   (void(*))syscall_munmap,
+    (void(*))syscall_open,
+    (void(*))syscall_mread,
+    (void(*))syscall_write,
+    (void(*))syscall_pread,
+    (void(*))syscall_pwrite,
+    (void(*))syscall_fork,
+    (void(*))syscall_exec,
+    (void(*))syscall_getpid,
+    (void(*))syscall_exit,
+    (void(*))syscall_wait,
+    (void(*))syscall_brk,
+    (void(*))syscall_sbrk,
+    (void(*))syscall_pipe,
+    (void(*))syscall_dup2,
+    (void(*))syscall_close,
+    (void(*))syscall_openpty,
+    (void(*))syscall_poll,
+    (void(*))syscall_mmap,
+    (void(*))syscall_accept,
+    (void(*))syscall_bind,
+    (void(*))syscall_socket,
+    (void(*))syscall_shm_open,
+    (void(*))syscall_ftruncate,
+    (void(*))syscall_fstat,
+    (void(*))syscall_msleep,
+    (void(*))syscall_uptime,
+    (void(*))syscall_mkdir,
+    (void(*))syscall_recvfrom,
+    (void(*))syscall_sendto,
+    (void(*))syscall_kill,
+    (void(*))syscall_sigaction,
+    (void(*))syscall_chdir,
+    (void(*))syscall_getcwd,
+    (void(*))syscall_isatty,
+    (void(*))syscall_randomfill,
+    (void(*))syscall_outw,
+    (void(*))syscall_inl,
+    (void(*))syscall_outl,
+    (void(*))syscall_map_frames,
+    (void(*))syscall_virtual_to_physical,
+    (void(*))syscall_install_irq,
+    (void(*))syscall_tmp_handle_packet,
+    (void(*))NULL,
+    (void(*))NULL,
+    (void(*))NULL,
+    (void(*))NULL,
+    (void(*))NULL,
+    (void(*))NULL,
+    (void(*))syscall_munmap,
     (void(*))syscall_open_process,
     (void(*))syscall_lseek,
+    (void(*))syscall_connect,
 };
 
 void int_syscall(reg_t *r);

@@ -7,7 +7,6 @@
 #include <errno.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
-#include <queue.h>
 #include <signal.h>
 
 // FIXME: Use the process_t struct instead or keep this contained in it.
@@ -160,11 +159,6 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   list_init(&r->write_list);
   list_init(&r->disconnect_list);
 
-  list_init(&r->tcp_sockets);
-  list_init(&r->tcp_listen);
-
-  list_init(&r->event_queue);
-
   if (esp) {
     esp -= 4;
     insert_eip_on_stack(r->cr3->physical_address, esp, eip);
@@ -209,9 +203,6 @@ void free_process(process_t *p) {
   list_free(&p->read_list);
   list_free(&p->write_list);
   list_free(&p->disconnect_list);
-  list_free(&p->tcp_sockets);
-  list_free(&p->tcp_listen);
-  list_free(&p->event_queue);
   relist_free(&p->file_descriptors);
   kfree(p->tcb);
 
@@ -426,28 +417,6 @@ int is_halted(process_t *process) {
     if (process->halts[i]) {
       return 1;
     }
-  }
-
-  int queue_block = 1;
-  int wait_empty = 1;
-  for (int i = 0;; i++) {
-    struct event_queue *q;
-    if (!list_get(&process->event_queue, i, (void **)&q)) {
-      break;
-    }
-    int is_empty;
-    int rc = queue_should_block(q, &is_empty);
-    if (is_empty) {
-      wait_empty = 0;
-      continue;
-    }
-    if (0 == rc) {
-      queue_block = 0;
-    }
-  }
-  if (!queue_block && !wait_empty) {
-    kprintf("skip because queue_wait has data\n");
-    return 0;
   }
 
   int fd_empty;

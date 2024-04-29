@@ -59,6 +59,7 @@
 #define SYS_MUNMAP 48
 #define SYS_OPEN_PROCESS 49
 #define SYS_LSEEK 50
+#define SYS_CONNECT 51
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

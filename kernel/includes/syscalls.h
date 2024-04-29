@@ -1,5 +1,4 @@
 #include <fs/vfs.h>
-#include <queue.h>
 #include <signal.h>
 #include <socket.h>
 #include <stddef.h>
@@ -12,10 +11,6 @@ void syscall_outw(u16 port, u16 word);
 u32 syscall_inl(u16 port);
 void syscall_outl(u16 port, u32 l);
 int syscall_open_process(int pid);
-
-int syscall_queue_create(u32 *id);
-int syscall_queue_add(u32 queue_id, struct event *ev, u32 size);
-int syscall_queue_wait(u32 queue_id);
 
 int syscall_ipc_register_endpoint(u32 endpoint);
 int syscall_ipc_read(u8 *buffer, u32 length, u32 *sender_pid);

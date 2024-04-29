@@ -340,7 +340,7 @@ int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
     return -EBADF;
   }
   int rc = raw_vfs_pread(vfs_fd, buf, count, offset);
-  if (-EAGAIN == rc && count > 0) {
+  if ((-EAGAIN == rc || -EWOULDBLOCK == rc) && count > 0) {
     if (!(vfs_fd->flags & O_NONBLOCK) && blocking) {
       struct pollfd fds;
       do {

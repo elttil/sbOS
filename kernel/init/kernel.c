@@ -85,6 +85,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   install_keyboard();
   klog("PS2 Keyboard driver installed", LOG_SUCCESS);
 
+global_socket_init();
+
   vfs_mount("/dev", devfs_mount());
   assert(ahci_init());
   vfs_inode_t *ext2_mount_point = ext2_mount();

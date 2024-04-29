@@ -8,3 +8,4 @@ size_t recvfrom(int socket, void *buffer, size_t length, int flags,
 size_t sendto(int socket, const void *message, size_t length, int flags,
                const struct sockaddr *dest_addr, socklen_t dest_len);
 int listen(int socket, int backlog);
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);

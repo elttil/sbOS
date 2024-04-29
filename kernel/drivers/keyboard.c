@@ -5,9 +5,9 @@
 #include <fs/devfs.h>
 #include <fs/fifo.h>
 #include <fs/vfs.h>
+#include <lib/ringbuffer.h>
 #include <sched/scheduler.h>
 #include <typedefs.h>
-#include <lib/ringbuffer.h>
 
 #define PS2_REG_DATA 0x60
 #define PS2_REG_STATUS 0x64
