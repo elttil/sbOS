@@ -1,5 +1,6 @@
 #include "sb.h"
 #include "sv.h"
+#include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -7,12 +8,12 @@
 #include <math.h>
 #include <poll.h>
 #include <pty.h>
-#include <socket.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <syscall.h>
 #include <unistd.h>
 
@@ -48,18 +49,6 @@ void irc_add_message(struct irc_server *server, struct sv channel_name,
 void irc_add_message_to_channel(struct irc_channel *chan, struct sv sender,
                                 struct sv msg_text);
 
-u32 tcp_connect_ipv4(u32 ip, u16 port, int *err) {
-  return (u32)syscall(SYS_TCP_CONNECT, ip, port, err, 0, 0);
-}
-
-int tcp_write(u32 socket, const u8 *buffer, u64 len, u64 *out) {
-  return (int)syscall(SYS_TCP_WRITE, socket, buffer, len, out, 0);
-}
-
-int tcp_read(u32 socket, u8 *buffer, u64 buffer_size, u64 *out) {
-  return (int)syscall(SYS_TCP_READ, socket, buffer, buffer_size, out, 0);
-}
-
 u32 gen_ipv4(u8 i1, u8 i2, u8 i3, u8 i4) {
   return i4 << (32 - 8) | i3 << (32 - 16) | i2 << (32 - 24) | i1 << (32 - 32);
 }
@@ -69,25 +58,13 @@ struct event {
   u32 internal_id;
 };
 
-int queue_create(u32 *id) {
-  return (int)syscall(SYS_QUEUE_CREATE, id, 0, 0, 0, 0);
-}
-
-int queue_add(u32 queue_id, struct event *ev, u32 size) {
-  return (int)syscall(SYS_QUEUE_ADD, queue_id, ev, size, 0, 0);
-}
-
-int queue_wait(u32 queue_id) {
-  return (int)syscall(SYS_QUEUE_WAIT, queue_id, 0, 0, 0, 0);
-}
-
-int tcp_fmt(u32 socket, const char *fmt, ...) {
+int tcp_fmt(int socket, const char *fmt, ...) {
   va_list ap;
   char cmd_str[512];
   va_start(ap, fmt);
   int rc = vsnprintf(cmd_str, 512, fmt, ap);
   va_end(ap);
-  return tcp_write(socket, (u8 *)cmd_str, rc, NULL);
+  return write(socket, cmd_str, rc);
 }
 
 int message_pos_x = 0;
@@ -228,7 +205,7 @@ void handle_msg(struct irc_server *server, struct sv msg) {
     sb_free(&join_message);
   }
   HANDLE_CMD(C_TO_SV("PING")) {
-    tcp_write(server->socket, "PONG", 4, NULL);
+    write(server->socket, "PONG", 4);
   }
   HANDLE_CMD(C_TO_SV("PRIVMSG")) {
     struct sv channel = sv_split_delim(command_parameters, &msg, ' ');
@@ -296,7 +273,7 @@ void send_message(struct irc_server *server, struct irc_channel *chan,
     // TODO I am too lazy to add functionality to split msg right now
     assert(0);
   }
-  tcp_write(server->socket, s.string, s.length, NULL);
+  write(server->socket, s.string, s.length);
   irc_add_message(server, chan->name, server_nick, msg);
   sb_free(&s);
 }
@@ -412,12 +389,31 @@ void irc_add_message(struct irc_server *server, struct sv channel_name,
 }
 
 int irc_connect_server(struct irc_server *server, u32 ip, u16 port) {
-  int err;
-  u32 socket = tcp_connect_ipv4(ip, port, &err);
-  if (err) {
+  (void)ip;
+  struct sockaddr_in servaddr;
+  int fd = socket(AF_INET, SOCK_STREAM, 0);
+  if (fd < 0) {
+    perror("socket");
     return 0;
   }
-  server->socket = socket;
+
+  memset(&servaddr, 0, sizeof(servaddr));
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.a[0] = 10;
+  servaddr.sin_addr.a[1] = 0;
+  servaddr.sin_addr.a[2] = 2;
+  servaddr.sin_addr.a[3] = 2;
+  servaddr.sin_port = htons(port);
+
+  if (connect(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+    perror("connect");
+    return 0;
+  }
+  int flag = 1;
+  assert(0 ==
+         setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)));
+
+  server->socket = fd;
   irc_add_channel(server, C_TO_SV("*"));
   server->channels[0].can_send_message = 0;
   return 1;
@@ -428,13 +424,11 @@ void refresh_screen(void) {
 }
 
 int main(void) {
-  u32 id;
-  queue_create(&id);
+  struct pollfd fds[2];
 
-  struct event fd_ev;
-  fd_ev.type = 0;
-  fd_ev.internal_id = 0;
-  queue_add(id, &fd_ev, 1);
+  fds[0].fd = 0;
+  fds[0].events = POLLIN;
+  fds[0].revents = 0;
 
   u32 ip = gen_ipv4(10, 0, 2, 2);
   struct irc_server server_ctx;
@@ -453,10 +447,9 @@ int main(void) {
   assert(tcp_fmt(server_ctx.socket, "USER %s * * :%s\n", nick, realname));
   irc_join_channel(&server_ctx, "#secretclub");
 
-  struct event socket_ev;
-  socket_ev.type = 1;
-  socket_ev.internal_id = server_ctx.socket;
-  queue_add(id, &socket_ev, 1);
+  fds[1].fd = server_ctx.socket;
+  fds[1].events = POLLIN;
+  fds[1].revents = 0;
 
   struct sb your_msg;
   sb_init(&your_msg);
@@ -465,7 +458,7 @@ int main(void) {
   u32 msg_usage = 0;
 
   for (;;) {
-    queue_wait(id);
+    poll(fds, 2, 0);
     {
       char buffer[4096];
       int rc = mread(0, buffer, 4096, 0);
@@ -518,13 +511,13 @@ int main(void) {
       }
     }
     {
-      u64 out;
       char buffer[4096];
-      if (!tcp_read(server_ctx.socket, buffer, 4096, &out)) {
+      int rc = mread(server_ctx.socket, buffer, 4096, 0);
+      if (rc < 0) {
         continue;
       }
 
-      for (u64 i = 0; i < out; i++) {
+      for (int i = 0; i < rc; i++) {
         assert(msg_usage < 512);
         if ('\n' == buffer[i] && i > 1 && '\r' == buffer[i - 1]) {
           handle_msg(&server_ctx, (struct sv){

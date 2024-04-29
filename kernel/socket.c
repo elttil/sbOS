@@ -8,6 +8,7 @@
 #include <poll.h>
 #include <sched/scheduler.h>
 #include <socket.h>
+#include <sys/socket.h>
 
 struct list open_tcp_connections;
 struct list open_tcp_listen;
@@ -70,6 +71,7 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
   con->outgoing_port = src_port;
   con->incoming_ip = dst_ip;
   con->incoming_port = dst_port;
+  con->no_delay = 0;
 
   ringbuffer_init(&con->incoming_buffer, 8192);
   ringbuffer_init(&con->outgoing_buffer, 8192);
@@ -126,6 +128,11 @@ int tcp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     return -EBADF; // TODO: Check if this is correct.
   }
 
+  if (con->no_delay) {
+    send_tcp_packet(con, buffer, len);
+    return len;
+  }
+
   struct ringbuffer *rb = &con->outgoing_buffer;
   if (ringbuffer_unused(rb) < len) {
     tcp_sync_buffer(fd);
@@ -144,10 +151,8 @@ int tcp_has_data(vfs_inode_t *inode) {
 
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
-  assert(fd);
-
-  if (fd->inode->internal_object) {
-    return -EISCONN;
+  if (!fd) {
+    return -EBADF;
   }
 
   assert(AF_INET == addr->sa_family);
@@ -159,7 +164,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
   con->incoming_port = 1337; // TODO
   con->outgoing_ip = in_addr->sin_addr.s_addr;
-  con->outgoing_port = in_addr->sin_port;
+  con->outgoing_port = ntohs(in_addr->sin_port);
 
   ringbuffer_init(&con->incoming_buffer, 8192);
   ringbuffer_init(&con->outgoing_buffer, 8192);
@@ -183,6 +188,35 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   fd->inode->close = tcp_close;
   fd->inode->internal_object = con;
   return 0;
+}
+
+int setsockopt(int socket, int level, int option_name, const void *option_value,
+               socklen_t option_len) {
+  vfs_fd_t *fd = get_vfs_fd(socket, NULL);
+  if (!fd) {
+    return -EBADF;
+  }
+  // TODO: Check that it is actually a TCP socket
+  if (IPPROTO_TCP == level) {
+    struct TcpConnection *tcp_connection = fd->inode->internal_object;
+    switch (option_name) {
+    case TCP_NODELAY: {
+      if (sizeof(int) != option_len) {
+        return -EINVAL;
+      }
+      if (!mmu_is_valid_userpointer(option_value, option_len)) {
+        return -EPERM; // TODO: Check if this is correct
+      }
+      int value = *(int *)option_value;
+      tcp_connection->no_delay = value;
+    } break;
+    default:
+      return -ENOPROTOOPT;
+      break;
+    }
+    return 0;
+  }
+  return -ENOPROTOOPT;
 }
 
 int uds_open(const char *path) {
@@ -268,10 +302,9 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
         stack_pop(&tcp_listen->incoming_connections);
     assert(connection);
     vfs_inode_t *inode = vfs_create_inode(
-        0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, tcp_has_data,
-        always_can_write, 1, connection, 0 /*file_size*/, NULL /*open*/,
-        NULL /*create_file*/, tcp_read, tcp_write,
-        tcp_close /*close*/, NULL /*create_directory*/,
+        0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, tcp_has_data, always_can_write, 1,
+        connection, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
+        tcp_read, tcp_write, tcp_close /*close*/, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
         NULL /*send_signal*/);
     assert(inode);

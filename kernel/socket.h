@@ -38,6 +38,8 @@ struct TcpConnection {
   struct ringbuffer incoming_buffer;
   struct ringbuffer outgoing_buffer;
 
+  int no_delay;
+
   u32 seq;
   u32 ack;
 
@@ -116,4 +118,6 @@ struct INCOMING_TCP_CONNECTION *get_incoming_tcp_connection(u8 ip[4],
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 void global_socket_init(void);
 u16 tcp_get_free_port(void);
+int setsockopt(int socket, int level, int option_name, const void *option_value,
+               socklen_t option_len);
 #endif

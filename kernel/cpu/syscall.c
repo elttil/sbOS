@@ -145,6 +145,11 @@ int syscall_connect(int sockfd, const struct sockaddr *addr,
   return connect(sockfd, addr, addrlen);
 }
 
+int syscall_setsockopt(int socket, int level, int option_name,
+                       const void *option_value, socklen_t option_len) {
+  return setsockopt(socket, level, option_name, option_value, option_len);
+}
+
 int (*syscall_functions[])() = {
     (void(*))syscall_open,
     (void(*))syscall_mread,
@@ -198,6 +203,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_open_process,
     (void(*))syscall_lseek,
     (void(*))syscall_connect,
+    (void(*))syscall_setsockopt,
 };
 
 void int_syscall(reg_t *r);

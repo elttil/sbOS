@@ -1,5 +1,5 @@
-#ifndef SOCKET_H
-#define SOCKET_H
+#ifndef SYS_SOCKET_H
+#define SYS_SOCKET_H
 #include <stddef.h>
 #include <stdint.h>
 
@@ -9,8 +9,14 @@
 
 #define SOCK_DGRAM 0
 #define SOCK_STREAM 1
+#define MSG_WAITALL 1
 
 #define INADDR_ANY 0
+
+#define IPPROTO_TCP 0
+#define TCP_NODELAY 0
+
+#ifndef KERNEL
 
 typedef struct {
   int domain;
@@ -54,4 +60,13 @@ struct sockaddr_un {
 int socket(int domain, int type, int protocol);
 int accept(int socket, struct sockaddr *address, socklen_t *address_len);
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
-#endif // SOCKET_H
+size_t recvfrom(int socket, void *buffer, size_t length, int flags,
+                struct sockaddr *address, socklen_t *address_len);
+size_t sendto(int socket, const void *message, size_t length, int flags,
+              const struct sockaddr *dest_addr, socklen_t dest_len);
+int listen(int socket, int backlog);
+int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+int setsockopt(int socket, int level, int option_name, const void *option_value,
+               socklen_t option_len);
+#endif // KERNEL
+#endif // SYS_SOCKET_H

@@ -1,8 +1,8 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
-#include "socket.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #define SYS_OPEN 0
@@ -60,6 +60,7 @@
 #define SYS_OPEN_PROCESS 49
 #define SYS_LSEEK 50
 #define SYS_CONNECT 51
+#define SYS_SETSOCKOPT 52
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);
