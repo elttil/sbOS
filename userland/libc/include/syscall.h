@@ -49,18 +49,11 @@
 #define SYS_INSTALL_IRQ 40
 #define SYS_TMP_KERNEL_HANDLE_PACKET 41
 
-#define SYS_TCP_CONNECT 42
-#define SYS_TCP_WRITE 43
-#define SYS_TCP_READ 44
-
-#define SYS_QUEUE_CREATE 45
-#define SYS_QUEUE_ADD 46
-#define SYS_QUEUE_WAIT 47
-#define SYS_MUNMAP 48
-#define SYS_OPEN_PROCESS 49
-#define SYS_LSEEK 50
-#define SYS_CONNECT 51
-#define SYS_SETSOCKOPT 52
+#define SYS_MUNMAP 42
+#define SYS_OPEN_PROCESS 43
+#define SYS_LSEEK 44
+#define SYS_CONNECT 45
+#define SYS_SETSOCKOPT 46
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);
