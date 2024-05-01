@@ -86,7 +86,7 @@ u8 capital_ascii_table[] = {
     ' ', // ;
 };
 
-vfs_inode_t *kb_inode;
+vfs_inode_t *kb_inode = NULL;
 
 u8 keyboard_to_ascii(u16 key, u8 capital) {
   if ((key & 0xFF) > sizeof(ascii_table)) {
@@ -112,9 +112,12 @@ struct KEY_EVENT {
 extern process_t *ready_queue;
 
 void int_keyboard(reg_t *frame) {
-  outb(0x20, 0x20);
   u16 c;
   c = inb(PS2_REG_DATA);
+  outb(0x20, 0x20);
+  if (!kb_inode) {
+    return;
+  }
   int released = 0;
   if (c & 0x80) {
     switch ((c & ~(0x80)) & 0xFF) {
