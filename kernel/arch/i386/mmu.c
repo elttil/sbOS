@@ -70,6 +70,7 @@ void *ksbrk(size_t s) {
                                          (data_end - (uintptr_t)rc))) {
     return (void *)-1;
   }
+  get_fast_insecure_random(rc, s);
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
   return (void *)rc;
 }
@@ -182,6 +183,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
                        u32 *physical_address) {
   PageTable *new_table =
       kmalloc_align(sizeof(PageTable), (void **)physical_address);
+  memset(new_table, 0, sizeof(PageTable));
   if (!new_table) {
     return NULL;
   }
@@ -251,6 +253,7 @@ PageDirectory *clone_directory(PageDirectory *original) {
   u32 physical_address;
   PageDirectory *new_directory =
       kmalloc_align(sizeof(PageDirectory), (void **)&physical_address);
+  memset(new_directory, 0, sizeof(PageDirectory));
   if (!new_directory) {
     return NULL;
   }
