@@ -75,7 +75,8 @@ u16 tcp_checksum(u16 *buffer, int size) {
 
 void tcp_calculate_checksum(ipv4_t src_ip, u32 dst_ip, const u8 *payload,
                             u16 payload_length, struct TCP_HEADER *header) {
-  struct PSEUDO_TCP_HEADER ps = {0};
+  struct PSEUDO_TCP_HEADER ps;
+  memset(&ps, 0, sizeof(ps));
   memcpy(&ps.src_addr, &src_ip.d, sizeof(u32));
   memcpy(&ps.dst_addr, &dst_ip, sizeof(u32));
   ps.protocol = 6;
@@ -89,7 +90,6 @@ void tcp_calculate_checksum(ipv4_t src_ip, u32 dst_ip, const u8 *payload,
   ps.flags = header->flags;
   ps.window_size = header->window_size;
   ps.urgent_pointer = header->urgent_pointer;
-  //  ps.options = 0;
   int buffer_length = sizeof(ps) + payload_length;
   u8 buffer[buffer_length];
   memcpy(buffer, &ps, sizeof(ps));
