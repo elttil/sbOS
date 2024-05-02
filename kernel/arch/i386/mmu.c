@@ -157,6 +157,9 @@ int get_free_frame(u32 *frame) {
 
 int write_to_frame(u32 frame_address, u8 on) {
   u32 frame = frame_address / 0x1000;
+    if (INDEX_FROM_BIT(frame) >= num_array_frames) {
+      return 0;
+    }
   if (on) {
     int frame_is_used = (0 != (tmp_small_frames[INDEX_FROM_BIT(frame)] &
                                ((u32)0x1 << OFFSET_FROM_BIT(frame))));
