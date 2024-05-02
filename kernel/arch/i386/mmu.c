@@ -221,7 +221,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
 
     // Link the table to the new table temporarily
     src_directory->tables[i] = new_table;
-    src_directory->physical_tables[i] = *physical_address | 0x7;
+    src_directory->physical_tables[i] = *physical_address | 0x3;
     PageDirectory *tmp = get_active_pagedirectory();
     switch_page_directory(src_directory);
 
@@ -315,6 +315,7 @@ int mmu_allocate_shared_kernel_region(void *rc, size_t n) {
       }
     }
   }
+  flush_tlb();
   return 1;
 mmu_allocate_shared_kernel_region_error:
   mmu_free_address_range(rc, n, NULL);
