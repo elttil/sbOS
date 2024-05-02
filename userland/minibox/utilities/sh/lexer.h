@@ -1,6 +1,7 @@
 #ifndef LEXER_H
 #define LEXER_H
 #include <stddef.h>
+#include <tb/sv.h>
 
 typedef enum {
   TOKEN_CHARS,
@@ -14,11 +15,11 @@ typedef enum {
 
 struct TOKEN {
   token_type_t type;
-  char string_rep[256];
+  struct sv string_rep;
   struct TOKEN *next;
 };
 
-struct TOKEN *lex(const char *code);
+struct TOKEN *lex(struct sv code);
 struct AST *generate_ast(struct TOKEN *token);
 void free_tokens(struct TOKEN *token);
 #endif // LEXER_H

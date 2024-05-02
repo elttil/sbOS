@@ -10,13 +10,13 @@
 int execute_command(struct AST *ast, int input_fd);
 
 int execute_binary(struct AST *ast, int input_fd) {
-  char *program = ast->val.string;
+  char *program = SV_TO_C(ast->val.string);
   struct AST *child = ast->children;
   char *argv[100];
   argv[0] = program;
   int i = 1;
   for (; child; i++, child = child->next) {
-    argv[i] = child->val.string;
+    argv[i] = SV_TO_C(child->val.string);
   }
   argv[i] = NULL;
 
@@ -25,11 +25,12 @@ int execute_binary(struct AST *ast, int input_fd) {
   int slave_input = -1;
 
   int file_out_fd;
-  if (ast->file_out) {
-    file_out_fd =
-        open(ast->file_out,
-             O_WRONLY | O_CREAT | ((ast->file_out_append) ? O_APPEND : O_TRUNC),
-             0666);
+  if (!sv_isempty(ast->file_out)) {
+    char *tmp = SV_TO_C(ast->file_out);
+    file_out_fd = open(
+        tmp, O_WRONLY | O_CREAT | ((ast->file_out_append) ? O_APPEND : O_TRUNC),
+        0666);
+    free(tmp);
   }
 
   if (ast->pipe_rhs) {
@@ -41,19 +42,27 @@ int execute_binary(struct AST *ast, int input_fd) {
 
   int pid = fork();
   if (0 == pid) {
-    if (slave_input >= 0)
+    if (slave_input >= 0) {
       close(slave_input);
+    }
     dup2(in, STDIN_FILENO);
     dup2(out, STDOUT_FILENO);
-    if (ast->file_out)
+    if (!sv_isempty(ast->file_out)) {
       dup2(file_out_fd, ast->file_out_fd_to_use);
+    }
 
     execvp(program, argv);
     perror("execvp");
     exit(1);
   }
-  if (ast->file_out)
+
+  for (int j = 0; j < i; j++) {
+    free(argv[j]);
+  }
+
+  if (!sv_isempty(ast->file_out)) {
     close(file_out_fd);
+  }
 
   if (ast->pipe_rhs) {
     if (out >= 0)
@@ -67,15 +76,18 @@ int execute_binary(struct AST *ast, int input_fd) {
 }
 
 int execute_command(struct AST *ast, int input_fd) {
-  char *program = ast->val.string;
-  if (0 == strcmp(program, "cd")) {
+  struct sv program = ast->val.string;
+  if (sv_eq(program, C_TO_SV("cd"))) {
     struct AST *child = ast->children;
-    char *directory;
-    if (!child)
-      directory = "~";
-    else
+    struct sv directory;
+    if (!child) {
+      directory = C_TO_SV("~");
+    } else {
       directory = child->val.string;
-    int rc = chdir(directory);
+    }
+    char *dir = SV_TO_C(directory);
+    int rc = chdir(dir);
+    free(dir);
     if (-1 == rc) {
       perror("cd");
       return 1;
@@ -107,34 +119,29 @@ void execute_ast(struct AST *ast) {
   }
 }
 
-char *get_line(void) {
-  char *str = malloc(1024);
-  char *p = str;
+void get_line(struct sb *s) {
   int rc;
   for (;;) {
-    if (0 == (rc = read(0, p, 1))) {
+    char c;
+    if (0 == (rc = read(0, &c, 1))) {
       continue;
     }
     if (0 > rc) {
       perror("read");
       continue;
     }
-    if (8 == *p) {
-      if (p == str)
-        continue;
-      putchar(*p);
-      p--;
+    if ('\b' == c) {
+      if (sb_delete_right(s, 1) > 0) {
+        putchar('\b');
+      }
       continue;
     }
-    putchar(*p);
-    if ('\n' == *p) {
+    sb_append_char(s, c);
+    putchar(c);
+    if ('\n' == c) {
       break;
     }
-    p++;
   }
-  p++;
-  *p = '\0';
-  return str;
 }
 
 int sh_main(int argc, char **argv) {
@@ -143,15 +150,17 @@ int sh_main(int argc, char **argv) {
   for (;;) {
     char buffer[256];
     printf("%s : ", getcwd(buffer, 256));
-    char *line = get_line();
+    struct sb line;
+    sb_init(&line);
+    get_line(&line);
     {
-      struct TOKEN *h = lex(line);
+      struct TOKEN *h = lex(SB_TO_SV(line));
       struct AST *ast_h = generate_ast(h);
       execute_ast(ast_h);
       free_tokens(h);
       free_ast(ast_h);
     }
-    free(line);
+    sb_free(&line);
   }
   return 0;
 }

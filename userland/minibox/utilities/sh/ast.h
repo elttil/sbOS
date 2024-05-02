@@ -9,7 +9,7 @@ typedef enum {
 struct AST_VALUE {
   ast_value_type_t type;
   union {
-    char *string;
+    struct sv string;
   };
 };
 
@@ -27,7 +27,7 @@ struct AST {
   struct AST *pipe_rhs; // in "func1 | func2" func2 is the piped rhs
   int file_out_fd_to_use;
   int file_out_append;
-  const char *file_out; // in "func1 > file.txt" file.txt is the file_out
+  struct sv file_out; // in "func1 > file.txt" file.txt is the file_out
   struct AST *next;
 };
 
