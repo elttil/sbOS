@@ -42,6 +42,7 @@ struct BLOCK_CACHE *cache;
 u32 cold_cache_hits = 0;
 
 void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
+  assert(offset + size <= 1024);
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
@@ -68,6 +69,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
 
   struct BLOCK_CACHE *c = &cache[free_found];
   c->block_num = block;
+  c->usage = 0;
   raw_vfs_pread(mount_fd, c->block, 1024, block * block_byte_size);
   cached_read_block(block, address, size, offset);
 }
@@ -196,6 +198,7 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
   direntry_header_t *dir;
   u8 *data_p = data;
   u8 *data_end = data + allocation_size;
+  int file_len = strlen(file);
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode;
        data_p += dir->size) {
@@ -205,6 +208,10 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
     if (0 == dir->name_length) {
       continue;
     }
+    if (file_len < dir->name_length) {
+      continue;
+    }
+    assert(data_p + sizeof(direntry_header_t) + dir->name_length <= data_end);
     if (0 ==
         memcmp(data_p + sizeof(direntry_header_t), file, dir->name_length)) {
       if (strlen(file) > dir->name_length) {
