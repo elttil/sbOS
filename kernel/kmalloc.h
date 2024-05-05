@@ -1,7 +1,6 @@
-#include <log.h>
-#include <mmu.h>
+#ifndef KMALLOC_H
+#define KMALLOC_H
 #include <stddef.h>
-#include <string.h>
 #include <typedefs.h>
 
 void *kmalloc_align(size_t s, void **physical);
@@ -17,3 +16,4 @@ void *kcalloc(size_t nelem, size_t elsize);
 void *krecalloc(void *ptr, size_t nelem, size_t elsize);
 void kfree(void *p);
 int init_heap(void);
+#endif

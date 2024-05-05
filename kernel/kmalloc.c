@@ -1,10 +1,15 @@
 #include <assert.h>
+#include <interrupts.h>
 #include <kmalloc.h>
 #include <ksbrk.h>
+#include <log.h>
 #include <math.h>
 #include <mmu.h>
 #include <random.h>
+#include <stdint.h>
 #define NEW_ALLOC_SIZE 0x5000
+
+//#define KMALLOC_DEBUG
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)
@@ -34,6 +39,7 @@ void kmalloc_align_free(void *p, size_t s) {
     write_to_frame(((u32)page->frame) * 0x1000, 0);
     page->present = 0;
   }
+  flush_tlb();
 }
 
 typedef struct MallocHeader {
@@ -155,6 +161,24 @@ void merge_headers(MallocHeader *b) {
   }
 }
 
+#ifdef KMALLOC_DEBUG
+void *int_kmalloc(size_t s) {
+  disable_interrupts();
+  u8 *rc = kmalloc_align(s, NULL);
+  get_fast_insecure_random(rc, s);
+  rc += align_page(s);
+  rc -= s;
+
+  void *delay = kmalloc_align(1, NULL);
+  kmalloc_align_free(delay, 1);
+  return (void *)rc;
+}
+
+void kfree(void *p) {
+  get_fast_insecure_random(align_page(p) - 0x1000, 0x1000);
+  kmalloc_align_free(p, 0x1000);
+}
+#else
 void *int_kmalloc(size_t s) {
   size_t n = s;
   MallocHeader *free_entry = find_free_entry(s);
@@ -187,6 +211,23 @@ void *int_kmalloc(size_t s) {
   free_entry->magic = 0xdde51ab9410268b1;
   return rc;
 }
+
+void kfree(void *p) {
+  if (!p) {
+    return;
+  }
+  // FIXME: This assumes that p is at the start of a allocated area.
+  // Could this be avoided in a simple way?
+  MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
+  assert(h->magic == 0xdde51ab9410268b1);
+  assert(!(h->flags & IS_FREE));
+
+  get_fast_insecure_random((void *)p, h->size);
+
+  h->flags |= IS_FREE;
+  merge_headers(h);
+}
+#endif // KMALLOC_DEBUG
 
 void *kmalloc(size_t s) {
   void *rc = int_kmalloc(s);
@@ -268,20 +309,4 @@ void *kcalloc(size_t nelem, size_t elsize) {
   }
   memset(rc, 0, nelem * elsize);
   return rc;
-}
-
-void kfree(void *p) {
-  if (!p) {
-    return;
-  }
-  // FIXME: This assumes that p is at the start of a allocated area.
-  // Could this be avoided in a simple way?
-  MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
-  assert(h->magic == 0xdde51ab9410268b1);
-  assert(!(h->flags & IS_FREE));
-
-  get_fast_insecure_random((void *)p, h->size);
-
-  h->flags |= IS_FREE;
-  merge_headers(h);
 }
