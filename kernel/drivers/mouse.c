@@ -41,19 +41,14 @@ void add_mouse(void) {
   ringbuffer_init(mouse_inode->internal_object, 4096);
 }
 
-void what(registers_t *r) {
-  EOI(0xe);
-}
-
 void int_mouse(reg_t *r) {
   (void)r;
-  EOI(12);
   switch (mouse_cycle) {
   case 0:
     mouse_u8[0] = inb(0x60);
     if (!(mouse_u8[0] & (1 << 3))) {
       mouse_cycle = 0;
-      return;
+      break;
     }
     mouse_cycle++;
     break;
@@ -74,6 +69,7 @@ void int_mouse(reg_t *r) {
     ringbuffer_write(rb, (u8 *)&e, sizeof(e));
     break;
   }
+  EOI(0xC);
 }
 
 void mouse_wait(u8 a_type) {
@@ -137,9 +133,6 @@ void install_mouse(void) {
   mouse_read(); // Acknowledge
 
   install_handler((interrupt_handler)int_mouse, INT_32_INTERRUPT_GATE(0x3),
-                  12 + 0x20);
-  install_handler((interrupt_handler)what, INT_32_INTERRUPT_GATE(0x3),
-                  0xe + 0x20);
-  install_handler((interrupt_handler)what, INT_32_INTERRUPT_GATE(0x3),
-                  0xf + 0x20);
+                  0x2C);
+  irq_clear_mask(0x2);
 }

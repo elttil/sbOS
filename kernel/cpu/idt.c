@@ -171,7 +171,7 @@ void pic_remap(int offset) {
   outb(SLAVE_PIC_DATA_PORT, a2);
 }
 
-void irq_set_mask(unsigned char irq_line) {
+void irq_set_mask(u8 irq_line) {
   u16 port;
   u8 value;
   port = (irq_line < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
@@ -182,14 +182,14 @@ void irq_set_mask(unsigned char irq_line) {
   outb(port, value);
 }
 
-void IRQ_clear_mask(unsigned char IRQline) {
+void irq_clear_mask(u8 irq_line) {
   u16 port;
   u8 value;
-  port = (IRQline < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
-  if (IRQline >= 8) {
-    IRQline -= 8;
+  port = (irq_line < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
+  if (irq_line >= 8) {
+    irq_line -= 8;
   }
-  value = inb(port) & ~(1 << IRQline);
+  value = inb(port) & ~(1 << irq_line);
   outb(port, value);
 }
 
@@ -259,8 +259,8 @@ void install_handler(interrupt_handler handler_function, u16 type_attribute,
   format_descriptor((u32)isr_list[entry], KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
   list_of_handlers[entry] = (interrupt_handler)handler_function;
-  if (entry >= 0x20 && entry < 0x20 + 0xA) {
-    IRQ_clear_mask(entry - 0x20);
+  if (entry >= 0x20 && entry <= 0x30) {
+    irq_clear_mask(entry - 0x20);
   }
 }
 
@@ -268,7 +268,7 @@ void idt_init(void) {
   memset(list_of_handlers, 0, sizeof(void *) * 256);
 
   pic_remap(0x20);
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 0x10; i++) {
     irq_set_mask(i);
   }
 

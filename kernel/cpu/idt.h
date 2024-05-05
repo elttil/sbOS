@@ -326,4 +326,6 @@ __attribute__((no_caller_saved_registers)) void EOI(unsigned char irq);
 typedef void (*interrupt_handler)(reg_t *);
 void install_handler(interrupt_handler handler_function, u16 type_attribute,
                      u8 entry);
+void irq_set_mask(u8 irq_line);
+void irq_clear_mask(u8 irq_line);
 #endif
