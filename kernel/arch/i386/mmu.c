@@ -743,7 +743,7 @@ void paging_init(u64 memsize, multiboot_info_t *mb) {
         (multiboot_memory_map_t *)(mb->mmap_addr + 0xc0000000);
     for (size_t length = 0; length < mb->mmap_length;) {
       if (MULTIBOOT_MEMORY_AVAILABLE == map->type) {
-        for (size_t i = 0; i < map->len - 0x1000; i += 0x20000) {
+        for (size_t i = 0; i < map->len; i += 0x20000) {
           u32 frame = (map->addr + i) / 0x1000;
           if (frame > (num_array_frames * 32)) {
             assert(INDEX_FROM_BIT(frame) < num_of_frames);

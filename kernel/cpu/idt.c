@@ -68,6 +68,13 @@ void double_fault(registers_t *regs) {
   halt();
 }
 
+void invalid_opcode(reg_t *regs) {
+  klog("Invalid opcode", LOG_ERROR);
+  kprintf("Instruction Pointer: %x\n", regs->eip);
+  dump_backtrace(8);
+  halt();
+}
+
 void page_fault(reg_t *regs) {
   uint32_t cr2 = get_cr2();
   if (0xDEADC0DE == cr2) {
@@ -128,7 +135,7 @@ static inline void io_wait(void) {
 #define ICW4_BUF_MASTER 0x0C /* Buffered mode/master */
 #define ICW4_SFNM 0x10       /* Special fully nested (not) */
 
-void PIC_remap(int offset) {
+void pic_remap(int offset) {
   unsigned char a1, a2;
   a1 = inb(MASTER_PIC_DATA_PORT);
   a2 = inb(SLAVE_PIC_DATA_PORT);
@@ -164,14 +171,14 @@ void PIC_remap(int offset) {
   outb(SLAVE_PIC_DATA_PORT, a2);
 }
 
-void IRQ_set_mask(unsigned char IRQline) {
+void irq_set_mask(unsigned char irq_line) {
   u16 port;
   u8 value;
-  port = (IRQline < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
-  if (IRQline >= 8) {
-    IRQline -= 8;
+  port = (irq_line < 8) ? MASTER_PIC_DATA_PORT : SLAVE_PIC_DATA_PORT;
+  if (irq_line >= 8) {
+    irq_line -= 8;
   }
-  value = inb(port) | (1 << IRQline);
+  value = inb(port) | (1 << irq_line);
   outb(port, value);
 }
 
@@ -252,23 +259,27 @@ void install_handler(interrupt_handler handler_function, u16 type_attribute,
   format_descriptor((u32)isr_list[entry], KERNEL_CODE_SEGMENT_OFFSET,
                     type_attribute, &IDT_Entry[entry]);
   list_of_handlers[entry] = (interrupt_handler)handler_function;
+  if (entry >= 0x20 && entry < 0x20 + 0xA) {
+    IRQ_clear_mask(entry - 0x20);
+  }
 }
 
 void idt_init(void) {
   memset(list_of_handlers, 0, sizeof(void *) * 256);
 
+  pic_remap(0x20);
+  for (int i = 0; i < 16; i++) {
+    irq_set_mask(i);
+  }
+
+  install_handler((interrupt_handler)invalid_opcode, INT_32_INTERRUPT_GATE(0x0),
+                  0x6);
   install_handler((interrupt_handler)page_fault, INT_32_INTERRUPT_GATE(0x0),
                   0xE);
   install_handler((interrupt_handler)double_fault, INT_32_INTERRUPT_GATE(0x0),
                   0x8);
   install_handler((interrupt_handler)general_protection_fault,
                   INT_32_INTERRUPT_GATE(0x0), 0xD);
-
-  PIC_remap(0x20);
-  IRQ_clear_mask(0xb);
-  IRQ_set_mask(0xe);
-  IRQ_set_mask(0xf);
-  IRQ_clear_mask(2);
 
   idtr.interrupt_table = (struct IDT_Descriptor **)&IDT_Entry;
   idtr.size = (sizeof(struct IDT_Descriptor) * IDT_MAX_ENTRY) - 1;
