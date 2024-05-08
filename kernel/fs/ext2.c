@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <drivers/pit.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <math.h>
@@ -31,7 +32,7 @@ void get_inode_data_size(int inode_num, u64 *file_size) {
 }
 
 struct BLOCK_CACHE {
-  u32 usage;
+  u32 last_use;
   u32 block_num;
   u8 block[1024];
 };
@@ -46,7 +47,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
-      cache[i].usage += 1;
+      cache[i].last_use = pit_num_ms();
       memcpy(address, cache[i].block + offset, size);
       return;
     }
@@ -56,11 +57,11 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   }
 
   if (-1 == free_found) {
-    u32 min_usage_value = U32_MAX;
+    u32 min_last_used = U32_MAX;
     int min_index = 0;
     for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
-      if (cache[i].usage < min_usage_value) {
-        min_usage_value = cache[i].usage;
+      if (cache[i].last_use < min_last_used) {
+        min_last_used = cache[i].last_use;
         min_index = i;
       }
     }
@@ -69,7 +70,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
 
   struct BLOCK_CACHE *c = &cache[free_found];
   c->block_num = block;
-  c->usage = 0;
+  c->last_use = pit_num_ms();
   raw_vfs_pread(mount_fd, c->block, 1024, block * block_byte_size);
   cached_read_block(block, address, size, offset);
 }
