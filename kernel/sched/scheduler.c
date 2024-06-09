@@ -211,7 +211,6 @@ void free_process(process_t *p) {
 
 void exit_process(process_t *p, int status) {
   disable_interrupts();
-  int killing_itself = (p == current_task);
   assert(p->pid != 1);
   if (p->parent) {
     p->parent->halts[WAIT_CHILD_HALT] = 0;
@@ -225,8 +224,6 @@ void exit_process(process_t *p, int status) {
     new_task = new_task->next;
   }
 
-  free_process(p);
-  p->dead = 1;
   // Remove current_task from list
   for (process_t *tmp = ready_queue; tmp;) {
     if (tmp == p) // current_task is ready_queue(TODO:
@@ -242,7 +239,9 @@ void exit_process(process_t *p, int status) {
     }
     tmp = tmp->next;
   }
-  if (killing_itself) {
+  free_process(p);
+  p->dead = 1;
+  if (current_task == p) {
     switch_task();
   }
 }
@@ -511,9 +510,16 @@ void switch_task() {
     return;
   }
 
-  enable_interrupts();
-  current_task = next_task((process_t *)current_task);
-  disable_interrupts();
+  if (current_task->dead) {
+    current_task = current_task->next;
+    if(!current_task) {
+      current_task = ready_queue;
+    }
+  } else {
+    enable_interrupts();
+    current_task = next_task((process_t *)current_task);
+    disable_interrupts();
+  }
   active_directory = current_task->cr3;
 
   switch_to_task(current_task->tcb);
