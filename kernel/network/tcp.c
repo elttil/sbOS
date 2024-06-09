@@ -182,7 +182,9 @@ void handle_tcp(ipv4_t src_ip, const u8 *payload, u32 payload_length) {
   if (SYN == flags) {
     struct TcpConnection *con =
         internal_tcp_incoming(src_ip.d, src_port, 0, dst_port);
-    assert(con);
+    if(!con) {
+      return;
+    }
     con->ack = seq_num + 1;
     tcp_send_empty_payload(con, SYN | ACK);
     con->seq++;

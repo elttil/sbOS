@@ -3,17 +3,21 @@
 #include <fs/devfs.h>
 #include <fs/tmpfs.h>
 #include <interrupts.h>
+#include <math.h>
 #include <network/bytes.h>
 #include <network/tcp.h>
+#include <network/udp.h>
 #include <poll.h>
 #include <sched/scheduler.h>
 #include <socket.h>
 #include <sys/socket.h>
 
+struct list open_udp_connections;
 struct list open_tcp_connections;
 struct list open_tcp_listen;
 
 void global_socket_init(void) {
+  list_init(&open_udp_connections);
   list_init(&open_tcp_connections);
   list_init(&open_tcp_listen);
 }
@@ -34,6 +38,24 @@ struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
     struct TcpConnection *c;
     if (!list_get(&open_tcp_connections, i, (void **)&c)) {
       break;
+    }
+    if (c->incoming_port == dst_port && c->outgoing_port == src_port) {
+      return c;
+    }
+  }
+  return NULL;
+}
+
+struct UdpConnection *udp_find_connection(ipv4_t src_ip, u16 src_port,
+                                          u16 dst_port) {
+  (void)src_ip;
+  for (int i = 0;; i++) {
+    struct UdpConnection *c;
+    if (!list_get(&open_udp_connections, i, (void **)&c)) {
+      break;
+    }
+    if (c->dead) {
+      continue;
     }
     if (c->incoming_port == dst_port && c->outgoing_port == src_port) {
       return c;
@@ -149,12 +171,114 @@ int tcp_has_data(vfs_inode_t *inode) {
   return !(ringbuffer_isempty(&con->incoming_buffer));
 }
 
+int udp_recvfrom(vfs_fd_t *fd, void *buffer, size_t len, int flags,
+                 struct sockaddr *src_addr, socklen_t *addrlen) {
+  struct UdpConnection *con = fd->inode->internal_object;
+  assert(con);
+  if (con->dead) {
+    return -EBADF; // TODO: Check if this is correct.
+  }
+
+  u32 packet_length;
+  u32 rc = ringbuffer_read(&con->incoming_buffer, (void *)&packet_length,
+                           sizeof(u32));
+  if (0 == rc) {
+    return -EWOULDBLOCK;
+  }
+  assert(sizeof(u32) == rc);
+  assert(sizeof(struct sockaddr_in) <= packet_length);
+
+  struct sockaddr_in from;
+  ringbuffer_read(&con->incoming_buffer, (void *)&from, sizeof(from));
+
+  if (addrlen) {
+    if (src_addr) {
+      memcpy(src_addr, &from, min(sizeof(from), *addrlen));
+    }
+    *addrlen = sizeof(from);
+  }
+
+  u32 rest = packet_length - sizeof(from);
+  u32 to_read = min(rest, len);
+  rest = rest - to_read;
+
+  rc = ringbuffer_read(&con->incoming_buffer, buffer, to_read);
+  // Discard the rest of the packet
+  // FIXME Maybe the rest of the packet can be kept? But unsure how that
+  // would be done while preserving the header and not messing up other
+  // packets.
+  (void)ringbuffer_read(&con->incoming_buffer, NULL, rest);
+  return rc;
+}
+
+int udp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  return udp_recvfrom(fd, buffer, len, 0, NULL, NULL);
+}
+
+int udp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  (void)offset;
+  struct UdpConnection *con = fd->inode->internal_object;
+  assert(con);
+  if (con->dead) {
+    return -EBADF; // TODO: Check if this is correct.
+  }
+
+  struct sockaddr_in dst;
+  dst.sin_addr.s_addr = con->outgoing_ip;
+  dst.sin_port = htons(con->outgoing_port);
+  struct sockaddr_in src;
+  src.sin_addr.s_addr = con->incoming_ip;
+  src.sin_port = htons(con->incoming_port);
+  send_udp_packet(&src, &dst, buffer, (u16)len);
+  return len;
+}
+
+int udp_has_data(vfs_inode_t *inode) {
+  struct UdpConnection *con = inode->internal_object;
+  return !(ringbuffer_isempty(&con->incoming_buffer));
+}
+
+void udp_close(vfs_fd_t *fd) {
+  struct UdpConnection *con = fd->inode->internal_object;
+  con->dead = 1;
+  ringbuffer_free(&con->incoming_buffer);
+  return;
+}
+
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
   if (!fd) {
     return -EBADF;
   }
+  assert(fd->inode);
+  assert(fd->inode->connect);
+  return fd->inode->connect(fd, addr, addrlen);
+}
 
+int udp_connect(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen) {
+  assert(AF_INET == addr->sa_family);
+  const struct sockaddr_in *in_addr = (const struct sockaddr_in *)addr;
+  struct UdpConnection *con = kcalloc(1, sizeof(struct UdpConnection));
+  if (!con) {
+    return -ENOMEM;
+  }
+
+  con->incoming_port = 1337; // TODO
+  con->outgoing_ip = in_addr->sin_addr.s_addr;
+  con->outgoing_port = ntohs(in_addr->sin_port);
+  assert(ringbuffer_init(&con->incoming_buffer, 8192));
+
+  assert(list_add(&open_udp_connections, con, NULL));
+
+  fd->inode->_has_data = udp_has_data;
+  fd->inode->write = udp_write;
+  fd->inode->read = udp_read;
+  fd->inode->close = udp_close;
+  fd->inode->internal_object = con;
+  return 0;
+}
+
+int tcp_connect(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen) {
   assert(AF_INET == addr->sa_family);
   const struct sockaddr_in *in_addr = (const struct sockaddr_in *)addr;
   struct TcpConnection *con = kcalloc(1, sizeof(struct TcpConnection));
@@ -306,7 +430,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
         connection, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tcp_read, tcp_write, tcp_close /*close*/, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-        NULL /*send_signal*/);
+        NULL /*send_signal*/, NULL /*connect*/);
     assert(inode);
     return vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, NULL);
   }
@@ -434,7 +558,8 @@ int socket(int domain, int type, int protocol) {
         1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
         NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
         socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
+        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/,
+        NULL /*connect*/);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;
@@ -453,11 +578,21 @@ int socket(int domain, int type, int protocol) {
     return n;
   }
   if (AF_INET == domain) {
+    int is_udp = (SOCK_DGRAM == type);
+
+    void *connect_handler = NULL;
+    if (is_udp) {
+      connect_handler = udp_connect;
+    } else {
+      connect_handler = tcp_connect;
+    }
+
     vfs_inode_t *inode = vfs_create_inode(
         0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1,
         new_socket, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, NULL,
         NULL, NULL /*close*/, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/);
+        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/,
+        connect_handler);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;

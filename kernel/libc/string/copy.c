@@ -2,6 +2,7 @@
 #include <kmalloc.h>
 #include <stddef.h>
 #include <string.h>
+#include <mmu.h>
 
 char *copy_and_allocate_string(const char *s) {
   size_t l = strlen(s) + 1;

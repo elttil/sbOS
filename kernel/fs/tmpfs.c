@@ -52,7 +52,7 @@ void dual_pipe(int fd[2]) {
         internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tmp_read, tmp_write, tmp_close, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-        NULL /*send_signal*/);
+        NULL /*send_signal*/, NULL /*connect*/);
     assert(inode);
 
     fd[i] =
@@ -85,7 +85,7 @@ void pipe(int fd[2]) {
         internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tmp_read, tmp_write, tmp_close, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-        NULL /*send_signal*/);
+        NULL /*send_signal*/, NULL /*connect*/);
     assert(inode);
 
     fd[i] = vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, &fd_ptrs[i]);

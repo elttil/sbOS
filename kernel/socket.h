@@ -1,3 +1,5 @@
+struct sockaddr;
+typedef int socklen_t;
 #ifndef SOCKET_H
 #define SOCKET_H
 #include <fs/fifo.h>
@@ -27,6 +29,17 @@ struct TcpListen {
   struct stack incoming_connections;
 };
 
+struct UdpConnection {
+  u16 incoming_port;
+  u32 incoming_ip;
+  u32 outgoing_ip;
+  u16 outgoing_port;
+
+  int dead;
+
+  struct ringbuffer incoming_buffer;
+};
+
 struct TcpConnection {
   int dead;
   u16 incoming_port;
@@ -51,6 +64,8 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
                                             u32 dst_ip, u16 dst_port);
 
 struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
+                                          u16 dst_port);
+struct UdpConnection *udp_find_connection(ipv4_t src_ip, u16 src_port,
                                           u16 dst_port);
 
 typedef struct {
@@ -83,7 +98,6 @@ typedef struct {
 typedef u32 in_addr_t;
 typedef u16 in_port_t;
 typedef unsigned int sa_family_t;
-typedef int socklen_t;
 
 struct sockaddr {
   sa_family_t sa_family; /* Address family */

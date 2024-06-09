@@ -74,9 +74,11 @@ u32 ringbuffer_read(struct ringbuffer *rb, u8 *buffer, u32 len) {
     }
     read_len = min(len, read_len);
 
-    memcpy(buffer, rb->buffer + rb->read_ptr, read_len);
+    if (buffer) {
+      memcpy(buffer, rb->buffer + rb->read_ptr, read_len);
+      buffer += read_len;
+    }
     len -= read_len;
-    buffer += read_len;
     rb->read_ptr = (rb->read_ptr + read_len) % rb->buffer_size;
   }
   return orig_len - len;

@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <drivers/rtl8139.h>
 #include <kmalloc.h>
+#include <string.h>
 #include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ethernet.h>

@@ -1,11 +1,11 @@
 #ifndef DIRENT_H
 #define DIRENT_H
-#include <fcntl.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #ifndef KERNEL
+#include <fcntl.h>
 #include <unistd.h>
 #endif
 

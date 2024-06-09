@@ -2,6 +2,7 @@
 #include <kmalloc.h>
 #include <lib/relist.h>
 #include <math.h>
+#include <string.h>
 
 void relist_init(struct relist *list) {
   list->bitmap_capacity = 1;

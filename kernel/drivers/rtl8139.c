@@ -194,11 +194,9 @@ void rtl8139_init(void) {
   outl(base_address + 0x44,
        0xf); // 0xf is AB+AM+APM+AAP
 
-  install_handler((interrupt_handler)rtl8139_handler, INT_32_INTERRUPT_GATE(0x3),
-                  0x20 + interrupt_line);
+  install_handler((interrupt_handler)rtl8139_handler,
+                  INT_32_INTERRUPT_GATE(0x3), 0x20 + interrupt_line);
 
-  // ksbrk() seems to have the magical ability of disabling interrupts?
-  // I have no fucking clue why that happens and it was a pain to debug.
   for (int i = 0; i < 4; i++) {
     send_buffers[i] = ksbrk(0x1000);
   }

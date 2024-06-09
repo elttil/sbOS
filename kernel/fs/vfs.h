@@ -9,6 +9,7 @@ typedef struct vfs_mounts vfs_mounts_t;
 #include <sched/scheduler.h>
 #include <socket.h>
 #include <stddef.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <typedefs.h>
 
@@ -70,6 +71,7 @@ struct vfs_inode {
   int (*truncate)(vfs_fd_t *fd, size_t length);
   int (*stat)(vfs_fd_t *fd, struct stat *buf);
   int (*send_signal)(vfs_fd_t *fd, int signal);
+  int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen);
 };
 
 int vfs_close(int fd);
@@ -103,5 +105,7 @@ vfs_inode_t *vfs_create_inode(
     vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length),
     int (*stat)(vfs_fd_t *fd, struct stat *buf),
-    int (*send_signal)(vfs_fd_t *fd, int signal));
+    int (*send_signal)(vfs_fd_t *fd, int signal),
+    int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr,
+                   socklen_t addrlen));
 #endif

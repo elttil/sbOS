@@ -157,9 +157,9 @@ int get_free_frame(u32 *frame) {
 
 int write_to_frame(u32 frame_address, u8 on) {
   u32 frame = frame_address / 0x1000;
-    if (INDEX_FROM_BIT(frame) >= num_array_frames) {
-      return 0;
-    }
+  if (INDEX_FROM_BIT(frame) >= num_array_frames) {
+    return 0;
+  }
   if (on) {
     int frame_is_used = (0 != (tmp_small_frames[INDEX_FROM_BIT(frame)] &
                                ((u32)0x1 << OFFSET_FROM_BIT(frame))));
@@ -545,7 +545,7 @@ void *physical_to_virtual(void *address) {
 }
 
 void *virtual_to_physical(void *address, PageDirectory *directory) {
-  if (0 == directory) {
+  if (!directory) {
     directory = get_active_pagedirectory();
   }
   Page *p = get_page((void *)address, directory, PAGE_NO_ALLOCATE, 0);

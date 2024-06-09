@@ -1,5 +1,3 @@
-typedef struct kernel_registers kernel_registers_t;
-typedef struct registers registers_t;
 #ifndef IDT_H
 #define IDT_H
 #include <cpu/gdt.h>
@@ -7,6 +5,8 @@ typedef struct registers registers_t;
 #include <log.h>
 #include <stdio.h>
 #include <typedefs.h>
+typedef struct kernel_registers kernel_registers_t;
+typedef struct registers registers_t;
 
 /*
  * the type_attribute in the IDT_Entry struct

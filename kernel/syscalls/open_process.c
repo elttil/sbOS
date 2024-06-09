@@ -19,7 +19,7 @@ int syscall_open_process(int pid) {
       process /*internal_object*/, 0 /*file_size*/, NULL /*open*/,
       NULL /*create_file*/, NULL /*read*/, NULL /*write*/, NULL /*close*/,
       NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-      NULL /*stat*/, process_signal);
+      NULL /*stat*/, process_signal, NULL /*connect*/);
   int rc = vfs_create_fd(0, 0, 0, inode, NULL);
   assert(rc >= 0);
   return rc;

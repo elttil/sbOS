@@ -246,14 +246,23 @@ size_t get_mem_size(void *ptr) {
 }
 
 void *krealloc(void *ptr, size_t size) {
+  if (!ptr) {
+    return kmalloc(size);
+  }
+  size_t l = get_mem_size(ptr);
+  if (l == size) {
+    return ptr;
+  }
+  if (l > size) {
+    MallocHeader *header = (MallocHeader *)((u8 *)ptr - sizeof(MallocHeader));
+    header->size = size;
+    return ptr;
+  }
+
   void *rc = kmalloc(size);
   if (!rc) {
     return NULL;
   }
-  if (!ptr) {
-    return rc;
-  }
-  size_t l = get_mem_size(ptr);
   size_t to_copy = min(l, size);
   memcpy(rc, ptr, to_copy);
   kfree(ptr);
