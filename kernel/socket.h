@@ -53,6 +53,7 @@ struct TcpConnection {
   struct ringbuffer outgoing_buffer;
 
   struct relist inflight;
+  u8 max_inflight;
 
   int no_delay;
 

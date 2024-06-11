@@ -134,25 +134,32 @@ static void tcp_send(struct TcpConnection *con, u8 *buffer, u16 length,
 }
 
 void tcp_resend_packets(struct TcpConnection *con) {
-  if (con->inflight.num_entries > 0) {
-    for (u32 i = 0;; i++) {
-      struct TcpPacket *packet;
-      int end;
-      if (!relist_get(&con->inflight, i, (void *)&packet, &end)) {
-        if (end) {
-          break;
-        }
-        continue;
+  if (0 == con->inflight.num_entries) {
+    return;
+  }
+  int did_resend = 0;
+  for (u32 i = 0;; i++) {
+    struct TcpPacket *packet;
+    int end;
+    if (!relist_get(&con->inflight, i, (void *)&packet, &end)) {
+      if (end) {
+        break;
       }
-      if (packet->time + 200 > pit_num_ms()) {
-        continue;
-      }
-      // resend the packet
-      relist_remove(&con->inflight, i);
-      tcp_send(con, packet->buffer, packet->length, packet->seq_num,
-               packet->payload_length);
-      kfree(packet);
+      continue;
     }
+    if (packet->time + 200 > pit_num_ms()) {
+      continue;
+    }
+    // resend the packet
+    did_resend = 1;
+    relist_remove(&con->inflight, i);
+    tcp_send(con, packet->buffer, packet->length, packet->seq_num,
+             packet->payload_length);
+    kfree(packet);
+  }
+  if (did_resend) {
+    con->max_inflight = 1;
+    con->window_size = MSS;
   }
 }
 
@@ -194,21 +201,17 @@ void tcp_send_syn(struct TcpConnection *con) {
   con->seq++;
 }
 
-int tcp_can_send(struct TcpConnection *con, u16 payload_length) {
-  if (con->inflight.num_entries > 2) {
+u16 tcp_can_send(struct TcpConnection *con) {
+  if (con->inflight.num_entries > con->max_inflight) {
     tcp_resend_packets(con);
     return 0;
   }
-  if (con->seq - con->seq_ack + payload_length > con->current_window_size) {
-    tcp_resend_packets(con);
-    return 0;
-  }
-  return 1;
+  return con->current_window_size;
 }
 
 int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
                     u16 payload_length) {
-  if (!tcp_can_send(con, payload_length)) {
+  if (0 == tcp_can_send(con)) {
     return 0;
   }
 
@@ -326,7 +329,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
           }
           continue;
         }
-        if (packet->seq_num + packet->payload_length != ack_num) {
+        if (packet->seq_num + packet->payload_length > ack_num) {
           continue;
         }
         relist_remove(&incoming_connection->inflight, i);
@@ -337,6 +340,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     }
     tcp_resend_packets(incoming_connection);
     if (0 == incoming_connection->inflight.num_entries) {
+      incoming_connection->max_inflight++;
       u32 rest = incoming_connection->window_size -
                  incoming_connection->current_window_size;
       if (rest > 0) {

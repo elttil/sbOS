@@ -99,6 +99,7 @@ struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
   ringbuffer_init(&con->incoming_buffer, 8192);
   ringbuffer_init(&con->outgoing_buffer, 8192);
   relist_init(&con->inflight);
+  con->max_inflight = 1;
   stack_push(&listen->incoming_connections, con);
   return con;
 }
@@ -116,7 +117,8 @@ int tcp_sync_buffer(vfs_fd_t *fd) {
     return 0;
   }
 
-  if (!tcp_can_send(con, send_buffer_len)) {
+  send_buffer_len = min(tcp_can_send(con), send_buffer_len);
+  if(0 == send_buffer_len) {
     return 0;
   }
 
@@ -157,6 +159,11 @@ int tcp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     return -EBADF; // TODO: Check if this is correct.
   }
 
+  len = min(len, tcp_can_send(con));
+  if (0 == len) {
+    return -EWOULDBLOCK;
+  }
+
   if (con->no_delay) {
     if (!send_tcp_packet(con, buffer, len)) {
       return -EWOULDBLOCK;
@@ -187,10 +194,10 @@ int tcp_has_data(vfs_inode_t *inode) {
 int tcp_can_write(vfs_inode_t *inode) {
   struct TcpConnection *con = inode->internal_object;
   if (con->no_delay) {
-    return tcp_can_send(con, 256);
+    return (0 != tcp_can_send(con));
   }
   return (ringbuffer_unused(&con->outgoing_buffer) > 0) ||
-         (tcp_can_send(con, 250));
+         (0 != tcp_can_send(con));
 }
 
 int udp_recvfrom(vfs_fd_t *fd, void *buffer, size_t len, int flags,
@@ -317,6 +324,7 @@ int tcp_connect(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen) {
   ringbuffer_init(&con->outgoing_buffer, 8192);
   list_add(&open_tcp_connections, con, NULL);
   relist_init(&con->inflight);
+  con->max_inflight = 1;
 
   tcp_send_syn(con);
 
