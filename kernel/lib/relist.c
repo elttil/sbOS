@@ -5,6 +5,7 @@
 #include <string.h>
 
 void relist_init(struct relist *list) {
+  list->num_entries = 0;
   list->bitmap_capacity = 1;
   list->bitmap = kcalloc(sizeof(u64), list->bitmap_capacity);
   if (!list->bitmap) {
@@ -28,6 +29,7 @@ relist_init_error:
 }
 
 void relist_reset(struct relist *list) {
+  list->num_entries = 0;
   memset(list->bitmap, 0, list->bitmap_capacity * sizeof(u64));
 }
 
@@ -43,12 +45,14 @@ int relist_clone(struct relist *in, struct relist *out) {
     kfree(out->bitmap);
     goto relist_clone_error;
   }
+  out->num_entries = in->num_entries;
   memcpy(out->bitmap, in->bitmap, sizeof(u64) * out->bitmap_capacity);
   memcpy(out->entries, in->entries,
          sizeof(void *) * sizeof(u64) * 8 * out->bitmap_capacity);
   return 1;
 
 relist_clone_error:
+  out->num_entries = 0;
   out->bitmap_capacity = 0;
   out->entries = NULL;
   out->bitmap = NULL;
@@ -100,6 +104,7 @@ int relist_add(struct relist *list, void *value, u32 *index) {
   if (index) {
     *index = entry;
   }
+  list->num_entries++;
   list->bitmap[entry / 64] |= ((u64)1 << (entry % 64));
   return 1;
 }
@@ -114,6 +119,7 @@ int relist_remove(struct relist *list, u32 index) {
     assert(0);
     return 0;
   }
+  list->num_entries--;
   list->bitmap[index / 64] &= ~((u64)1 << (index % 64));
   return 1;
 }
@@ -148,6 +154,7 @@ int relist_get(const struct relist *list, u32 index, void **out, int *end) {
 }
 
 void relist_free(struct relist *list) {
+  list->num_entries = 0;
   list->bitmap_capacity = 0;
   kfree(list->entries);
   kfree(list->bitmap);

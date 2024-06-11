@@ -62,7 +62,7 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
     handle_ipv4(payload, packet_length - sizeof(struct ETHERNET_HEADER) - 4);
     break;
   default:
-    kprintf("Can't handle ethernet type\n");
+    kprintf("Can't handle ethernet type 0x%x\n", type);
     break;
   }
 }

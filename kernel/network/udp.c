@@ -24,7 +24,8 @@ void send_udp_packet(struct sockaddr_in *src, const struct sockaddr_in *dst,
   kfree(packet);
 }
 
-void handle_udp(ipv4_t src_ip, const u8 *payload, u32 packet_length) {
+void handle_udp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload, u32 packet_length) {
+  (void)dst_ip;
   if (packet_length < sizeof(u16[4])) {
     return;
   }

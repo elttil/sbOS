@@ -5,6 +5,7 @@ typedef int socklen_t;
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <lib/buffered_write.h>
+#include <lib/relist.h>
 #include <lib/ringbuffer.h>
 #include <lib/stack.h>
 #include <stddef.h>
@@ -51,9 +52,14 @@ struct TcpConnection {
   struct ringbuffer incoming_buffer;
   struct ringbuffer outgoing_buffer;
 
+  struct relist inflight;
+
   int no_delay;
 
+  u32 current_window_size;
+  u32 window_size;
   u32 seq;
+  u32 seq_ack;
   u32 ack;
 
   int handshake_state;

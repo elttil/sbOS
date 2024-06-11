@@ -5,6 +5,7 @@
 struct relist {
   void **entries;
   u32 bitmap_capacity;
+  u32 num_entries;
   u64 *bitmap;
 };
 

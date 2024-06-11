@@ -84,15 +84,17 @@ void handle_ipv4(const u8 *payload, u32 packet_length) {
   assert(ipv4_total_length <= packet_length);
 
   ipv4_t src_ip;
-  memcpy(&src_ip, payload + 12, sizeof(u8[4]));
+  memcpy(&src_ip.d, payload + 12, sizeof(u8[4]));
+  ipv4_t dst_ip;
+  memcpy(&dst_ip.d, payload + 16, sizeof(u8[4]));
 
   u8 protocol = *(payload + 9);
   switch (protocol) {
   case 0x6:
-    handle_tcp(src_ip, payload + 20, ipv4_total_length - 20);
+    handle_tcp(src_ip, dst_ip, payload + 20, ipv4_total_length - 20);
     break;
   case 0x11:
-    handle_udp(src_ip, payload + 20, ipv4_total_length - 20);
+    handle_udp(src_ip, dst_ip, payload + 20, ipv4_total_length - 20);
     break;
   default:
     kprintf("Protocol given in IPv4 header not handeld: %x\n", protocol);

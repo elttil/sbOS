@@ -38,6 +38,17 @@ typedef uint16_t in_port_t;
 typedef unsigned int sa_family_t;
 typedef int socklen_t;
 
+struct addrinfo {
+  int ai_flags;
+  int ai_family;
+  int ai_socktype;
+  int ai_protocol;
+  socklen_t ai_addrlen;
+  struct sockaddr *ai_addr;
+  char *ai_canonname;
+  struct addrinfo *ai_next;
+};
+
 struct sockaddr {
   sa_family_t sa_family; /* Address family */
   char *sa_data;         /* Socket address */
