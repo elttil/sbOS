@@ -50,7 +50,7 @@ __attribute__((no_caller_saved_registers)) void EOI(u8 irq) {
 }
 
 void general_protection_fault(reg_t *regs) {
-  klog("General Protetion Fault", 0x1);
+  klog(LOG_ERROR, "General Protetion Fault");
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
   if (current_task) {
@@ -64,12 +64,12 @@ void general_protection_fault(reg_t *regs) {
 
 void double_fault(registers_t *regs) {
   (void)regs;
-  klog("DOUBLE FAULT", LOG_ERROR);
+  klog(LOG_ERROR, "DOUBLE FAULT");
   halt();
 }
 
 void invalid_opcode(reg_t *regs) {
-  klog("Invalid opcode", LOG_ERROR);
+  klog(LOG_ERROR, "Invalid opcode");
   kprintf("Instruction Pointer: %x\n", regs->eip);
   dump_backtrace(8);
   halt();
@@ -90,7 +90,7 @@ void page_fault(reg_t *regs) {
     return;
   }
 
-  klog("Page Fault", LOG_ERROR);
+  klog(LOG_ERROR, "Page Fault");
   kprintf("CR2: %x\n", cr2);
   if (current_task) {
     kprintf("PID: %x\n", current_task->pid);

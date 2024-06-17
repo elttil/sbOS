@@ -313,7 +313,7 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   u8 err;
   u32 command_slot = get_free_command_slot(port, &err);
   if (err) {
-    klog("AHCI No command slot found", LOG_WARN);
+    klog(LOG_WARN, "AHCI No command slot found");
     return 0;
   }
   struct HBA_CMD_HEADER *cmdheader =
@@ -373,7 +373,7 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
     spin++;
   }
   if (spin == 10000) {
-    klog("AHCI port is hung", LOG_ERROR);
+    klog(LOG_ERROR, "AHCI port is hung");
     return 0;
   }
 
@@ -387,14 +387,14 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
       break;
     }
     if (port->is & HBA_PxIS_TFES) {
-      klog("AHCI command failed", LOG_ERROR);
+      klog(LOG_ERROR, "AHCI command failed");
       return 0;
     }
   }
 
   // Check again
   if (port->is & HBA_PxIS_TFES) {
-    klog("AHCI command failed", LOG_ERROR);
+    klog(LOG_ERROR, "AHCI command failed");
     return 0;
   }
 

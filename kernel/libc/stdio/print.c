@@ -1,7 +1,6 @@
-#include "../../drivers/serial.h"
-#include "../include/assert.h"
-#include "../include/stdio.h"
-#include <stdarg.h>
+#include <assert.h>
+#include <drivers/serial.h>
+#include <stdio.h>
 
 #define TAB_SIZE 8
 
@@ -55,11 +54,8 @@ int kprint_int(int num) {
   return c;
 }
 
-int kprintf(const char *format, ...) {
+int vkprintf(const char *format, va_list list) {
   int c = 0;
-  va_list list;
-  va_start(list, format);
-
   const char *s = format;
   for (; *s; s++) {
     if ('%' != *s) {
@@ -101,6 +97,10 @@ int kprintf(const char *format, ...) {
   return c;
 }
 
-int puts(char *str) {
-  return kprintf("%s\n", str);
+int kprintf(const char *format, ...) {
+  va_list list;
+  va_start(list, format);
+  int rc = vkprintf(format, list);
+  va_end(list);
+  return rc;
 }

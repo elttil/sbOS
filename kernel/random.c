@@ -119,14 +119,14 @@ void setup_random(void) {
   BYTE seed[1024];
   int rand_fd = vfs_open("/etc/seed", O_RDWR, 0);
   if (0 > rand_fd) {
-    klog("/etc/seed not found", LOG_WARN);
+    klog(LOG_WARN, "/etc/seed not found");
     return;
   }
 
   size_t offset = 0;
   for (int rc; (rc = vfs_pread(rand_fd, seed, 1024, offset)); offset += rc) {
     if (0 > rc) {
-      klog("/etc/seed read error", LOG_WARN);
+      klog(LOG_WARN, "/etc/seed read error");
       break;
     }
     add_entropy(seed, rc);

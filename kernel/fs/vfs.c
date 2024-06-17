@@ -274,10 +274,10 @@ int vfs_open(const char *file, int flags, int mode) {
   if (0 == inode) {
     if (flags & O_CREAT) {
       if (vfs_create_file(resolved_path)) {
-        klog("VFS: File created", LOG_NOTE);
+        klog(LOG_NOTE, "VFS: File created");
         return vfs_open(file, flags, mode);
       }
-      klog("VFS: Could not create file", LOG_WARN);
+      klog(LOG_WARN, "VFS: Could not create file");
     }
     return -ENOENT;
   }

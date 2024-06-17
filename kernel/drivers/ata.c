@@ -56,7 +56,7 @@ int identify(int master_slave) {
   // non-zero. If so, the drive is not ATA, and we
   // should stop polling.
   if (0 != inb(io_base + LBAmid) || 0 != inb(io_base + LBAhi)) {
-    klog("Drive is not ATA.", LOG_ERROR);
+    klog(LOG_ERROR, "Drive is not ATA.");
     return -1;
   }
 
@@ -64,7 +64,7 @@ int identify(int master_slave) {
     status = inb(io_base + STATUS_PORT);
 
     if (1 == (status & STATUS_ERR)) {
-      klog("Drive ERR set.", LOG_ERROR);
+      klog(LOG_ERROR, "Drive ERR set.");
       return -2;
     }
 
@@ -95,7 +95,7 @@ int poll_status(void) {
     // ERR or
     // DF sets
     if ((status & STATUS_ERR) || (status & STATUS_DF)) {
-      klog("Drive error set.", LOG_ERROR);
+      klog(LOG_ERROR, "Drive error set.");
       return 0;
     }
 
@@ -205,7 +205,7 @@ void ata_init(void) {
   // 0xFF is an illegal status value, and
   // indicates that the bus has no drives
   if (0xFF == inb(io_base + STATUS_PORT)) {
-    klog("Bus has no drives", LOG_ERROR);
+    klog(LOG_ERROR, "Bus has no drives");
   }
 
   // Issue IDENTIFY command

@@ -17,7 +17,7 @@ void *load_elf_file(const char *f, u32 *ds) {
   }
 
   if (0 != memcmp(header.e_ident, "\x7F\x45\x4C\x46" /* "\x7FELF" */, 4)) {
-    klog("Incorrect ELF signature", LOG_ERROR);
+    klog(LOG_ERROR, "Incorrect ELF signature");
     return NULL;
   }
 

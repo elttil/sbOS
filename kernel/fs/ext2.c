@@ -496,7 +496,7 @@ int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size) {
   for (int i = block_start; size; i++) {
     u32 block = get_block(inode, i);
     if (0 == block) {
-      klog("Filesystem EXT2: Unable to find block", LOG_WARN);
+      klog(LOG_WARN, "Filesystem EXT2: Unable to find block");
       return -1;
     }
 
@@ -708,7 +708,7 @@ int ext2_create_directory(const char *path, int mode) {
   // Check if the directory already exists
   u32 inode_num = ext2_find_inode(path);
   if (0 != inode_num) {
-    klog("ext2_create_directory: Directory already exists", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_directory: Directory already exists");
     return inode_num;
   }
 
@@ -718,13 +718,13 @@ int ext2_create_directory(const char *path, int mode) {
   char *filename;
   strcpy(path_buffer, path);
   if (!ext2_find_parent(path_buffer, &parent_inode, &filename)) {
-    klog("ext2_create_file: Parent does not exist", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_file: Parent does not exist");
     return -1;
   }
 
   int new_file_inode = get_free_inode(1);
   if (-1 == new_file_inode) {
-    klog("ext2_create_file: Unable to find free inode", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_file: Unable to find free inode");
     return -1;
   }
   assert(0 != new_file_inode);
@@ -768,7 +768,7 @@ int ext2_create_file(const char *path, int mode) {
   // Check if the file already exists
   u32 inode_num = ext2_find_inode(path);
   if (0 != inode_num) {
-    klog("ext2_create_file: File already exists", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_file: File already exists");
     return inode_num;
   }
 
@@ -778,13 +778,13 @@ int ext2_create_file(const char *path, int mode) {
   char *filename;
   strcpy(path_buffer, path);
   if (!ext2_find_parent(path_buffer, &parent_inode, &filename)) {
-    klog("ext2_create_file: Parent does not exist", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_file: Parent does not exist");
     return -1;
   }
 
   int new_file_inode = get_free_inode(1);
   if (-1 == new_file_inode) {
-    klog("ext2_create_file: Unable to find free inode", LOG_WARN);
+    klog(LOG_WARN, "ext2_create_file: Unable to find free inode");
     return -1;
   }
   assert(0 != new_file_inode);
@@ -839,7 +839,7 @@ void parse_superblock(void) {
   block_byte_size = 1024 << superblock->block_size;
 
   if (0xEF53 != superblock->ext2_signature) {
-    klog("Incorrect ext2 signature in superblock.", LOG_ERROR);
+    klog(LOG_ERROR, "Incorrect ext2 signature in superblock.");
     for (;;)
       ; // TODO: Fail properly
   }

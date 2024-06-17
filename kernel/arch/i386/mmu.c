@@ -150,7 +150,7 @@ int get_free_frame(u32 *frame) {
       }
     }
   }
-  klog("MMU: Ran out of free frames. TODO: free up memory", LOG_WARN);
+  klog(LOG_WARN, "MMU: Ran out of free frames. TODO: free up memory");
   *frame = 0;
   return 0;
 }

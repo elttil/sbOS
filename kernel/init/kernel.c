@@ -56,34 +56,34 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   u64 memsize_kb = mem_mb * 1000 + mem_kb;
 
   paging_init(memsize_kb, mb);
-  klog("Paging Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "Paging Initalized");
   mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
   assert(mb);
 
   gdt_init();
-  klog("GDT Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "GDT Initalized");
 
   idt_init();
-  klog("IDT Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "IDT Initalized");
 
   syscalls_init();
-  klog("Syscalls Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "Syscalls Initalized");
 
   pit_install();
   set_pit_count(1000);
-  klog("PIT driver installed", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "PIT driver installed");
 
   ata_init();
-  klog("ATA Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "ATA Initalized");
 
   tasking_init();
-  klog("Tasking Initalized", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "Tasking Initalized");
 
   install_mouse();
-  klog("PS2 Mouse driver installed", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "PS2 Mouse driver installed");
 
   install_keyboard();
-  klog("PS2 Keyboard driver installed", LOG_SUCCESS);
+  klog(LOG_SUCCESS, "PS2 Keyboard driver installed");
 
   global_socket_init();
 

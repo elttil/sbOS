@@ -184,7 +184,7 @@ void *int_kmalloc(size_t s) {
   MallocHeader *free_entry = find_free_entry(s);
   if (!free_entry) {
     if (!add_heap_memory(s)) {
-      klog("Ran out of memory.", LOG_ERROR);
+      klog(LOG_ERROR, "Ran out of memory.");
       return NULL;
     }
     return kmalloc(s);

@@ -594,7 +594,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
 
   MemoryMap **ptr = get_free_map();
   if (!ptr) {
-    klog("mmap(): No free memory map.", LOG_WARN);
+    klog(LOG_WARN, "mmap(): No free memory map.");
     return (void *)-1;
   }
   *ptr = kmalloc(sizeof(MemoryMap));

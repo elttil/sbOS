@@ -112,7 +112,7 @@ int get_mac_from_ip(const ipv4_t ip, u8 mac[6]) {
     memcpy(mac, arp_table[i].mac, sizeof(u8[6]));
     return 1;
   }
-  klog("ARP cache miss", LOG_NOTE);
+  klog(LOG_NOTE, "ARP cache miss");
   enable_interrupts();
   send_arp_request(ip);
   // TODO: Maybe wait a bit?
