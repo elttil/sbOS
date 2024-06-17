@@ -70,7 +70,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   klog(LOG_SUCCESS, "Syscalls Initalized");
 
   pit_install();
-  set_pit_count(1000);
+  set_pit_count(1);
   klog(LOG_SUCCESS, "PIT driver installed");
 
   ata_init();
