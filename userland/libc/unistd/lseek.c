@@ -1,7 +1,7 @@
 #include <errno.h>
-#include <unistd.h>
 #include <syscall.h>
+#include <unistd.h>
 
-off_t lseek(int fildes, off_t offset, int whence) {
+int lseek(int fildes, int offset, int whence) {
   RC_ERRNO(syscall(SYS_LSEEK, (u32)fildes, offset, whence, 0, 0));
 }
