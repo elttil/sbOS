@@ -3,7 +3,7 @@
 #include <libgui.h>
 #include <poll.h>
 #include <pty.h>
-#include <socket.h>
+#include <sys/socket.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>

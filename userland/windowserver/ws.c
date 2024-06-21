@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <poll.h>
-#include <socket.h>
+#include <sys/socket.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
