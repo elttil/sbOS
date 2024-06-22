@@ -5,5 +5,6 @@ int ungetc(int c, FILE *stream) {
     return EOF;
   stream->buffered_char = c;
   stream->has_buffered_char = 1;
+  fseek(stream, -1, SEEK_CUR);
   return c;
 }

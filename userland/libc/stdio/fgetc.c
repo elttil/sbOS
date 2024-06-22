@@ -4,6 +4,7 @@
 int fgetc(FILE *stream) {
   if (stream->has_buffered_char) {
     stream->has_buffered_char = 0;
+    fseek(stream, 1, SEEK_CUR);
     return stream->buffered_char;
   }
   char c;

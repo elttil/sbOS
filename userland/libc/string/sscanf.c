@@ -150,20 +150,21 @@ int vfscanf(FILE *stream, const char *format, va_list ap) {
 
 struct sscanf_cookie {
   const char *s;
+  unsigned long offset;
 };
 
 size_t sscanf_read(FILE *f, unsigned char *s, size_t l) {
   struct sscanf_cookie *c = f->cookie;
-  if (!*(c->s)) {
+  if (!*(c->s + c->offset)) {
     return 0;
   }
   size_t r = 0;
-  for (; l && *(c->s); l--, c->s += 1) {
-    *s = *(c->s);
+  for (; l && *(c->s); l--, c->offset += 1) {
+    *s = *(c->s + c->offset);
     s++;
     r++;
   }
-  if (!(*(c->s)))
+  if (!(*(c->s + c->offset)))
     f->is_eof = 1;
   /*
   memcpy(s, c->s, l);
@@ -171,10 +172,35 @@ size_t sscanf_read(FILE *f, unsigned char *s, size_t l) {
   return r;
 }
 
+int sscanf_seek(FILE *stream, long offset, int whence) {
+  struct sscanf_cookie *c = stream->cookie;
+  off_t ret_offset = c->offset;
+  switch (whence) {
+  case SEEK_SET:
+    // TODO: Avoid running past the pointer
+    // Should that even be checked?
+    ret_offset = offset;
+    break;
+  case SEEK_CUR:
+    ret_offset += offset;
+    break;
+  case SEEK_END:
+    for (; *(c->s + ret_offset); ret_offset++)
+      ;
+    break;
+  default:
+    return -EINVAL;
+    break;
+  }
+  c->offset = ret_offset;
+  return ret_offset;
+}
+
 int vsscanf(const char *s, const char *restrict format, va_list ap) {
-  struct sscanf_cookie c = {.s = s};
+  struct sscanf_cookie c = {.s = s, .offset = 0};
   FILE f = {
       .read = sscanf_read,
+      .seek = sscanf_seek,
       .cookie = &c,
       .has_buffered_char = 0,
       .is_eof = 0,

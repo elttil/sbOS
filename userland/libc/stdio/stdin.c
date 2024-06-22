@@ -71,10 +71,13 @@ size_t read_fd(FILE *f, unsigned char *s, size_t l) {
     f->read_buffer_has_read += read_len;
     s += read_len;
     l -= read_len;
+    lseek(f->fd, read_len, SEEK_CUR);
     return read_len + read_fd(f, s, l);
   }
   if (0 == f->read_buffer_stored) {
+    int offset = lseek(f->fd, 0, SEEK_CUR);
     f->read_buffer_stored = non_cache_read_fd(f, f->read_buffer, 4096);
+    lseek(f->fd, offset, SEEK_SET);
     f->read_buffer_has_read = 0;
     if (0 == f->read_buffer_stored) {
       return 0;
