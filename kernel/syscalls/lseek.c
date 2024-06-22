@@ -7,7 +7,7 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-off_t syscall_lseek(int fd, off_t offset, int whence) {
+int syscall_lseek(int fd, int offset, int whence) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
