@@ -134,6 +134,7 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
         continue;
       }
       if (out) {
+        out->inode->ref++;
         out->reference_count++;
       }
     }
@@ -185,6 +186,7 @@ void tasking_init(void) {
 
 int i = 0;
 void free_process(process_t *p) {
+  disable_interrupts();
   // free_process() will purge all contents such as allocated frames
   // out of the current process. This will be called by exit() and
   // exec*().
@@ -210,8 +212,9 @@ void free_process(process_t *p) {
 }
 
 void exit_process(process_t *p, int status) {
-  disable_interrupts();
   assert(p->pid != 1);
+  disable_interrupts();
+  p->dead = 1;
   if (p->parent) {
     p->parent->halts[WAIT_CHILD_HALT] = 0;
     p->parent->child_rc = status;
@@ -240,7 +243,6 @@ void exit_process(process_t *p, int status) {
     tmp = tmp->next;
   }
   free_process(p);
-  p->dead = 1;
   if (current_task == p) {
     switch_task();
   }
@@ -248,7 +250,7 @@ void exit_process(process_t *p, int status) {
 
 void exit(int status) {
   exit_process(current_task, status);
-  switch_task();
+  assert(0);
 }
 
 u32 setup_stack(u32 stack_pointer, int argc, char **argv, int *err) {
@@ -365,6 +367,11 @@ int isset_fdhalt(process_t *p, int *empty) {
   if (NULL == p) {
     p = current_task;
   }
+  disable_interrupts();
+  if (p->dead) {
+    enable_interrupts();
+    return 1;
+  }
   int blocked = 0;
   struct list *read_list = &p->read_list;
   struct list *write_list = &p->write_list;
@@ -378,6 +385,7 @@ int isset_fdhalt(process_t *p, int *empty) {
     *empty = 0;
     if (inode->_has_data) {
       if (inode->_has_data(inode)) {
+        enable_interrupts();
         return 0;
       }
     }
@@ -391,6 +399,7 @@ int isset_fdhalt(process_t *p, int *empty) {
     *empty = 0;
     if (inode->_can_write) {
       if (inode->_can_write(inode)) {
+        enable_interrupts();
         return 0;
       }
     }
@@ -403,11 +412,12 @@ int isset_fdhalt(process_t *p, int *empty) {
     }
     *empty = 0;
     if (!inode->is_open) {
-      kprintf("is_open\n");
+      enable_interrupts();
       return 0;
     }
     blocked = 1;
   }
+  enable_interrupts();
   return blocked;
 }
 
@@ -512,7 +522,7 @@ void switch_task() {
 
   if (current_task->dead) {
     current_task = current_task->next;
-    if(!current_task) {
+    if (!current_task) {
       current_task = ready_queue;
     }
   } else {

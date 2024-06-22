@@ -3,6 +3,7 @@
 #include <cpu/io.h>
 #include <drivers/pci.h>
 #include <drivers/rtl8139.h>
+#include <interrupts.h>
 #include <mmu.h>
 #include <network/arp.h>
 #include <network/ethernet.h>
@@ -47,18 +48,18 @@ u32 current_packet_read = 0;
 void handle_packet(void) {
   assert(sizeof(struct _INT_PACKET_HEADER) == sizeof(u16));
 
-  for (int i = 0; 0 == (inb(rtl8139.gen.base_mem_io + 0x37) & 1); i++) {
+  for (; 0 == (inb(rtl8139.gen.base_mem_io + 0x37) & 1);) {
     u16 *buf = (u16 *)(device_buffer + current_packet_read);
     struct PACKET_HEADER packet_header;
     packet_header.raw = *buf;
     if (packet_header.data.FAE) {
-      return;
+      break;
     }
     if (packet_header.data.CRC) {
-      return;
+      break;
     }
     if (!packet_header.data.ROK) {
-      return;
+      break;
     }
     u16 packet_length = *(buf + 1);
     assert(packet_length <= 2048);
@@ -90,6 +91,7 @@ void handle_packet(void) {
 }
 
 void rtl8139_handler(void *regs) {
+  disable_interrupts();
   (void)regs;
   u16 status = inw(rtl8139.gen.base_mem_io + 0x3e);
 
@@ -110,16 +112,7 @@ void rtl8139_send_data(u8 *data, u16 data_size) {
     data_size -= 0x1000;
     return rtl8139_send_data(data, data_size);
   }
-  // ipc_write(0, data, data_size);
   const struct PCI_DEVICE *device = &rtl8139;
-  // FIXME: It should block or fail if there is too little space for the
-  // buffer
-  if (data_size > 0x1000) {
-    rtl8139_send_data(data, 0x1000);
-    data += 0x1000;
-    data_size -= 0x1000;
-    return rtl8139_send_data(data, data_size);
-  }
   if (send_buffers_loop > 3) {
     send_buffers_loop = 0;
   }

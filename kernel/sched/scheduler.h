@@ -4,8 +4,8 @@ typedef struct Process process_t;
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <lib/list.h>
-#include <lib/stack.h>
 #include <lib/relist.h>
+#include <lib/stack.h>
 #include <mmu.h>
 #include <signal.h>
 #include <stdbool.h>

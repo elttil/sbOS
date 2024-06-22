@@ -1,12 +1,13 @@
 #include <assert.h>
 #include <drivers/rtl8139.h>
+#include <interrupts.h>
 #include <kmalloc.h>
-#include <string.h>
 #include <network/arp.h>
 #include <network/bytes.h>
 #include <network/ethernet.h>
 #include <network/ipv4.h>
 #include <stdio.h>
+#include <string.h>
 
 struct ETHERNET_HEADER {
   u8 mac_dst[6];
@@ -69,7 +70,6 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
 
 void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
                           u64 payload_length) {
-  assert(payload_length <= 1500);
   // FIXME: Janky allocation, do this better
   u64 buffer_size =
       sizeof(struct ETHERNET_HEADER) + payload_length + sizeof(u32);

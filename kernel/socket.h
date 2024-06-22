@@ -42,7 +42,9 @@ struct UdpConnection {
 };
 
 struct TcpConnection {
-  int dead;
+
+  int state;
+
   u16 incoming_port;
   u32 incoming_ip;
   u32 outgoing_ip;
@@ -52,26 +54,27 @@ struct TcpConnection {
   struct ringbuffer incoming_buffer;
   struct ringbuffer outgoing_buffer;
 
-  struct relist inflight;
-  u8 max_inflight;
-
   int no_delay;
 
   u32 current_window_size;
   u32 window_size;
-  u32 seq;
-  u32 seq_ack;
-  u32 ack;
+  u32 sent_ack;
+  u32 recieved_ack;
 
-  int handshake_state;
+  u32 max_seg;
+
+  u32 rcv_wnd;
+  u32 rcv_nxt;
+  u32 rcv_adv;
+
+  u32 snd_una;
+  u32 snd_nxt;
+  u32 snd_max;
+  u32 snd_wnd;
 };
 
-struct TcpConnection *tcp_get_connection(u32 socket, process_t *p);
-struct TcpConnection *internal_tcp_incoming(u32 src_ip, u16 src_port,
-                                            u32 dst_ip, u16 dst_port);
-
 struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
-                                          u16 dst_port);
+                                          ipv4_t dst_ip, u16 dst_port);
 struct UdpConnection *udp_find_connection(ipv4_t src_ip, u16 src_port,
                                           u16 dst_port);
 

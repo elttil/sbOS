@@ -300,13 +300,12 @@ int vfs_close_process(process_t *p, int fd) {
   assert(relist_remove(&p->file_descriptors, fd));
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
-    if (fd_ptr->inode->close) {
-      fd_ptr->inode->close(fd_ptr);
-    }
-
     assert(0 < fd_ptr->inode->ref);
     fd_ptr->inode->ref--;
     if (0 >= fd_ptr->inode->ref) {
+      if (fd_ptr->inode->close) {
+        fd_ptr->inode->close(fd_ptr);
+      }
       kfree(fd_ptr->inode);
     }
     kfree(fd_ptr);
