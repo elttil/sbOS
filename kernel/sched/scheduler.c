@@ -608,12 +608,14 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
     return (void *)-1;
   }
   *ptr = kmalloc(sizeof(MemoryMap));
+  if (!*ptr) {
+    return (void *)-ENOMEM;
+  }
   MemoryMap *free_map = *ptr;
 
   if (-1 == fd) {
     void *rc = allocate_virtual_user_memory(length, prot, flags);
     if (!rc) {
-      kprintf("ENOMEM\n");
       return (void *)-ENOMEM;
     }
     free_map->u_address = rc;

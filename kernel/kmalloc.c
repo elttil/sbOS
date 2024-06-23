@@ -18,7 +18,7 @@ void *kmalloc_align(size_t s, void **physical) {
   // TODO: It should reuse virtual regions so that it does not run out
   // of address space.
   void *rc;
-  if ((void *)-1 == (rc = ksbrk_physical(s, physical))) {
+  if (!(rc = ksbrk_physical(s, physical))) {
     return NULL;
   }
   return rc;
@@ -59,6 +59,9 @@ u32 total_heap_size = 0;
 
 int init_heap(void) {
   head = (MallocHeader *)ksbrk(NEW_ALLOC_SIZE);
+  if (!head) {
+    return 0;
+  }
   total_heap_size += NEW_ALLOC_SIZE - sizeof(MallocHeader);
   head->magic = 0xdde51ab9410268b1;
   head->size = NEW_ALLOC_SIZE - sizeof(MallocHeader);
@@ -73,7 +76,7 @@ int add_heap_memory(size_t min_desired) {
   size_t allocation_size = max(min_desired, NEW_ALLOC_SIZE);
   allocation_size += delta_page(allocation_size);
   void *p;
-  if ((void *)(-1) == (p = (void *)ksbrk(allocation_size))) {
+  if (!(p = (void *)ksbrk(allocation_size))) {
     return 0;
   }
   total_heap_size += allocation_size - sizeof(MallocHeader);
@@ -122,7 +125,9 @@ MallocHeader *find_free_entry(u32 s) {
   // A new header is required as well as the newly allocated chunk
   s += sizeof(MallocHeader);
   if (!head) {
-    init_heap();
+    if (!init_heap()) {
+      return NULL;
+    }
   }
   MallocHeader *p = head;
   for (; p; p = next_header(p)) {

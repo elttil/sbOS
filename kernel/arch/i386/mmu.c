@@ -29,24 +29,28 @@ void change_frame(u32 frame, int on);
 int get_free_frame(u32 *frame);
 int allocate_frame(Page *page, int rw, int is_kernel);
 
-static void create_kernel_table(int table_index) {
+static int create_kernel_table(int table_index) {
   u32 physical;
   active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   PageTable *new_table =
       (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
+  if (!new_table) {
+    return 0;
+  }
   memset(new_table, 0, sizeof(PageTable));
   kernel_directory->tables[table_index] = new_table;
   kernel_directory->physical_tables[table_index] = physical | 0x3;
   if (!current_task) {
     active_directory->tables[table_index] = new_table;
     active_directory->physical_tables[table_index] = physical | 0x3;
-    return;
+    return 1;
   }
   for (process_t *p = ready_queue; p; p = p->next) {
     PageDirectory *pd = p->cr3;
     pd->tables[table_index] = new_table;
     pd->physical_tables[table_index] = physical | 0x3;
   }
+  return 1;
 }
 
 void *ksbrk(size_t s) {
@@ -63,12 +67,14 @@ void *ksbrk(size_t s) {
   // Determine whether we are approaching a unallocated table
   int table_index = 1 + (rc / (1024 * 0x1000));
   if (!kernel_directory->tables[table_index]) {
-    create_kernel_table(table_index);
+    if (!create_kernel_table(table_index)) {
+      return NULL;
+    }
     return ksbrk(s);
   }
   if (!mmu_allocate_shared_kernel_region((void *)rc,
                                          (data_end - (uintptr_t)rc))) {
-    return (void *)-1;
+    return NULL;
   }
   get_fast_insecure_random(rc, s);
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
@@ -77,6 +83,9 @@ void *ksbrk(size_t s) {
 
 void *ksbrk_physical(size_t s, void **physical) {
   void *r = ksbrk(s);
+  if (!r) {
+    return NULL;
+  }
   if (physical) {
     *physical = (void *)virtual_to_physical(r, 0);
   }
@@ -256,6 +265,9 @@ PageDirectory *clone_directory(PageDirectory *original) {
   u32 physical_address;
   PageDirectory *new_directory =
       kmalloc_align(sizeof(PageDirectory), (void **)&physical_address);
+  if (!new_directory) {
+    return NULL;
+  }
   memset(new_directory, 0, sizeof(PageDirectory));
   if (!new_directory) {
     return NULL;
