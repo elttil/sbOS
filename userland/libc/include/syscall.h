@@ -40,20 +40,11 @@
 #define SYS_GETCWD 32
 #define SYS_ISATTY 33
 #define SYS_RANDOMFILL 34
-
-#define SYS_OUTW 35
-#define SYS_INL 36
-#define SYS_OUTL 37
-#define SYS_MAP_FRAMES 38
-#define SYS_VIRTUAL_TO_PHYSICAL 39
-#define SYS_INSTALL_IRQ 40
-#define SYS_TMP_KERNEL_HANDLE_PACKET 41
-
-#define SYS_MUNMAP 42
-#define SYS_OPEN_PROCESS 43
-#define SYS_LSEEK 44
-#define SYS_CONNECT 45
-#define SYS_SETSOCKOPT 46
+#define SYS_MUNMAP 35
+#define SYS_OPEN_PROCESS 36
+#define SYS_LSEEK 37
+#define SYS_CONNECT 38
+#define SYS_SETSOCKOPT 39
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);
