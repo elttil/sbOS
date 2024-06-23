@@ -723,15 +723,16 @@ void getline_test(void) {
       size_t n;
       n = 256;
       getline(&line_buffer, &n, fp);
-      assert(0 == strcmp("line1", line_buffer));
+      assert(0 == strcmp("line1\n", line_buffer));
       n = 256;
       getline(&line_buffer, &n, fp);
-      assert(0 == strcmp("line2", line_buffer));
+      assert(0 == strcmp("line2\n", line_buffer));
       n = 256;
       getline(&line_buffer, &n, fp);
-      assert(0 == strcmp("foo", line_buffer));
+      assert(0 == strcmp("foo\n", line_buffer));
       n = 256;
       getline(&line_buffer, &n, fp);
+      printf("line_buffer: %s\n", line_buffer);
       assert(0 == strcmp("bar", line_buffer));
     }
     free(buffer);
