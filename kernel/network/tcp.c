@@ -241,9 +241,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   con->snd_una = ack_num;
 
   con->sent_ack = max(con->sent_ack, seq_num + tcp_payload_length);
-  if (FIN & flags) {
-    con->sent_ack++;
-  }
+  con->sent_ack += (FIN & flags)?1:0;
+  con->sent_ack += (SYN & flags)?1:0;
 
   switch (con->state) {
   case TCP_STATE_LISTEN: {
