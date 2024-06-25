@@ -578,6 +578,8 @@ void printf_test(void) {
     EXP("hex: 1");
     buf_n = sprintf(buf, "hex: %x", 0x622933f2);
     EXP("hex: 622933f2");
+    buf_n = sprintf(buf, "hex: %02x", 0);
+    EXP("hex: 00");
 
     buf_n = sprintf(buf, "oct: %02o", 1);
     EXP("oct: 01");

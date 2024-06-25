@@ -13,6 +13,7 @@
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
+#include <network/tcp.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 
@@ -150,28 +151,46 @@ int syscall_setsockopt(int socket, int level, int option_name,
   return setsockopt(socket, level, option_name, option_value, option_len);
 }
 
+int tcp_connect(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen);
+int syscall_getpeername(int sockfd, struct sockaddr *restrict addr,
+                        socklen_t *restrict addrlen) {
+  if (addr) {
+    return -EINVAL;
+  }
+
+  vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
+  // FIXME: BAD
+  assert(fd->inode->connect == tcp_connect);
+  struct TcpConnection *con = fd->inode->internal_object;
+  if (TCP_STATE_ESTABLISHED != con->state) {
+    return -ENOTCONN;
+  }
+
+  return 0;
+}
+
 int (*syscall_functions[])() = {
-    (void(*))syscall_open,       (void(*))syscall_mread,
-    (void(*))syscall_write,      (void(*))syscall_pread,
-    (void(*))syscall_pwrite,     (void(*))syscall_fork,
-    (void(*))syscall_exec,       (void(*))syscall_getpid,
-    (void(*))syscall_exit,       (void(*))syscall_wait,
-    (void(*))syscall_brk,        (void(*))syscall_sbrk,
-    (void(*))syscall_pipe,       (void(*))syscall_dup2,
-    (void(*))syscall_close,      (void(*))syscall_openpty,
-    (void(*))syscall_poll,       (void(*))syscall_mmap,
-    (void(*))syscall_accept,     (void(*))syscall_bind,
-    (void(*))syscall_socket,     (void(*))syscall_shm_open,
-    (void(*))syscall_ftruncate,  (void(*))syscall_fstat,
-    (void(*))syscall_msleep,     (void(*))syscall_uptime,
-    (void(*))syscall_mkdir,      (void(*))syscall_recvfrom,
-    (void(*))syscall_sendto,     (void(*))syscall_kill,
-    (void(*))syscall_sigaction,  (void(*))syscall_chdir,
-    (void(*))syscall_getcwd,     (void(*))syscall_isatty,
-    (void(*))syscall_randomfill,
-    (void(*))syscall_munmap,     (void(*))syscall_open_process,
-    (void(*))syscall_lseek,      (void(*))syscall_connect,
-    (void(*))syscall_setsockopt,
+    (void(*))syscall_open,         (void(*))syscall_mread,
+    (void(*))syscall_write,        (void(*))syscall_pread,
+    (void(*))syscall_pwrite,       (void(*))syscall_fork,
+    (void(*))syscall_exec,         (void(*))syscall_getpid,
+    (void(*))syscall_exit,         (void(*))syscall_wait,
+    (void(*))syscall_brk,          (void(*))syscall_sbrk,
+    (void(*))syscall_pipe,         (void(*))syscall_dup2,
+    (void(*))syscall_close,        (void(*))syscall_openpty,
+    (void(*))syscall_poll,         (void(*))syscall_mmap,
+    (void(*))syscall_accept,       (void(*))syscall_bind,
+    (void(*))syscall_socket,       (void(*))syscall_shm_open,
+    (void(*))syscall_ftruncate,    (void(*))syscall_fstat,
+    (void(*))syscall_msleep,       (void(*))syscall_uptime,
+    (void(*))syscall_mkdir,        (void(*))syscall_recvfrom,
+    (void(*))syscall_sendto,       (void(*))syscall_kill,
+    (void(*))syscall_sigaction,    (void(*))syscall_chdir,
+    (void(*))syscall_getcwd,       (void(*))syscall_isatty,
+    (void(*))syscall_randomfill,   (void(*))syscall_munmap,
+    (void(*))syscall_open_process, (void(*))syscall_lseek,
+    (void(*))syscall_connect,      (void(*))syscall_setsockopt,
+    (void(*))syscall_getpeername,
 };
 
 void int_syscall(reg_t *r);

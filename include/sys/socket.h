@@ -79,5 +79,7 @@ int listen(int socket, int backlog);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int setsockopt(int socket, int level, int option_name, const void *option_value,
                socklen_t option_len);
+int getpeername(int sockfd, struct sockaddr *restrict addr,
+                socklen_t *restrict addrlen);
 #endif // KERNEL
 #endif // SYS_SOCKET_H

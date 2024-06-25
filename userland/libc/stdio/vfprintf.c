@@ -10,7 +10,7 @@ const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
 #define FILE_WRITE(_f, _s, _l, _r)                                             \
   {                                                                            \
     size_t _rc = _f->write(_f, (const unsigned char *)_s, _l);                 \
-    if ((size_t)-1 == _rc)                                                     \
+    if ((size_t) - 1 == _rc)                                                   \
       assert(0);                                                               \
     *(int *)(_r) += _rc;                                                       \
   }
@@ -18,10 +18,6 @@ const char HEX_SET[0x10] = {'0', '1', '2', '3', '4', '5', '6', '7',
 int fprint_num(FILE *f, long long n, int base, char *char_set, int prefix,
                int zero_padding, int right_padding) {
   int c = 0;
-  if (0 == n) {
-    zero_padding = 1;
-    prefix = 1;
-  }
   char str[32];
   int i = 0;
 
