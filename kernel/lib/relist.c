@@ -129,8 +129,7 @@ int relist_set(struct relist *list, u32 index, void *value) {
     assert(0);
     return 0;
   }
-  int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64)));
-  assert(is_used);
+  list->bitmap[index / 64] |= ((u64)1 << (index % 64));
   list->entries[index] = value;
   return 1;
 }

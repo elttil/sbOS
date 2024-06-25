@@ -686,13 +686,14 @@ void draw(void) {
 }
 
 int main(void) {
-  open("/dev/serial", O_WRITE, 0);
-  open("/dev/serial", O_WRITE, 0);
+  int serial_fd = open("/dev/serial", O_WRITE, 0);
+  dup2(serial_fd, 1);
+  serial_fd = 1;
   // Start a terminal by default. This is just to make it easier for me
   // to test the system.
   int pid = fork();
   if (0 == pid) {
-    // TODO: Close (almost) all file descriptors from parent
+    close(serial_fd);
     char *argv[] = {"/term", NULL};
     execv("/term", argv);
     assert(0);
