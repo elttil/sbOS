@@ -5,13 +5,13 @@
 #include <fcntl.h>
 #include <math.h>
 #include <poll.h>
-#include <sys/socket.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #define WINDOW_SERVER_SOCKET "/windowserver"
@@ -347,8 +347,8 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
 
 struct mouse_event {
   uint8_t buttons;
-  uint8_t x;
-  uint8_t y;
+  int x;
+  int y;
 };
 
 void send_resize(WINDOW *w, int x, int y) {
@@ -360,42 +360,36 @@ void send_resize(WINDOW *w, int x, int y) {
 }
 
 void parse_mouse_event(int fd) {
-  int16_t xc = 0;
-  int16_t yc = 0;
+  int xc = 0;
+  int yc = 0;
   int middle_button = 0;
   int right_button = 0;
   int left_button = 0;
-  struct mouse_event e[100];
-  for (;;) {
-    int rc = read(fd, e, sizeof(e));
-    if (rc <= 0)
-      break;
+  struct mouse_event e;
+  int rc = read(fd, &e, sizeof(e));
+  if (rc <= 0)
+    return;
 
-    int n = rc / sizeof(e[0]);
-    for (int i = 0; i < n; i++) {
-      uint8_t xs = e[i].buttons & (1 << 4);
-      uint8_t ys = e[i].buttons & (1 << 5);
-      middle_button = e[i].buttons & (1 << 2);
-      right_button = e[i].buttons & (1 << 1);
-      left_button = e[i].buttons & (1 << 0);
-      int16_t x = e[i].x;
-      int16_t y = e[i].y;
-      if (xs)
-        x |= 0xFF00;
-      if (ys)
-        y |= 0xFF00;
-      xc += x;
-      yc += y;
-    }
-  }
-  mouse_x += xc;
-  mouse_y -= yc;
+  uint8_t xs = e.buttons & (1 << 4);
+  uint8_t ys = e.buttons & (1 << 5);
+  middle_button = e.buttons & (1 << 2);
+  right_button = e.buttons & (1 << 1);
+  left_button = e.buttons & (1 << 0);
+
+  xc = -mouse_x;
+  yc = mouse_y;
+
+  mouse_x = e.x;
+  mouse_y = e.y;
   if (mouse_x < 0) {
     mouse_x = 0;
   }
   if (mouse_y < 0) {
     mouse_y = 0;
   }
+
+  xc += mouse_x;
+  yc -= mouse_y;
   if (mouse_left_down && !left_button) {
     mouse_left_up = 1;
   } else {

@@ -5,29 +5,69 @@
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
+#include <math.h>
 #include <typedefs.h>
 
 u8 mouse_cycle = 0;
 u8 mouse_u8[3];
-u8 mouse_x = 0;
-u8 mouse_y = 0;
-vfs_inode_t *mouse_inode;
+int mouse_x = 0;
+int mouse_y = 0;
+
+u8 mouse_left_button = 0;
+u8 mouse_middle_button = 0;
+u8 mouse_right_button = 0;
+
+vfs_inode_t *mouse_inode = NULL;
 
 struct mouse_event {
   u8 buttons;
-  u8 x;
-  u8 y;
+  int x;
+  int y;
+};
+
+struct mouse_event previous_event = {
+    .buttons = 0,
+    .x = 0,
+    .y = 0,
 };
 
 int fs_mouse_has_data(vfs_inode_t *inode) {
+  if (mouse_x != previous_event.x || mouse_y != previous_event.y) {
+    return 1;
+  }
+
   const struct ringbuffer *rb = inode->internal_object;
   return !ringbuffer_isempty(rb);
 }
 
 int fs_mouse_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  mouse_middle_button = mouse_u8[0] & (1 << 2);
+  mouse_right_button = mouse_u8[0] & (1 << 1);
+  mouse_left_button = mouse_u8[0] & (1 << 0);
+
   struct ringbuffer *rb = fd->inode->internal_object;
   u32 rc = ringbuffer_read(rb, buffer, len);
   if (0 == rc && len > 0) {
+    if (mouse_x != previous_event.x || mouse_y != previous_event.y) {
+      int read_len = min(len, sizeof(struct mouse_event));
+
+      struct mouse_event e;
+      e.x = mouse_x;
+      e.y = mouse_y;
+      e.buttons = 0;
+      if (mouse_middle_button) {
+        e.buttons |= (1 << 2);
+      }
+      if (mouse_right_button) {
+        e.buttons |= (1 << 1);
+      }
+      if (mouse_left_button) {
+        e.buttons |= (1 << 0);
+      }
+      memcpy(buffer, &e, read_len);
+      previous_event = e;
+      return read_len;
+    }
     return -EAGAIN;
   }
   return rc;
@@ -56,18 +96,59 @@ void int_mouse(reg_t *r) {
     mouse_u8[1] = inb(0x60);
     mouse_cycle++;
     break;
-  case 2:
+  case 2: {
     mouse_u8[2] = inb(0x60);
-    mouse_x = mouse_u8[1];
-    mouse_y = mouse_u8[2];
+    int16_t x = mouse_u8[1];
+    int16_t y = mouse_u8[2];
+    uint8_t xs = mouse_u8[0] & (1 << 4);
+    uint8_t ys = mouse_u8[0] & (1 << 5);
+    if (xs)
+      x |= 0xFF00;
+    if (ys)
+      y |= 0xFF00;
+
+    mouse_x += x;
+    mouse_y -= y;
+
+    if (mouse_x < 0)
+      mouse_x = 0;
+    if (mouse_y < 0)
+      mouse_y = 0;
+
+    mouse_middle_button = mouse_u8[0] & (1 << 2);
+    mouse_right_button = mouse_u8[0] & (1 << 1);
+    mouse_left_button = mouse_u8[0] & (1 << 0);
+
     mouse_cycle = 0;
+
+    // If there is a change in the mouse buttons that event should be written.
+    // The mouse movements will be generated upon request. This avoids
+    // filling the ringbuffer with a ton of small mouse movements.
+
+    int button_change = 0;
+    if (mouse_middle_button != (previous_event.buttons & (1 << 2))) {
+      button_change = 1;
+    } else if (mouse_right_button != (previous_event.buttons & (1 << 1))) {
+      button_change = 1;
+    } else if (mouse_left_button != (previous_event.buttons & (1 << 0))) {
+      button_change = 1;
+    }
+
+    if (!button_change) {
+      break;
+    }
+
     struct mouse_event e;
     e.buttons = mouse_u8[0];
     e.x = mouse_x;
     e.y = mouse_y;
-    struct ringbuffer *rb = mouse_inode->internal_object;
-    ringbuffer_write(rb, (u8 *)&e, sizeof(e));
+    previous_event = e;
+    if (mouse_inode) {
+      struct ringbuffer *rb = mouse_inode->internal_object;
+      ringbuffer_write(rb, (u8 *)&e, sizeof(e));
+    }
     break;
+  }
   }
   EOI(0xC);
 }
