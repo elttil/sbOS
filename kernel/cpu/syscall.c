@@ -4,6 +4,7 @@
 #include <cpu/syscall.h>
 #include <drivers/pst.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/tmpfs.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
@@ -169,6 +170,22 @@ int syscall_getpeername(int sockfd, struct sockaddr *restrict addr,
   return 0;
 }
 
+int syscall_fcntl(int fd, int cmd, int arg) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+  if (!fd_ptr) {
+    return -EBADF;
+  }
+  if (F_GETFL == cmd) {
+    return fd_ptr->flags;
+  } else if (F_SETFL == cmd) {
+    fd_ptr->flags = arg;
+    return 0;
+  } else {
+    return -EINVAL;
+  }
+  return 0;
+}
+
 int (*syscall_functions[])() = {
     (void(*))syscall_open,         (void(*))syscall_read,
     (void(*))syscall_write,        (void(*))syscall_pread,
@@ -190,7 +207,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_randomfill,   (void(*))syscall_munmap,
     (void(*))syscall_open_process, (void(*))syscall_lseek,
     (void(*))syscall_connect,      (void(*))syscall_setsockopt,
-    (void(*))syscall_getpeername,
+    (void(*))syscall_getpeername,  (void(*))syscall_fcntl,
 };
 
 void int_syscall(reg_t *r);

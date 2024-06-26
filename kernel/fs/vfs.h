@@ -13,15 +13,6 @@ typedef struct vfs_mounts vfs_mounts_t;
 #include <sys/stat.h>
 #include <typedefs.h>
 
-// FIXME: Is there some standard value for this?
-#define O_NONBLOCK (1 << 0)
-#define O_READ (1 << 1)
-#define O_WRITE (1 << 2)
-#define O_CREAT (1 << 3)
-#define O_RDONLY O_READ
-#define O_WRONLY O_WRITE
-#define O_RDWR (O_WRITE | O_READ)
-
 #define FS_TYPE_FILE 0
 #define FS_TYPE_UNIX_SOCKET 1
 #define FS_TYPE_CHAR_DEVICE 2
