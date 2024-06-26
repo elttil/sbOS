@@ -588,6 +588,8 @@ void printf_test(void) {
     buf_n = sprintf(buf, "oct: %00o", 1);
     EXP("oct: 1");
 
+    buf_n = sprintf(buf, "int: %d", 0);
+    EXP("int: 0");
     buf_n = sprintf(buf, "int: %-2dend", 1);
     EXP("int: 1 end");
     buf_n = sprintf(buf, "int: %-2dend", 12);

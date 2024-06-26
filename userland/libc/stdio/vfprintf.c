@@ -28,8 +28,13 @@ int fprint_num(FILE *f, long long n, int base, char *char_set, int prefix,
     n *= -1;
   }
 
-  for (; n != 0 && i < 32; i++, n /= base)
-    str[i] = char_set[(n % base)];
+  if (0 == n) {
+    str[i] = char_set[0];
+    i++;
+  } else {
+    for (; n != 0 && i < 32; i++, n /= base)
+      str[i] = char_set[(n % base)];
+  }
 
   if (is_signed) {
     str[i] = '-';
