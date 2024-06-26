@@ -308,7 +308,7 @@ u32 ext2_find_inode(const char *file) {
     // The expected returned entry is a directory
     if (TYPE_INDICATOR_DIRECTORY != a.type_indicator) {
       kfree(orig_str);
-      kprintf("FAILED\n");
+      klog(LOG_WARN, "ext2: Expected diretory but got: %d", a.type_indicator);
       return 0;
     }
   }
@@ -431,7 +431,7 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   int num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
 
   for (int i = num_blocks_used; i < num_blocks_required; i++) {
-    if (i > 12) {
+    if (i >= 12) {
       assert(0);
     }
     int b = get_free_block(1 /*true*/);

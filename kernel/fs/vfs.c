@@ -333,7 +333,6 @@ int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
     return -EBADF;
   }
   if (fd < 0) {
-    dump_backtrace(12);
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
   }
