@@ -367,9 +367,7 @@ int isset_fdhalt(process_t *p, int *empty) {
   if (NULL == p) {
     p = current_task;
   }
-  disable_interrupts();
   if (p->dead) {
-    enable_interrupts();
     return 1;
   }
   int blocked = 0;
@@ -385,7 +383,6 @@ int isset_fdhalt(process_t *p, int *empty) {
     *empty = 0;
     if (inode->_has_data) {
       if (inode->_has_data(inode)) {
-        enable_interrupts();
         return 0;
       }
     }
@@ -399,7 +396,6 @@ int isset_fdhalt(process_t *p, int *empty) {
     *empty = 0;
     if (inode->_can_write) {
       if (inode->_can_write(inode)) {
-        enable_interrupts();
         return 0;
       }
     }
@@ -412,12 +408,10 @@ int isset_fdhalt(process_t *p, int *empty) {
     }
     *empty = 0;
     if (!inode->is_open) {
-      enable_interrupts();
       return 0;
     }
     blocked = 1;
   }
-  enable_interrupts();
   return blocked;
 }
 
@@ -515,6 +509,7 @@ int kill(pid_t pid, int sig) {
   return 0;
 }
 
+int is_switching_tasks = 0;
 void switch_task() {
   if (!current_task) {
     return;
@@ -526,9 +521,11 @@ void switch_task() {
       current_task = ready_queue;
     }
   } else {
+    is_switching_tasks = 1;
     enable_interrupts();
     current_task = next_task((process_t *)current_task);
     disable_interrupts();
+    is_switching_tasks = 0;
   }
   active_directory = current_task->cr3;
 
