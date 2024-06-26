@@ -82,7 +82,6 @@ void vfs_mount(char *path, vfs_inode_t *local_root);
 int vfs_pwrite(int fd, void *buf, u64 count, u64 offset);
 int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset);
 int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset);
-int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset);
 int vfs_pread(int fd, void *buf, u64 count, u64 offset);
 vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset);
 int vfs_dup2(int org_fd, int new_fd);

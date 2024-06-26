@@ -53,12 +53,12 @@ int syscall_pread(SYS_PREAD_PARAMS *args) {
   return vfs_pread(args->fd, args->buf, args->count, args->offset);
 }
 
-int syscall_mread(int fd, void *buf, size_t count, int blocking) {
+int syscall_read(int fd, void *buf, size_t count) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
   }
-  int rc = vfs_pmread(fd, buf, count, blocking, fd_ptr->offset);
+  int rc = vfs_pread(fd, buf, count, fd_ptr->offset);
   fd_ptr->offset += rc;
   return rc;
 }
@@ -170,7 +170,7 @@ int syscall_getpeername(int sockfd, struct sockaddr *restrict addr,
 }
 
 int (*syscall_functions[])() = {
-    (void(*))syscall_open,         (void(*))syscall_mread,
+    (void(*))syscall_open,         (void(*))syscall_read,
     (void(*))syscall_write,        (void(*))syscall_pread,
     (void(*))syscall_pwrite,       (void(*))syscall_fork,
     (void(*))syscall_exec,         (void(*))syscall_getpid,

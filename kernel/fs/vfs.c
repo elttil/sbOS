@@ -327,7 +327,7 @@ int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   return vfs_fd->inode->read(buf, offset, count, vfs_fd);
 }
 
-int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
+int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   if (fd >= 100) {
     kprintf("EBADF : %x\n", fd);
     return -EBADF;
@@ -342,7 +342,7 @@ int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
   }
   int rc = raw_vfs_pread(vfs_fd, buf, count, offset);
   if ((-EAGAIN == rc || -EWOULDBLOCK == rc) && count > 0) {
-    if (!(vfs_fd->flags & O_NONBLOCK) && blocking) {
+    if (!(vfs_fd->flags & O_NONBLOCK)) {
       struct pollfd fds;
       do {
         fds.fd = fd;
@@ -357,10 +357,6 @@ int vfs_pmread(int fd, void *buf, u64 count, int blocking, u64 offset) {
     }
   }
   return rc;
-}
-
-int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
-  return vfs_pmread(fd, buf, count, 1, offset);
 }
 
 int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
