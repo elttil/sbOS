@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <drivers/pit.h>
+#include <fcntl.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
 #include <math.h>

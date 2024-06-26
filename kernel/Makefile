@@ -8,6 +8,7 @@ INCLUDE=-I./includes/ -I../include/ -I./libc/include/
 all: myos.iso
 
 %.o: %.c
+	clang-format -i $<
 	$(CC) $(INCLUDE) -c -o $@ $< $(CFLAGS)
 
 %.o: %.s

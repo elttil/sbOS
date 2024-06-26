@@ -9,7 +9,7 @@
 #include <stdint.h>
 #define NEW_ALLOC_SIZE 0x5000
 
-//#define KMALLOC_DEBUG
+// #define KMALLOC_DEBUG
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)

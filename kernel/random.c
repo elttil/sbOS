@@ -3,6 +3,7 @@
 #include <crypto/ChaCha20/chacha20.h>
 #include <crypto/SHA1/sha1.h>
 #include <crypto/xoshiro256plusplus/xoshiro256plusplus.h>
+#include <fcntl.h>
 #include <fs/devfs.h>
 #include <fs/vfs.h>
 #include <random.h>

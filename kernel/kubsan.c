@@ -1,8 +1,8 @@
+#include <cpu/arch_inst.h>
 #include <interrupts.h>
 #include <kubsan.h>
 #include <log.h>
 #include <stdio.h>
-#include <cpu/arch_inst.h>
 
 void ubsan_log(const char *cause, struct source_location source) {
   kprintf("%s: %s : %d\n", cause, source.file_name, source.line);

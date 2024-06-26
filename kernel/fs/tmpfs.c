@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/fifo.h>
 #include <fs/tmpfs.h>
 #include <sched/scheduler.h>

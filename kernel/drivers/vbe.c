@@ -52,7 +52,8 @@ vfs_vm_object_t *vbe_get_vm_object(u64 length, u64 offset, vfs_fd_t *fd) {
   (void)length;
   (void)offset;
   int n = (uintptr_t)align_page((void *)(u32)framebuffer_size) / 0x1000;
-  vbe_vm_object.object = kmalloc(sizeof(void *) * n);
+
+  vbe_vm_object.object = kcalloc(sizeof(void *), n);
   if (!vbe_vm_object.object) {
     return NULL;
   }

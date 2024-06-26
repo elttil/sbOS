@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/devfs.h>
 #include <fs/tmpfs.h>
 #include <interrupts.h>

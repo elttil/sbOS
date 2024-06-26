@@ -1,7 +1,7 @@
 #include <assert.h>
+#include <cpu/arch_inst.h>
 #include <log.h>
 #include <stdio.h>
-#include <cpu/arch_inst.h>
 
 __attribute__((__noreturn__)) void aFailed(char *f, int l) {
   kprintf("Assert failed\n");

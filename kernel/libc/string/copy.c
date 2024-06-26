@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <kmalloc.h>
+#include <mmu.h>
 #include <stddef.h>
 #include <string.h>
-#include <mmu.h>
 
 char *copy_and_allocate_string(const char *s) {
   size_t l = strlen(s) + 1;
@@ -26,6 +26,6 @@ char *copy_and_allocate_user_string(const char *s) {
   if (!r) {
     return NULL;
   }
-  memcpy(r, s, len+1);
+  memcpy(r, s, len + 1);
   return r;
 }

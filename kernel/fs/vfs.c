@@ -1,9 +1,9 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/vfs.h>
 #include <mmu.h>
 #include <poll.h>
-#include <fcntl.h>
 
 vfs_inode_t *root_dir;
 vfs_mounts_t mounts[10];

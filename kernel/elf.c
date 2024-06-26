@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <crypto/SHA1/sha1.h>
 #include <elf.h>
+#include <fcntl.h>
 #include <sched/scheduler.h>
 #include <stddef.h>
 #include <typedefs.h>

@@ -659,7 +659,7 @@ int create_table(int table_index) {
   if (kernel_directory->tables[table_index]) {
     return 0;
   }
-  u32 physical;
+  u32 physical = 0;
   kernel_directory->tables[table_index] =
       (PageTable *)kmalloc_align(sizeof(PageTable), (void **)&physical);
   if (!kernel_directory->tables[table_index]) {

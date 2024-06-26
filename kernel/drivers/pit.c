@@ -50,7 +50,7 @@ void int_clock(reg_t *regs) {
   if (switch_counter >= hertz) {
     EOI(0x20);
     switch_counter = 0;
-    if(is_switching_tasks) {
+    if (is_switching_tasks) {
       return;
     }
     switch_task();

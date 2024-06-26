@@ -223,24 +223,6 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     con->rcv_nxt = seq_num;
   }
 
-  /*
-  u32 seq_num_end = seq_num + tcp_payload_length - 1;
-  int case1 =
-      (con->rcv_nxt <= seq_num) && (seq_num < (con->rcv_nxt + con->rcv_wnd));
-  int case2 = (con->rcv_nxt <= seq_num_end) &&
-              (seq_num_end < (con->rcv_nxt + con->rcv_wnd));
-
-  if (!case1 && !case2) {
-    kprintf("seq_num: %d\n", seq_num);
-    kprintf("seq_num_end: %d\n", seq_num_end);
-    kprintf("con->rcv_nxt: %d\n", con->rcv_nxt);
-    kprintf("con->rcv_wnd: %d\n", con->rcv_wnd);
-    // Invalid segment
-    kprintf("invalid segment\n");
-    return;
-  }
-  */
-
   if (ack_num > con->snd_max) {
     // TODO: Odd ACK number, what should be done?
     kprintf("odd ACK\n");
@@ -257,16 +239,9 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     return;
   }
 
-  //  kprintf("seq_num: %d rcv_nxt %d\n", seq_num, con->rcv_nxt);
-  //  kprintf("tcp_payload_length: %d\n", tcp_payload_length);
-
   con->snd_wnd = window_size;
   con->snd_una = ack_num;
 
-  //  con->sent_ack =
-  //      max(con->sent_ack, seq_num +
-  //      min(ringbuffer_unused(&con->incoming_buffer),
-  //                                       tcp_payload_length));
   con->rcv_nxt += (FIN & flags) ? 1 : 0;
   con->rcv_nxt += (SYN & flags) ? 1 : 0;
 
@@ -333,6 +308,11 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
       tcp_destroy_connection(con);
       break;
     }
+    break;
+  }
+  case TCP_STATE_CLOSE_WAIT: {
+    // Waiting for this machine to close the connection. There is
+    // nothing to respond with.
     break;
   }
   default: {
