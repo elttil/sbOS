@@ -84,6 +84,7 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   header.dst_port = htons(con->outgoing_port);
   header.seq_num = htonl(con->snd_nxt);
   if (flags & ACK) {
+    con->should_send_ack = 0;
     header.ack_num = htonl(con->rcv_nxt);
   } else {
     header.ack_num = 0;
@@ -282,7 +283,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
       int rc = ringbuffer_write(&con->incoming_buffer, tcp_payload,
                                 tcp_payload_length);
       con->rcv_nxt += rc;
-      tcp_send_empty_payload(con, ACK);
+      con->should_send_ack = 1;
     }
     break;
   }

@@ -64,6 +64,8 @@ struct TcpConnection {
   u32 rcv_nxt;
   u32 rcv_adv;
 
+  int should_send_ack;
+
   u32 snd_una;
   u32 snd_nxt;
   u32 snd_max;
@@ -142,4 +144,5 @@ u16 tcp_get_free_port(void);
 int setsockopt(int socket, int level, int option_name, const void *option_value,
                socklen_t option_len);
 void tcp_remove_connection(struct TcpConnection *con);
+void tcp_flush_acks(void);
 #endif

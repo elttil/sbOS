@@ -72,6 +72,27 @@ struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
   return NULL;
 }
 
+void tcp_flush_acks(void) {
+  for (int i = 0;; i++) {
+    struct TcpConnection *c;
+    int end;
+    if (!relist_get(&open_tcp_connections, i, (void **)&c, &end)) {
+      if (end) {
+        break;
+      }
+      continue;
+    }
+    if (TCP_STATE_CLOSED == c->state) {
+      continue;
+    }
+    if (!c->should_send_ack) {
+      continue;
+    }
+    c->should_send_ack = 0;
+    tcp_send_empty_payload(c, ACK);
+  }
+}
+
 u16 tcp_find_free_port(u16 suggestion) {
   for (int i = 0;; i++) {
     struct TcpConnection *c;
@@ -580,6 +601,7 @@ int tcp_create_fd(int is_nonblock) {
     return -ENOMEM;
   }
   con->state = TCP_STATE_CLOSED;
+  con->should_send_ack = 0;
 
   vfs_inode_t *inode = vfs_create_inode(
       0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1, con,

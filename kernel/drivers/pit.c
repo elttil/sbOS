@@ -43,10 +43,16 @@ void set_pit_count(u16 _hertz) {
   outb(PIT_IO_CHANNEL_0, (divisor & 0xFF00) >> 8);
 }
 
+int last_flush = 0;
+
 extern int is_switching_tasks;
 void int_clock(reg_t *regs) {
   clock_num_ms_ticks += 5;
   switch_counter++;
+  if (clock_num_ms_ticks - last_flush > 50) {
+    tcp_flush_acks();
+    last_flush = clock_num_ms_ticks;
+  }
   if (switch_counter >= hertz) {
     EOI(0x20);
     switch_counter = 0;
