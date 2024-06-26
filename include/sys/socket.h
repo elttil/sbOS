@@ -7,8 +7,10 @@
 #define AF_INET 1
 #define AF_LOCAL AF_UNIX
 
-#define SOCK_DGRAM 0
-#define SOCK_STREAM 1
+#define SOCK_DGRAM (1 << 0)
+#define SOCK_STREAM (1 << 1)
+#define SOCK_NONBLOCK (1 << 2)
+
 #define MSG_WAITALL 1
 
 #define INADDR_ANY 0

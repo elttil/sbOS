@@ -2,6 +2,7 @@
 #include <cpu/arch_inst.h>
 #include <drivers/pit.h>
 #include <fs/vfs.h>
+#include <interrupts.h>
 #include <math.h>
 #include <network/arp.h>
 #include <network/bytes.h>
@@ -83,7 +84,7 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   header.dst_port = htons(con->outgoing_port);
   header.seq_num = htonl(con->snd_nxt);
   if (flags & ACK) {
-    header.ack_num = htonl(con->sent_ack);
+    header.ack_num = htonl(con->rcv_nxt);
   } else {
     header.ack_num = 0;
   }
@@ -110,6 +111,13 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   con->snd_max = max(con->snd_nxt, con->snd_max);
 }
 
+// When both the client and the server have closed the connection it can
+// be "destroyed".
+void tcp_destroy_connection(struct TcpConnection *con) {
+  con->state = TCP_STATE_CLOSED;
+  tcp_remove_connection(con);
+}
+
 void tcp_close_connection(struct TcpConnection *con) {
   if (TCP_STATE_CLOSE_WAIT == con->state) {
     tcp_send_empty_payload(con, FIN);
@@ -127,8 +135,7 @@ void tcp_close_connection(struct TcpConnection *con) {
     return;
   }
   if (TCP_STATE_SYN_SENT == con->state) {
-    con->state = TCP_STATE_CLOSED;
-    // TODO: Cleanup
+    tcp_destroy_connection(con);
     return;
   }
 }
@@ -159,7 +166,7 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
   header.src_port = htons(con->incoming_port);
   header.dst_port = htons(con->outgoing_port);
   header.seq_num = htonl(con->snd_nxt);
-  header.ack_num = htonl(con->sent_ack);
+  header.ack_num = htonl(con->rcv_nxt);
   header.data_offset = 5;
   header.reserved = 0;
   header.flags = PSH | ACK;
@@ -184,12 +191,13 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
 void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
                 u32 payload_length) {
   const struct TCP_HEADER *header = (const struct TCP_HEADER *)payload;
-  u16 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
+  u32 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
   const u8 *tcp_payload = payload + header->data_offset * sizeof(u32);
   u16 checksum =
       tcp_calculate_checksum(src_ip, dst_ip.d, tcp_payload, tcp_payload_length,
                              header, payload_length);
   if (header->checksum != checksum) {
+    klog(LOG_WARN, "Bad TCP checksum");
     return;
   }
   u16 n_src_port = header->src_port;
@@ -207,15 +215,22 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   u16 window_size = htons(n_window_size);
   struct TcpConnection *con =
       tcp_find_connection(src_ip, src_port, dst_ip, dst_port);
+  if (!con) {
+    return;
+  }
 
   if (con->state == TCP_STATE_LISTEN || con->state == TCP_STATE_SYN_SENT) {
     con->rcv_nxt = seq_num;
   }
 
+  /*
   u32 seq_num_end = seq_num + tcp_payload_length - 1;
-  if (!((con->rcv_nxt <= seq_num) && seq_num < con->rcv_nxt + con->rcv_wnd) &&
-      !((con->rcv_nxt <= seq_num_end) &&
-        seq_num_end < con->rcv_nxt + con->rcv_wnd)) {
+  int case1 =
+      (con->rcv_nxt <= seq_num) && (seq_num < (con->rcv_nxt + con->rcv_wnd));
+  int case2 = (con->rcv_nxt <= seq_num_end) &&
+              (seq_num_end < (con->rcv_nxt + con->rcv_wnd));
+
+  if (!case1 && !case2) {
     kprintf("seq_num: %d\n", seq_num);
     kprintf("seq_num_end: %d\n", seq_num_end);
     kprintf("con->rcv_nxt: %d\n", con->rcv_nxt);
@@ -224,6 +239,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     kprintf("invalid segment\n");
     return;
   }
+  */
 
   if (ack_num > con->snd_max) {
     // TODO: Odd ACK number, what should be done?
@@ -237,19 +253,28 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     return;
   }
 
+  if (con->rcv_nxt != seq_num) {
+    return;
+  }
+
+  //  kprintf("seq_num: %d rcv_nxt %d\n", seq_num, con->rcv_nxt);
+  //  kprintf("tcp_payload_length: %d\n", tcp_payload_length);
+
   con->snd_wnd = window_size;
   con->snd_una = ack_num;
 
-  con->sent_ack = max(con->sent_ack, seq_num + tcp_payload_length);
-  con->sent_ack += (FIN & flags)?1:0;
-  con->sent_ack += (SYN & flags)?1:0;
+  //  con->sent_ack =
+  //      max(con->sent_ack, seq_num +
+  //      min(ringbuffer_unused(&con->incoming_buffer),
+  //                                       tcp_payload_length));
+  con->rcv_nxt += (FIN & flags) ? 1 : 0;
+  con->rcv_nxt += (SYN & flags) ? 1 : 0;
 
   switch (con->state) {
   case TCP_STATE_LISTEN: {
     if (SYN & flags) {
       tcp_send_empty_payload(con, SYN | ACK);
       con->state = TCP_STATE_SYN_RECIEVED;
-      con->rcv_nxt++;
       break;
     }
     break;
@@ -265,7 +290,6 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     if ((ACK & flags) && (SYN & flags)) {
       tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_ESTABLISHED;
-      con->rcv_nxt++;
       break;
     }
     break;
@@ -277,10 +301,12 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
       break;
     }
     if (tcp_payload_length > 0) {
+      if (tcp_payload_length > ringbuffer_unused(&con->incoming_buffer)) {
+        return;
+      }
       int rc = ringbuffer_write(&con->incoming_buffer, tcp_payload,
                                 tcp_payload_length);
       con->rcv_nxt += rc;
-      con->rcv_wnd = ringbuffer_unused(&con->incoming_buffer);
       tcp_send_empty_payload(con, ACK);
     }
     break;
@@ -304,8 +330,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   }
   case TCP_STATE_LAST_ACK: {
     if (ACK & flags) {
-      // TODO: cleanup
-      con->state = TCP_STATE_CLOSED;
+      tcp_destroy_connection(con);
       break;
     }
     break;

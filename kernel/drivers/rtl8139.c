@@ -12,7 +12,7 @@
 #define CMD 0x37
 #define IMR 0x3C
 
-#define RTL8139_RXBUFFER_SIZE (8192 + 16)
+#define RTL8139_RXBUFFER_SIZE (8192 << 3)
 
 #define TSD0 0x10  // transmit status
 #define TSAD0 0x20 // transmit start address
@@ -34,73 +34,72 @@ struct _INT_PACKET_HEADER {
   u8 BAR : 1;
   u8 PAM : 1;
   u8 MAR : 1;
-};
+} __attribute__((packed));
 
 struct PACKET_HEADER {
   union {
     u16 raw;
     struct _INT_PACKET_HEADER data;
   };
-};
+} __attribute__((packed));
 
-u32 current_packet_read = 0;
+unsigned short current_packet_read = 0;
 
 void handle_packet(void) {
   assert(sizeof(struct _INT_PACKET_HEADER) == sizeof(u16));
 
+  int had_error = 0;
+
   for (; 0 == (inb(rtl8139.gen.base_mem_io + 0x37) & 1);) {
-    u16 *buf = (u16 *)(device_buffer + current_packet_read);
+    u32 ring_offset = current_packet_read % RTL8139_RXBUFFER_SIZE;
+
+    u16 rx_size = *(u16 *)(device_buffer + ring_offset + sizeof(u16));
+
     struct PACKET_HEADER packet_header;
-    packet_header.raw = *buf;
-    if (packet_header.data.FAE) {
-      break;
-    }
-    if (packet_header.data.CRC) {
-      break;
-    }
-    if (!packet_header.data.ROK) {
-      break;
-    }
-    u16 packet_length = *(buf + 1);
-    assert(packet_length <= 2048);
+    packet_header.raw = device_buffer[ring_offset + 0];
 
-    u8 packet_buffer[RTL8139_RXBUFFER_SIZE];
-    if (current_packet_read + packet_length >= RTL8139_RXBUFFER_SIZE) {
-      u32 end = RTL8139_RXBUFFER_SIZE - current_packet_read;
-      memcpy(packet_buffer, buf, end);
-      u32 rest = packet_length - end;
-      memcpy(packet_buffer + end, device_buffer, rest);
+    int error = (packet_header.data.FAE) || (packet_header.data.CRC) ||
+                (!packet_header.data.ROK);
+
+    if (error) {
+      current_packet_read = 0;
+      outb(rtl8139.gen.base_mem_io + 0x37, 0x4);
+      outb(rtl8139.gen.base_mem_io + 0x37, 0x4 | 0x8);
+      had_error = 1;
     } else {
-      memcpy(packet_buffer, buf, packet_length);
+      int packet_length = rx_size - 4;
+      assert(packet_length <= 2048);
+
+      u8 packet_buffer[packet_length];
+      if (ring_offset + rx_size > RTL8139_RXBUFFER_SIZE) {
+        int end = RTL8139_RXBUFFER_SIZE - ring_offset - 4;
+        memcpy(packet_buffer, &device_buffer[ring_offset + 4], end);
+        memcpy(packet_buffer + end, device_buffer, packet_length - end);
+      } else {
+        memcpy(packet_buffer, &device_buffer[ring_offset + 4], packet_length);
+      }
+
+      handle_ethernet(packet_buffer, packet_length);
     }
 
-    // I have no documentation backing this implementation of updating
-    // the CBR. It is just a (somewhat)uneducated guess. But it does
-    // seem to work.
-    u32 old = current_packet_read;
-    current_packet_read = (current_packet_read + packet_length + 4 + 3) & (~3);
-    current_packet_read %= RTL8139_RXBUFFER_SIZE;
+    current_packet_read = (current_packet_read + rx_size + 4 + 3) & (~3);
     outw(rtl8139.gen.base_mem_io + 0x38, current_packet_read - 0x10);
-    current_packet_read = inw(rtl8139.gen.base_mem_io + 0x3A);
-    outw(rtl8139.gen.base_mem_io + 0x38, current_packet_read - 0x10);
-
-    assert(current_packet_read != old);
-
-    handle_ethernet((u8 *)packet_buffer + 4, packet_length);
+  }
+  if (had_error) {
+    current_packet_read = 0;
   }
 }
 
 void rtl8139_handler(void *regs) {
-  disable_interrupts();
   (void)regs;
   u16 status = inw(rtl8139.gen.base_mem_io + 0x3e);
 
+  outw(rtl8139.gen.base_mem_io + 0x3E, 0x5);
   if (status & (1 << 2)) {
   }
   if (status & (1 << 0)) {
     handle_packet();
   }
-  outw(rtl8139.gen.base_mem_io + 0x3E, 0x5);
 
   EOI(0xB);
 }
@@ -170,8 +169,8 @@ void rtl8139_init(void) {
   outb(base_address + CMD, 0x10);
   for (; 0 != (inb(base_address + CMD) & 0x10);)
     ;
-  device_buffer = ksbrk(RTL8139_RXBUFFER_SIZE);
-  memset(device_buffer, 0, RTL8139_RXBUFFER_SIZE);
+  device_buffer = ksbrk(RTL8139_RXBUFFER_SIZE + 16);
+  memset(device_buffer, 0, RTL8139_RXBUFFER_SIZE + 16);
   // Setupt the recieve buffer
   u32 rx_buffer = (u32)virtual_to_physical(device_buffer, NULL);
   outl(base_address + RBSTART, rx_buffer);
@@ -183,9 +182,11 @@ void rtl8139_init(void) {
   // Set transmit and reciever enable
   outb(base_address + 0x37, (1 << 2) | (1 << 3));
 
+  int buffer_length = 3; // 0b11 for 64K + 16 byte
+
   // Configure the recieve buffer
   outl(base_address + 0x44,
-       0xf); // 0xf is AB+AM+APM+AAP
+       0xf | (buffer_length << 11)); // 0xf is AB+AM+APM+AAP
 
   install_handler((interrupt_handler)rtl8139_handler,
                   INT_32_INTERRUPT_GATE(0x3), 0x20 + interrupt_line);

@@ -1,14 +1,12 @@
-#include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <tb/sv.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <tb/sv.h>
 #include <unistd.h>
 
 #define PORT 53
@@ -137,6 +135,7 @@ int getaddrinfo(const char *restrict node, const char *restrict service,
     close(sockfd);
     return EAI_FAIL;
   }
+  close(sockfd);
 
   if (0 != memcmp(buffer, &id, sizeof(u16))) {
     close(sockfd);
@@ -163,7 +162,7 @@ int getaddrinfo(const char *restrict node, const char *restrict service,
   }
 
   u16 ancount = ntohs(*(u16 *)(buffer + sizeof(u16) * 3));
-  if (1 != ancount) {
+  if (0 == ancount) {
     close(sockfd);
     return EAI_NONAME; // TODO: Check if this is correct
   }
@@ -192,44 +191,52 @@ int getaddrinfo(const char *restrict node, const char *restrict service,
   }
   */
 
-  // type
-  u16 type = ntohs(*(u16 *)(answer + sizeof(u16)));
-  u16 class = ntohs(*(u16 *)(answer + sizeof(u16) * 2));
-  if (1 != type) {
-    close(sockfd);
-    return EAI_FAIL;
-  }
-  if (1 != class) {
-    close(sockfd);
-    return EAI_FAIL;
-  }
-
-  u16 rdlength = ntohs(*(u16 *)(answer + sizeof(u16) * 3 + sizeof(u32)));
-
-  if (4 != rdlength) {
-    close(sockfd);
-    return EAI_FAIL;
-  }
-  u32 ip = *(u32 *)(answer + sizeof(u16) * 4 + sizeof(u32));
-
-  if (res) {
-    *res = calloc(1, sizeof(struct addrinfo));
-    if (!(*res)) {
-      close(sockfd);
-      return EAI_MEMORY;
+  for (u16 i = 0; i < answer_length;) {
+    // type
+    u16 type = ntohs(*(u16 *)(answer + sizeof(u16)));
+    u16 class = ntohs(*(u16 *)(answer + sizeof(u16) * 2));
+    int ignore = 0;
+    u16 inc = 0;
+    if (1 != type) {
+      ignore = 1;
     }
-    struct sockaddr_in *sa = calloc(1, sizeof(struct sockaddr_in));
-    if (!sa) {
-      free(*res);
-      close(sockfd);
-      return EAI_MEMORY;
+    if (1 != class) {
+      ignore = 1;
     }
-    (*res)->ai_addr = (struct sockaddr *)sa;
-    sa->sin_addr.s_addr = ip;
-    sa->sin_port = service_to_port(service);
-    sa->sin_family = AF_INET;
+    inc += sizeof(u16) * 3;
+
+    u16 rdlength = ntohs(*(u16 *)(answer + sizeof(u16) * 3 + sizeof(u32)));
+    inc += sizeof(u16);
+    inc += rdlength;
+    inc += sizeof(u32);
+
+    if (4 != rdlength) {
+      ignore = 1;
+    }
+    if (!ignore) {
+      u32 ip = *(u32 *)(answer + sizeof(u16) * 4 + sizeof(u32));
+
+      if (res) {
+        *res = calloc(1, sizeof(struct addrinfo));
+        if (!(*res)) {
+          close(sockfd);
+          return EAI_MEMORY;
+        }
+        struct sockaddr_in *sa = calloc(1, sizeof(struct sockaddr_in));
+        if (!sa) {
+          free(*res);
+          close(sockfd);
+          return EAI_MEMORY;
+        }
+        (*res)->ai_addr = (struct sockaddr *)sa;
+        sa->sin_addr.s_addr = ip;
+        sa->sin_port = service_to_port(service);
+        sa->sin_family = AF_INET;
+      }
+    }
+    i += inc;
+    answer += inc;
   }
-  close(sockfd);
   return 0;
 }
 

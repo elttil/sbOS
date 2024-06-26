@@ -71,6 +71,7 @@ void handle_ipv4(const u8 *payload, u32 packet_length) {
   u16 calc_checksum = ip_checksum((u8 *)payload, 20);
   *(u16 *)(payload + 10) = saved_checksum;
   if (calc_checksum != saved_checksum) {
+    klog(LOG_WARN, "Invalid ipv4 checksum");
     return;
   }
 

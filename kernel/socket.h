@@ -15,9 +15,6 @@ typedef int socklen_t;
 #define AF_INET 1
 #define AF_LOCAL AF_UNIX
 
-#define SOCK_DGRAM 0
-#define SOCK_STREAM 1
-
 #define INADDR_ANY 0
 
 #define MSG_WAITALL 1
@@ -144,4 +141,5 @@ void global_socket_init(void);
 u16 tcp_get_free_port(void);
 int setsockopt(int socket, int level, int option_name, const void *option_value,
                socklen_t option_len);
+void tcp_remove_connection(struct TcpConnection *con);
 #endif

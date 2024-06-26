@@ -9,11 +9,11 @@
 #include <interrupts.h>
 #include <kmalloc.h>
 #include <network/ethernet.h>
+#include <network/tcp.h>
 #include <socket.h>
 #include <string.h>
 #include <syscalls.h>
 #include <typedefs.h>
-#include <network/tcp.h>
 
 #pragma GCC diagnostic ignored "-Wpedantic"
 

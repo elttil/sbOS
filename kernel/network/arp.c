@@ -113,8 +113,8 @@ int get_mac_from_ip(const ipv4_t ip, u8 mac[6]) {
     return 1;
   }
   klog(LOG_NOTE, "ARP cache miss");
-  enable_interrupts();
   send_arp_request(ip);
+  enable_interrupts();
   // TODO: Maybe wait a bit?
   for (int i = 0; i < 10; i++) {
     if (0 != memcmp(arp_table[i].ip, &ip, sizeof(u8[4]))) {

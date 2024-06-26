@@ -60,7 +60,7 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
     handle_arp(payload);
     break;
   case 0x0800:
-    handle_ipv4(payload, packet_length - sizeof(struct ETHERNET_HEADER) - 4);
+    handle_ipv4(payload, packet_length - sizeof(struct ETHERNET_HEADER));
     break;
   default:
     kprintf("Can't handle ethernet type 0x%x\n", type);
