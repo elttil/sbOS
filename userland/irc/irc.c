@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <libgui.h>
 #include <math.h>
@@ -19,6 +20,7 @@
 
 #define TERMINAL_WIDTH 82
 #define TERMINAL_HEIGHT 40
+GUI_Window *w;
 
 struct message {
   char name[9];
@@ -58,6 +60,18 @@ struct event {
   u32 internal_id;
 };
 
+int set_fd_nonblocking(int fd) {
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (-1 == flags) {
+    return 0;
+  }
+  flags |= O_NONBLOCK;
+  if (0 != fcntl(fd, F_SETFL, flags)) {
+    return 0;
+  }
+  return 1;
+}
+
 int tcp_fmt(int socket, const char *fmt, ...) {
   va_list ap;
   char cmd_str[512];
@@ -70,27 +84,8 @@ int tcp_fmt(int socket, const char *fmt, ...) {
 int message_pos_x = 0;
 int message_pos_y = 0;
 
-void enter_raw_mode(void) {
-  printf("\033[X");
-}
-
-void clear_screen(void) {
-  printf("\033[2J");
-}
-
-void mvcursor(int x, int y) {
-  printf("\033[%d;%dH", x, y);
-}
-
 void clear_area(int x, int y, int sx, int sy) {
-  char buffer[sx + 1];
-  memset(buffer, ' ', sx);
-  buffer[sx] = '\0';
-
-  for (int i = 0; i < sy; i++) {
-    mvcursor(x, y + i);
-    printf("%s", buffer);
-  }
+  GUI_DrawRectangle(w, x, y, sx, sy, 0x0);
 }
 
 int prompt_x = 0;
@@ -107,10 +102,13 @@ void msg_sv_println(struct sv s) {
 
 void msg_sv_print(struct sv s) {
   for (;;) {
-    mvcursor(message_pos_x, message_pos_y);
     struct sv line = sv_split_delim(s, &s, '\n');
-    write(1, line.s, line.length);
-    message_pos_x += line.length;
+
+    for (size_t i = 0; i < line.length; i++) {
+      GUI_DrawFont(w, message_pos_x * 8, message_pos_y * 8, line.s[i]);
+      message_pos_x++;
+    }
+
     if (sv_isempty(s) && '\n' != line.s[line.length]) {
       break;
     }
@@ -120,6 +118,7 @@ void msg_sv_print(struct sv s) {
       break;
     }
   }
+  GUI_UpdateWindow(w);
 }
 
 #define RPL_WELCOME C_TO_SV("001")
@@ -309,7 +308,7 @@ void irc_join_channel(struct irc_server *server, const char *name) {
 }
 
 void irc_show_channel(struct irc_channel *channel) {
-  clear_area(0, 0, TERMINAL_WIDTH, prompt_y - 1);
+  clear_area(0, 0, TERMINAL_WIDTH * 8, (prompt_y - 1) * 8);
   message_pos_x = 0;
   message_pos_y = 0;
 
@@ -336,7 +335,6 @@ void irc_show_channel(struct irc_channel *channel) {
     msg_sv_print(C_TO_SV(": "));
     msg_sv_println(msg);
   }
-  mvcursor(prompt_x, prompt_y);
 }
 
 void irc_add_message_to_channel(struct irc_channel *chan, struct sv sender,
@@ -409,6 +407,11 @@ int irc_connect_server(struct irc_server *server, u32 ip, u16 port) {
     perror("connect");
     return 0;
   }
+
+  if (!set_fd_nonblocking(fd)) {
+    return 0;
+  }
+
   int flag = 1;
   assert(0 ==
          setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)));
@@ -423,10 +426,71 @@ void refresh_screen(void) {
   irc_show_channel(selected_channel);
 }
 
+void ws_handle_events(struct irc_server *ctx, struct sb *your_msg) {
+  WS_EVENT ev;
+  int rc = read(w->ws_socket, &ev, sizeof(ev));
+  if (rc <= 0) {
+    return;
+  }
+  if (WINDOWSERVER_EVENT_KEYPRESS != ev.type) {
+    return;
+  }
+  const struct KEY_EVENT key = ev.ev;
+  if (key.release) {
+    return;
+  }
+  if ('n' == key.c && EV_CTRL(key.mode)) {
+    struct irc_channel *next_channel = selected_channel->next;
+    if (next_channel) {
+      selected_channel = next_channel;
+      refresh_screen();
+    }
+    return;
+  }
+  if ('p' == key.c && EV_CTRL(key.mode)) {
+    struct irc_channel *prev_channel = selected_channel->prev;
+    if (prev_channel) {
+      selected_channel = prev_channel;
+      refresh_screen();
+    }
+    return;
+  }
+
+  if ('\b' == key.c) {
+    int n = sb_delete_right(your_msg, 1);
+    if (0 == n) {
+      return;
+    }
+    prompt_x -= n;
+    GUI_OverwriteFont(w, prompt_x * 8, prompt_y * 8, 0x0);
+    GUI_UpdateWindow(w);
+    return;
+  }
+
+  if ('\n' == key.c) {
+    send_message(ctx, selected_channel, SB_TO_SV(*your_msg));
+    prompt_x = 0;
+    clear_area(0, prompt_y * 8, 50 * 8, 1 * 8);
+    GUI_UpdateWindow(w);
+    sb_reset(your_msg);
+    return;
+  }
+
+  GUI_DrawFont(w, prompt_x * 8, prompt_y * 8, key.c);
+  GUI_UpdateWindow(w);
+  prompt_x++;
+
+  sb_append_char(your_msg, key.c);
+}
+
 int main(void) {
+  w = GUI_CreateWindow(0, 0, TERMINAL_WIDTH * 8, TERMINAL_HEIGHT * 8 * 2);
+  if (!w) {
+    return 1;
+  }
   struct pollfd fds[2];
 
-  fds[0].fd = 0;
+  fds[0].fd = w->ws_socket;
   fds[0].events = POLLIN;
   fds[0].revents = 0;
 
@@ -436,8 +500,6 @@ int main(void) {
     printf("Failed to connect to the irc server\n");
     return 1;
   }
-
-  clear_screen();
 
   selected_channel = &server_ctx.channels[0];
 
@@ -457,80 +519,30 @@ int main(void) {
   char current_msg[512];
   u32 msg_usage = 0;
 
+  assert(set_fd_nonblocking(server_ctx.socket));
+
   for (;;) {
     poll(fds, 2, 0);
-    {
-      char buffer[4096];
-      int rc = mread(0, buffer, 4096, 0);
-      for (int i = 0; i < rc; i++) {
-        char c = buffer[i];
-
-        if (('n' & 0x1F) == c) {
-          struct irc_channel *next_channel = selected_channel->next;
-          if (next_channel) {
-            selected_channel = next_channel;
-            refresh_screen();
-          }
-          continue;
-        }
-        if (('p' & 0x1F) == c) {
-          struct irc_channel *prev_channel = selected_channel->prev;
-          if (prev_channel) {
-            selected_channel = prev_channel;
-            refresh_screen();
-          }
-          continue;
-        }
-
-        if ('\b' == c) {
-          int n = sb_delete_right(&your_msg, 1);
-          if (0 == n) {
-            continue;
-          }
-          prompt_x -= n;
-          mvcursor(prompt_x, prompt_y);
-          printf(" ");
-          mvcursor(prompt_x, prompt_y);
-          continue;
-        }
-
-        if ('\n' == c) {
-          send_message(&server_ctx, selected_channel, SB_TO_SV(your_msg));
-          prompt_x = 0;
-          clear_area(0, prompt_y, 50, 1);
-          mvcursor(prompt_x, prompt_y);
-          sb_reset(&your_msg);
-          continue;
-        }
-
-        mvcursor(prompt_x, prompt_y);
-        printf("%c", c);
-        prompt_x++;
-
-        sb_append_char(&your_msg, c);
-      }
+    ws_handle_events(&server_ctx, &your_msg);
+    char buffer[4096];
+    int rc = read(server_ctx.socket, buffer, 4096);
+    if (rc < 0) {
+      continue;
     }
-    {
-      char buffer[4096];
-      int rc = mread(server_ctx.socket, buffer, 4096, 0);
-      if (rc < 0) {
+
+    for (int i = 0; i < rc; i++) {
+      assert(msg_usage < 512);
+      if ('\n' == buffer[i] && i > 1 && '\r' == buffer[i - 1]) {
+        handle_msg(&server_ctx, (struct sv){
+                                    .s = current_msg,
+                                    .length = msg_usage,
+                                });
+        refresh_screen();
+        msg_usage = 0;
         continue;
       }
-
-      for (int i = 0; i < rc; i++) {
-        assert(msg_usage < 512);
-        if ('\n' == buffer[i] && i > 1 && '\r' == buffer[i - 1]) {
-          handle_msg(&server_ctx, (struct sv){
-                                      .s = current_msg,
-                                      .length = msg_usage,
-                                  });
-          refresh_screen();
-          msg_usage = 0;
-          continue;
-        }
-        current_msg[msg_usage] = buffer[i];
-        msg_usage++;
-      }
+      current_msg[msg_usage] = buffer[i];
+      msg_usage++;
     }
   }
   return 0;
