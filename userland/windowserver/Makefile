@@ -1,5 +1,6 @@
 CC="i686-sb-gcc"
-CFLAGS = -ggdb -O0 -Wall -Wextra -Wimplicit-fallthrough
+CFLAGS = -ggdb -Ofast -flto -Wall -Wextra -Wimplicit-fallthrough
+LDFLAGS=-flto -Ofast
 BIN=ws
 LIB=-lgcc
 INC=-I../libgui/
@@ -13,4 +14,4 @@ clean:
 	rm $(OBJ) ws
 
 $(BIN): $(OBJ)
-	$(CC) -o $(BIN) $(CFLAGS) $(OBJ) $(LIB)
+	$(CC) -o $(BIN) $(LDFLAGS) $(OBJ) $(LIB)
