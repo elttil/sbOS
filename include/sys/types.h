@@ -6,7 +6,7 @@ typedef int pid_t;
 typedef u16 dev_t;
 typedef u16 uid_t;
 typedef u16 ino_t;
-typedef u16 mode_t;
+typedef unsigned int mode_t;
 typedef u16 nlink_t;
 typedef i32 gid_t;
 typedef u64 off_t;

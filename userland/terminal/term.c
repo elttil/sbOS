@@ -228,12 +228,15 @@ void handle_escape_codes_or_print(char *buffer, int len) {
 }
 
 void terminal_resize(uint32_t sx, uint32_t sy) {
-  GUI_Resize(global_w, sx, sy);
+  assert(GUI_BufferResize(global_w, sx, sy));
   for (int y = 0; y < sy; y += 8) {
-    for (int x = 0; x < sx; x += 8) {
+    int x = 0;
+    for (; x < sx; x += 8) {
       GUI_DrawFont(global_w, x, y, terminal_char_buffer[y / 8][x / 8]);
     }
+    GUI_DrawLine(global_w, x, y, sx, y, 0xFF00FF);
   }
+  assert(GUI_SendResize(global_w, sx, sy));
 }
 
 void run() {

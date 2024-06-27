@@ -7,6 +7,10 @@
 #define WINDOWSERVER_EVENT_WINDOW_EXIT 1
 #define WINDOWSERVER_EVENT_WINDOW_RESIZE 2
 
+#define EV_SHIFT(_mode) ((_mode) & (1 << 0))
+#define EV_ALT(_mode) ((_mode) & (1 << 1))
+#define EV_CTRL(_mode) ((_mode) & (1 << 2))
+
 typedef struct {
   int ws_socket;
   int bitmap_fd;
@@ -38,6 +42,13 @@ void GUI_UpdateWindow(GUI_Window *w);
 void GUI_OverwriteFont(GUI_Window *w, uint32_t px, uint32_t py,
                        const uint32_t color);
 void GUI_ClearScreen(GUI_Window *w, uint32_t color);
+void GUI_DrawRectangle(GUI_Window *w, uint32_t x, uint32_t y, uint32_t sx,
+                       uint32_t sy, uint32_t color);
 void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev));
-void GUI_Resize(GUI_Window *w, uint32_t sx, uint32_t sy);
+int GUI_BufferResize(GUI_Window *w, uint32_t sx, uint32_t sy);
+int GUI_SendResize(GUI_Window *w, uint32_t sx, uint32_t sy);
+void GUI_DrawLine(GUI_Window *w, uint32_t sx, uint32_t sy, uint32_t dx,
+                  uint32_t dy, uint32_t rgba);
+void GUI_DrawRectangle(GUI_Window *w, uint32_t x, uint32_t y, uint32_t sx,
+                       uint32_t sy, uint32_t color);
 #endif

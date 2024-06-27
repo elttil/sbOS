@@ -88,7 +88,8 @@ static void tcp_send(struct TcpConnection *con, u8 *buffer, u16 length,
 }
 
 void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
-  struct TCP_HEADER header = {0};
+  struct TCP_HEADER header;
+  memset(&header, 0, sizeof(header));
   header.src_port = htons(con->incoming_port);
   header.dst_port = htons(con->outgoing_port);
   header.seq_num = htonl(con->snd_nxt);
@@ -104,7 +105,7 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   header.window_size = htons(con->rcv_wnd);
   header.urgent_pointer = 0;
 
-  u8 payload[0];
+  u8 payload[] = {0};
   u16 payload_length = 0;
   header.checksum = tcp_calculate_checksum(
       ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,

@@ -27,13 +27,19 @@ int parse_ppm_header(FILE *fp, struct PPM_IMAGE *img) {
   char c1;
   char c2;
   fscanf(fp, "%c%c\n%d %d\n%d", &c1, &c2, &width, &height, &maxval);
-  if ('P' != c1)
+  if ('P' != c1) {
+    printf("c1: %c\n", c1);
     return 0;
-  if (!isdigit(c2))
+  }
+  if (!isdigit(c2)) {
+    printf("c2: %c\n", c2);
     return 0;
+  }
   img->version = c2 - '0';
-  if (3 != img->version && 6 != img->version)
+  if (3 != img->version && 6 != img->version) {
+    printf("Not handeld version\n");
     return 0;
+  }
   if (maxval > 255) {
     printf("maxval is: %d\n", maxval);
     return 0;
@@ -42,8 +48,7 @@ int parse_ppm_header(FILE *fp, struct PPM_IMAGE *img) {
   img->height = height;
   img->maxval = maxval;
   img->file_location = ftell(fp);
-  printf("width: %d\n", img->width);
-  printf("height: %d\n", img->height);
+  img->file_location++;
   return 1;
 }
 
@@ -59,26 +64,25 @@ int load_ppm6_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
   int cx = 0;
   int cy = 0;
   const int n_pixels = img->width * img->height;
-  printf("malloc\n");
   uint8_t *rgb = malloc(3 * n_pixels);
-  printf("end malloc\n");
 
-  printf("fread");
   const int rc = fread(rgb, 3, n_pixels, fp);
   if (0 == rc)
     return 0;
-  printf("end fread");
 
   uint32_t *p = rgb;
   u32 buf_size = buf_height * buf_width;
   if (1 == modifier) {
-    for (int i = 0; i < rc && i < buf_size; i++, p = ((uint8_t *)p) + 3) {
+    int c = 0;
+    for (int i = 0; i < rc && i < buf_size; i++, c += 3) {
       if (cx > buf_width) {
         i--;
       } else {
-        uint32_t v = *p;
+        u8 red = rgb[c];
+        u8 green = rgb[c + 1];
+        u8 blue = rgb[c + 2];
         buffer[cy * buf_width + cx] =
-            ((v & 0xFF) << 16) | ((v & 0xFF00)) | ((v & 0xFF0000) >> 16);
+            (red << (8 * 2)) | (green << (8 * 1)) | (blue << (8 * 0));
       }
       cx++;
       if (cx == img->width) {

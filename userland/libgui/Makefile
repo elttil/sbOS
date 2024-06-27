@@ -12,5 +12,9 @@ libgui.o: libgui.c
 libgui.a: $(OBJ)
 	$(AR) rcs libgui.a $^
 
+install:
+	mkdir -p ../../sysroot/usr/include
+	cp libgui.h ../../sysroot/usr/include/
+
 clean:
 	rm $(OBJ) $(BINS)

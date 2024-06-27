@@ -18,6 +18,9 @@ make -j`nproc` -C ./userland/libppm
 make -j`nproc` -C ./userland/rtl8139
 make -j`nproc` -C ./userland/smol_http
 make -j`nproc` -C ./userland/irc
+make -j`nproc` -C ./userland/nasm-2.16.01
+make -j`nproc` -C ./userland/dns
+make -j`nproc` -C ./userland/to
 
 mkdir sysroot
 sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
@@ -31,6 +34,9 @@ sudo cp ./userland/test/test ./sysroot/test
 sudo cp ./userland/minibox/minibox ./sysroot/minibox
 sudo cp ./userland/smol_http/smol_http ./sysroot/smol_http
 sudo cp ./userland/irc/irc ./sysroot/irc
+sudo cp ./userland/nasm-2.16.01/nasm ./sysroot/nasm
+sudo cp ./userland/dns/dns ./sysroot/dns
+sudo cp ./userland/to/to ./sysroot/to
 
 cd ./sysroot
 rm ./init

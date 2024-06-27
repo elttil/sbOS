@@ -203,12 +203,8 @@ int pread(int fd, void *buf, size_t count, size_t offset) {
   RC_ERRNO(syscall(SYS_PREAD, (u32)&args, 0, 0, 0, 0));
 }
 
-int mread(int fd, void *buf, size_t count, int blocking) {
-  RC_ERRNO(syscall(SYS_MREAD, fd, buf, count, blocking, 0));
-}
-
 int read(int fd, void *buf, size_t count) {
-  return mread(fd, buf, count, 1);
+  RC_ERRNO(syscall(SYS_READ, fd, buf, count, 0, 0));
 }
 
 int dup2(int org_fd, int new_fd) {

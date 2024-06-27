@@ -1,4 +1,4 @@
 #!/bin/bash
-gcc -DLINUX test.c -o ./local/a.out
+gcc -DLINUX test.c -g -o ./local/a.out || exit
 cd local
-./a.out
+valgrind ./a.out

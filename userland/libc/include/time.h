@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC_RAW 1
 
 struct tm {
   int tm_sec;

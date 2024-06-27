@@ -1,13 +1,14 @@
 #include <assert.h>
 #include <fcntl.h>
-//#include <json.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tb/sha1.h>
 
 #if 1
 void dbgln(const char *fmt) {
@@ -53,7 +54,6 @@ void isx_test() {
 void malloc_test(void) {
   dbgln("malloc TEST");
   for (int j = 0; j < 100; j++) {
-    //    printf("j : %x\n", j);
     uint8_t *t = malloc(400 + j);
     memset(t, 0x43 + (j % 10), 400 + j);
     uint8_t *p = malloc(900 + j);
@@ -269,6 +269,7 @@ void strncpy_test(void) {
   dbgln("strncpy TEST PASSED");
 }
 
+#ifndef linux
 void strlcpy_test(void) {
   dbgln("strlcpy TEST");
   {
@@ -279,6 +280,7 @@ void strlcpy_test(void) {
   }
   dbgln("strlcpy TEST PASSED");
 }
+#endif
 
 void strcat_test(void) {
   dbgln("strcat TEST");
@@ -429,7 +431,7 @@ void strcasecmp_test(void) {
   {
     assert(0 == strcasecmp("foobar", "FOObar"));
     assert(0 == strcasecmp("foobar", "foobar"));
-    assert(6 == strcasecmp("foobar", "bar"));
+    assert(0 < strcasecmp("foobar", "bar"));
   }
   dbgln("strcasecmp TEST PASSED");
 }
@@ -458,12 +460,14 @@ void strstr_test(void) {
 void strtok_test(void) {
   dbgln("strtok TEST");
   {
-    char *s = "hello,world,goodbye";
+    char s[4096];
+    strcpy(s, "hello,world,goodbye");
     assert(0 == strcmp(strtok(s, ","), "hello"));
     assert(0 == strcmp(strtok(NULL, ","), "world"));
     assert(0 == strcmp(strtok(NULL, ","), "goodbye"));
     assert(NULL == strtok(NULL, ","));
-    char *s2 = "hello,,world,,goodbye,test";
+    char s2[4096];
+    strcpy(s2, "hello,,world,,goodbye,test");
     assert(0 == strcmp(strtok(s2, ",,"), "hello"));
     assert(0 == strcmp(strtok(NULL, ",,"), "world"));
     assert(0 == strcmp(strtok(NULL, ","), "goodbye"));
@@ -660,6 +664,7 @@ void qsort_test(void) {
   dbgln("qsort TEST PASSED");
 }
 
+#ifndef linux
 void basename_test(void) {
   dbgln("basename TEST");
   {
@@ -690,7 +695,9 @@ void basename_test(void) {
   }
   dbgln("basename TEST PASSED");
 }
+#endif
 
+#ifndef linux
 void dirname_test(void) {
   dbgln("dirname TEST");
   {
@@ -710,6 +717,7 @@ void dirname_test(void) {
   }
   dbgln("dirname TEST PASSED");
 }
+#endif
 
 void getline_test(void) {
   dbgln("getline TEST");
@@ -773,6 +781,7 @@ void memchr_test(void) {
   dbgln("memchr TEST PASSED");
 }
 
+#ifndef linux
 void randomfill_test(void) {
   dbgln("randomfill TEST");
   {
@@ -792,6 +801,49 @@ void randomfill_test(void) {
   }
   dbgln("randomfill TEST PASSED");
 }
+#endif
+
+void fs_test() {
+  dbgln("filesystem TEST");
+  {
+    u8 file_digest[SHA1_LEN];
+    u8 direct_digest[SHA1_LEN];
+    SHA1_CTX ctx;
+    char buffer[4096];
+    {
+      SHA1_Init(&ctx);
+      int fd = open("hashfile", O_RDWR | O_CREAT);
+      assert(-1 != fd);
+
+      memset(buffer, 'A', 4096);
+
+      for (int i = 0; i < 2; i++) {
+        write(fd, buffer, 4096);
+      }
+
+      memset(buffer, 0, 4096);
+      lseek(fd, 0, SEEK_SET);
+
+      for (int i = 0; i < 2; i++) {
+        int rc = read(fd, buffer, 4096);
+        assert(4096 == rc);
+        SHA1_Update(&ctx, buffer, 4096);
+      }
+      SHA1_Final(&ctx, file_digest);
+      close(fd);
+    }
+    {
+      SHA1_Init(&ctx);
+      memset(buffer, 'A', 4096);
+      for (int i = 0; i < 2; i++) {
+        SHA1_Update(&ctx, buffer, 4096);
+      }
+      SHA1_Final(&ctx, direct_digest);
+    }
+    assert(0 == memcmp(file_digest, direct_digest, SHA1_LEN));
+  }
+  dbgln("filesystem TEST PASSED");
+}
 
 int main(void) {
   dbgln("START");
@@ -810,7 +862,9 @@ int main(void) {
   strpbrk_test();
   strcpy_test();
   strncpy_test();
+#ifndef linux
   strlcpy_test();
+#endif
   strcat_test();
   strchr_test();
   strrchr_test();
@@ -829,12 +883,17 @@ int main(void) {
   //  fseek_test();
   printf_test();
   qsort_test();
+#ifndef linux
   basename_test();
   dirname_test();
+#endif
   getline_test();
   realpath_test();
   memchr_test();
+  fs_test();
+#ifndef linux
   randomfill_test();
+#endif
   // TODO: Add mkstemp
   return 0;
 }

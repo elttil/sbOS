@@ -6,7 +6,7 @@
 #include <sys/types.h>
 
 #define SYS_OPEN 0
-#define SYS_MREAD 1
+#define SYS_READ 1
 #define SYS_WRITE 2
 #define SYS_PREAD 3
 #define SYS_PWRITE 4
@@ -46,6 +46,7 @@
 #define SYS_CONNECT 38
 #define SYS_SETSOCKOPT 39
 #define SYS_GETPEERNAME 40
+#define SYS_FCNTL 41
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

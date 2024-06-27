@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <typedefs.h>
 #include <unistd.h>
 
 #define place_pixel_pos(_p, _pos)                                              \
@@ -191,6 +192,27 @@ void GUI_OverwriteFont(GUI_Window *w, uint32_t px, uint32_t py,
   }
 }
 
+void GUI_DrawLine(GUI_Window *w, uint32_t sx, uint32_t sy, uint32_t dx,
+                  uint32_t dy, uint32_t rgba) {
+  for (;;) {
+    // Bounds checking
+    if (sy * w->sx + sx > w->sy * w->sx)
+      break;
+
+    if (sx >= dx - 1 && sy >= dy - 1) {
+      break;
+    }
+    uint32_t *ptr = w->bitmap_ptr + (sy * w->sx) + sx;
+    *ptr = rgba;
+    if (sx < dx - 1) {
+      sx++;
+    }
+    if (sy < dy - 1) {
+      sy++;
+    }
+  }
+}
+
 void GUI_DrawFont(GUI_Window *w, uint32_t px, uint32_t py, const uint32_t c) {
   int sx, sy;
   sx = 8;
@@ -260,13 +282,20 @@ void GUI_EventLoop(GUI_Window *w, void (*event_handler)(WS_EVENT ev)) {
 // window can be given a sufficently large buffer such that buffers
 // don't have to be resized if the window is resized.
 #define MAX_WINDOW_SIZE (1920 * 1080)
-void GUI_Resize(GUI_Window *w, uint32_t sx, uint32_t sy) {
+int GUI_BufferResize(GUI_Window *w, uint32_t sx, uint32_t sy) {
   if (sx * sy > MAX_WINDOW_SIZE) {
-    return;
+    return 0;
   }
-
   w->sx = sx;
   w->sy = sy;
+  return 1;
+}
+
+int GUI_SendResize(GUI_Window *w, uint32_t sx, uint32_t sy) {
+  if (!GUI_BufferResize(w, sx, sy)) {
+    return 0;
+  }
+
   char buffer[sizeof(uint8_t) + sizeof(uint32_t) * 2];
   uint8_t l = 2;
   memcpy(buffer, &l, sizeof(l));
@@ -274,6 +303,19 @@ void GUI_Resize(GUI_Window *w, uint32_t sx, uint32_t sy) {
   memcpy(buffer + sizeof(uint8_t) + sizeof(uint32_t), &sy, sizeof(sy));
   int len = sizeof(uint8_t) + sizeof(uint32_t) * 2;
   write(w->ws_socket, buffer, len);
+  return 1;
+}
+
+void GUI_DrawRectangle(GUI_Window *w, uint32_t x, uint32_t y, uint32_t sx,
+                       uint32_t sy, uint32_t color) {
+  for (u32 l = y; l < y + sy; l++) {
+    for (u32 s = x; s < x + sx; s++) {
+      if(l*w->sx + s > w->sx*w->sy) {
+        break;
+      }
+      w->bitmap_ptr[l * w->sx + s] = color;
+    }
+  }
 }
 
 GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
