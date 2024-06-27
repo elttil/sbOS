@@ -181,15 +181,22 @@ void rtl8139_init(void) {
   outl(base_address + RBSTART, rx_buffer);
 
   // Set IMR + ISR
-  //  outw(base_address + IMR, (1 << 2) | (1 << 3) | (1 << 0));
-  outw(base_address + IMR, (1 << 2) | (1 << 0));
+  outw(base_address + IMR, (1 << 0));
 
   // Set transmit and reciever enable
   outb(base_address + 0x37, (1 << 2) | (1 << 3));
 
+  // TODO: Test these later as I believe they can have performance
+  // implications but currently the OS seems to be bottlenecked by other
+  // things.
+  u8 fifo_threshold = 0;
+  u8 dma_burst = 0;
+
+  u8 packet_accept = 0xe; // 0xe is AB+AM+APM
+
   // Configure the recieve buffer
-  outl(base_address + 0x44,
-       0xf | ((RTL8139_CHOSEN_BUFFER) << 11)); // 0xf is AB+AM+APM+AAP
+  outl(base_address + 0x44, packet_accept | ((RTL8139_CHOSEN_BUFFER) << 11) |
+                                (fifo_threshold << 13) | (dma_burst << 8));
 
   install_handler((interrupt_handler)rtl8139_handler,
                   INT_32_INTERRUPT_GATE(0x3), 0x20 + interrupt_line);
