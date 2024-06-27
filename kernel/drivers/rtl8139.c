@@ -12,7 +12,12 @@
 #define CMD 0x37
 #define IMR 0x3C
 
-#define RTL8139_RXBUFFER_SIZE (8192 << 3)
+// 0 - 8K
+// 1 - 16K
+// 2 - 32K
+// 3 - 64K
+#define RTL8139_CHOSEN_BUFFER 3
+#define RTL8139_RXBUFFER_SIZE (8192 << (RTL8139_CHOSEN_BUFFER))
 
 #define TSD0 0x10  // transmit status
 #define TSAD0 0x20 // transmit start address
@@ -182,11 +187,9 @@ void rtl8139_init(void) {
   // Set transmit and reciever enable
   outb(base_address + 0x37, (1 << 2) | (1 << 3));
 
-  int buffer_length = 3; // 0b11 for 64K + 16 byte
-
   // Configure the recieve buffer
   outl(base_address + 0x44,
-       0xf | (buffer_length << 11)); // 0xf is AB+AM+APM+AAP
+       0xf | ((RTL8139_CHOSEN_BUFFER) << 11)); // 0xf is AB+AM+APM+AAP
 
   install_handler((interrupt_handler)rtl8139_handler,
                   INT_32_INTERRUPT_GATE(0x3), 0x20 + interrupt_line);
