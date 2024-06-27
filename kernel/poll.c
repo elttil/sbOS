@@ -3,12 +3,49 @@
 #include <interrupts.h>
 #include <lib/list.h>
 #include <poll.h>
-#include <sched/scheduler.h>
+
+static int poll_check(struct pollfd *fds, size_t nfds) {
+  int rc = 0;
+  for (size_t i = 0; i < nfds; i++) {
+    fds[i].revents = 0;
+    if (0 > fds[i].fd) {
+      continue;
+    }
+    vfs_fd_t *f = get_vfs_fd(fds[i].fd, NULL);
+    if (!f) {
+      if (fds[i].events & POLLHUP) {
+        fds[i].revents |= POLLHUP;
+      }
+    } else {
+      if ((fds[i].events & POLLIN) && f->inode->_has_data) {
+        if (f->inode->_has_data(f->inode)) {
+          fds[i].revents |= POLLIN;
+        }
+      }
+      if ((fds[i].events & POLLOUT) && f->inode->_can_write) {
+        if (f->inode->_can_write(f->inode)) {
+          fds[i].revents |= POLLOUT;
+        }
+      }
+      if ((fds[i].events & POLLHUP) && !(f->inode->is_open)) {
+        fds[i].revents |= POLLHUP;
+      }
+    }
+    if (fds[i].revents) {
+      rc++;
+    }
+  }
+  return rc;
+}
 
 int poll(struct pollfd *fds, size_t nfds, int timeout) {
   (void)timeout;
-  int rc = 0;
-
+  {
+    int rc;
+    if ((rc = poll_check(fds, nfds)) > 0) {
+      return rc;
+    }
+  }
   disable_interrupts();
 
   struct list *read_list = &current_task->read_list;
@@ -46,35 +83,5 @@ int poll(struct pollfd *fds, size_t nfds, int timeout) {
     return -EINTR;
   }
 
-  for (size_t i = 0; i < nfds; i++) {
-    if (0 > fds[i].fd) {
-      fds[i].revents = 0;
-      continue;
-    }
-    vfs_fd_t *f = get_vfs_fd(fds[i].fd, NULL);
-    if (!f) {
-      if (fds[i].events & POLLHUP) {
-        fds[i].revents |= POLLHUP;
-      }
-    } else {
-      if (f->inode->_has_data) {
-        if (f->inode->_has_data(f->inode) && fds[i].events & POLLIN) {
-          fds[i].revents |= POLLIN;
-        }
-      }
-      if (f->inode->_can_write) {
-        if (f->inode->_can_write(f->inode) && fds[i].events & POLLOUT) {
-          fds[i].revents |= POLLOUT;
-        }
-      }
-      if (!(f->inode->is_open) && fds[i].events & POLLHUP) {
-        fds[i].revents |= POLLHUP;
-      }
-    }
-    if (fds[i].revents) {
-      rc++;
-    }
-  }
-  enable_interrupts();
-  return rc;
+  return poll_check(fds, nfds);
 }
