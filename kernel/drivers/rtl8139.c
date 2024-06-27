@@ -16,8 +16,8 @@
 // 1 - 16K
 // 2 - 32K
 // 3 - 64K
-#define RTL8139_CHOSEN_BUFFER 3
-#define RTL8139_RXBUFFER_SIZE (8192 << (RTL8139_CHOSEN_BUFFER))
+unsigned int rtl8139_chosen_buffer = 3;
+#define RTL8139_RXBUFFER_SIZE (u32)(8192 << rtl8139_chosen_buffer)
 
 #define TSD0 0x10  // transmit status
 #define TSAD0 0x20 // transmit start address
@@ -151,10 +151,37 @@ u8 rtl8139_get_transmit_status(u32 base_address) {
 
 void rtl8139_init(void) {
   if (!pci_populate_device_struct(0x10EC, 0x8139, &rtl8139)) {
-    kprintf("RTL8139 not found :(\n");
     return;
   }
-  kprintf("RTL8139 found at bus: %x slot: %x\n", rtl8139.bus, rtl8139.slot);
+  klog(LOG_NOTE, "RTL8139 found at bus: %x slot: %x\n", rtl8139.bus,
+       rtl8139.slot);
+
+  for (int i = 0; i < 4; i++) {
+    send_buffers[i] = kmalloc_align(0x1000, NULL);
+    if (!send_buffers[i]) {
+      goto rtl8139_error_memory;
+    }
+  }
+
+  // Try to chose the largest buffer possible without running out of
+  // memory.
+  // NOTE: This is so rare it should probably not even be here. I just
+  // thought it was a cool idea.
+  u32 rx_buffer;
+  for (;;) {
+    // NOTE: RTL8139_RXBUFFER_SIZE is a macro that contains
+    // "rtl8139_chosen_buffer"
+    device_buffer =
+        kmalloc_align(RTL8139_RXBUFFER_SIZE + 16, (void **)&rx_buffer);
+    if (!device_buffer) {
+      if (0 == rtl8139_chosen_buffer) {
+        goto rtl8139_error_memory;
+      }
+      rtl8139_chosen_buffer--;
+      continue;
+    }
+    break;
+  }
 
   u8 header_type = (pci_config_read32(&rtl8139, 0, 0xC) >> 16) & 0xFF;
   assert(0 == header_type);
@@ -174,10 +201,7 @@ void rtl8139_init(void) {
   outb(base_address + CMD, 0x10);
   for (; 0 != (inb(base_address + CMD) & 0x10);)
     ;
-  device_buffer = ksbrk(RTL8139_RXBUFFER_SIZE + 16);
-  memset(device_buffer, 0, RTL8139_RXBUFFER_SIZE + 16);
   // Setupt the recieve buffer
-  u32 rx_buffer = (u32)virtual_to_physical(device_buffer, NULL);
   outl(base_address + RBSTART, rx_buffer);
 
   // Set IMR + ISR
@@ -195,13 +219,15 @@ void rtl8139_init(void) {
   u8 packet_accept = 0xe; // 0xe is AB+AM+APM
 
   // Configure the recieve buffer
-  outl(base_address + 0x44, packet_accept | ((RTL8139_CHOSEN_BUFFER) << 11) |
+  outl(base_address + 0x44, packet_accept | (rtl8139_chosen_buffer << 11) |
                                 (fifo_threshold << 13) | (dma_burst << 8));
 
   install_handler((interrupt_handler)rtl8139_handler,
                   INT_32_INTERRUPT_GATE(0x3), 0x20 + interrupt_line);
-
+  return;
+rtl8139_error_memory:
+  klog(LOG_ERROR, "Failed to initalize RTL8139 driver: Out of memory");
   for (int i = 0; i < 4; i++) {
-    send_buffers[i] = ksbrk(0x1000);
+    kmalloc_align_free(send_buffers[i], 0x1000);
   }
 }

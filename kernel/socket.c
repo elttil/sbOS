@@ -303,7 +303,6 @@ void udp_close(vfs_fd_t *fd) {
 }
 
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-  kprintf("CONNECT\n");
   vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
   if (!fd) {
     return -EBADF;
