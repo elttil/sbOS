@@ -26,10 +26,7 @@ void global_socket_init(void) {
 OPEN_UNIX_SOCKET *un_sockets[100] = {0};
 
 void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
-  ip->a[0] = i1;
-  ip->a[1] = i2;
-  ip->a[2] = i3;
-  ip->a[3] = i4;
+  ip->d = (i1 << (8 * 0)) | (i2 << (8 * 1)) | (i3 << (8 * 2)) | (i4 << (8 * 3));
 }
 
 void tcp_remove_connection(struct TcpConnection *con) {
