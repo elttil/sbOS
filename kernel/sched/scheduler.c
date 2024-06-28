@@ -583,6 +583,9 @@ void *create_physical_mapping(void **physical_addresses, size_t length) {
 int munmap(void *addr, size_t length) {
   for (int i = 0; i < 100; i++) {
     MemoryMap *m = current_task->maps[i];
+    if (!m) {
+      continue;
+    }
     if (addr == m->u_address) {
       current_task->maps[i] = NULL;
       return 0;

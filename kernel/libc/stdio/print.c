@@ -9,7 +9,7 @@ inline void putc(const char c) {
   write_serial(c);
 }
 
-inline void put_string(const char *s, int l) {
+void put_string(const char *s, int l) {
   for (; l > 0; l--, s++) {
     write_serial(*s);
   }
