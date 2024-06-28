@@ -35,16 +35,16 @@ void get_inode_data_size(int inode_num, u64 *file_size) {
 struct BLOCK_CACHE {
   u32 last_use;
   u32 block_num;
-  u8 block[1024];
+  u8 *block;
 };
 
 #define NUM_BLOCK_CACHE 100
-struct BLOCK_CACHE *cache;
+struct BLOCK_CACHE cache[NUM_BLOCK_CACHE];
 
 u32 cold_cache_hits = 0;
 
 void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
-  assert(offset + size <= 1024);
+  assert(offset + size <= block_byte_size);
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
@@ -72,7 +72,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   struct BLOCK_CACHE *c = &cache[free_found];
   c->block_num = block;
   c->last_use = pit_num_ms();
-  raw_vfs_pread(mount_fd, c->block, 1024, block * block_byte_size);
+  raw_vfs_pread(mount_fd, c->block, block_byte_size, block * block_byte_size);
   cached_read_block(block, address, size, offset);
 }
 
@@ -354,7 +354,6 @@ int get_free_block(int allocate) {
     get_group_descriptor(g, &block_group);
 
     if (block_group.num_unallocated_blocks_in_group == 0) {
-      kprintf("skip\n");
       continue;
     }
 
@@ -369,6 +368,13 @@ int get_free_block(int allocate) {
           write_group_descriptor(g, &block_group);
           superblock->num_blocks_unallocated--;
           raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
+
+          // TODO: Temporary due to other code not being able to handle
+          // offsets deep into files.
+          char buffer[block_byte_size];
+          memset(buffer, 0, block_byte_size);
+          ext2_write_block(i + g * superblock->num_blocks_in_group + 1, buffer,
+                           block_byte_size, 0);
         }
         return i + g * superblock->num_blocks_in_group + 1;
       }
@@ -407,6 +413,66 @@ int get_free_inode(int allocate) {
   return -1;
 }
 
+#define INDIRECT_BLOCK_CAPACITY (block_byte_size / sizeof(u32))
+
+void write_to_indirect_block(u32 indirect_block, u32 index, u32 new_block) {
+  index %= INDIRECT_BLOCK_CAPACITY;
+  u32 buffer[INDIRECT_BLOCK_CAPACITY];
+  ext2_read_block(indirect_block, buffer, block_byte_size, 0);
+  buffer[index] = new_block;
+  ext2_write_block(indirect_block, buffer, block_byte_size, 0);
+}
+
+int ext2_allocate_block(inode_t *inode, u32 index) {
+  int b = get_free_block(1 /*true*/);
+  if (-1 == b) {
+    return 0;
+  }
+  if (index < 12) {
+    inode->block_pointers[index] = b;
+    return 1;
+  }
+  index -= 12;
+  if (index < INDIRECT_BLOCK_CAPACITY) {
+    if (0 == inode->single_indirect_block_pointer) {
+      int n = get_free_block(1 /*true*/);
+      if (-1 == n) {
+        return 0;
+      }
+      inode->single_indirect_block_pointer = n;
+    }
+    write_to_indirect_block(inode->single_indirect_block_pointer, index, b);
+    return 1;
+  }
+  index -= INDIRECT_BLOCK_CAPACITY;
+  if (index < INDIRECT_BLOCK_CAPACITY * INDIRECT_BLOCK_CAPACITY) {
+    if (0 == inode->double_indirect_block_pointer) {
+      int n = get_free_block(1 /*true*/);
+      if (-1 == n) {
+        return 0;
+      }
+      inode->double_indirect_block_pointer = n;
+    }
+
+    u32 value = get_singly_block_index(inode->double_indirect_block_pointer,
+                                       index / INDIRECT_BLOCK_CAPACITY);
+    if (0 == value) {
+      int n = get_free_block(1 /*true*/);
+      if (-1 == n) {
+        return 0;
+      }
+      write_to_indirect_block(inode->double_indirect_block_pointer,
+                              index / INDIRECT_BLOCK_CAPACITY, n);
+      value = n;
+    }
+
+    write_to_indirect_block(value, index, b);
+  } else {
+    assert(0);
+  }
+  return 1;
+}
+
 int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
                 int append) {
   (void)file_size;
@@ -429,15 +495,10 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
     fsize = size + offset;
   }
 
-  int num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
+  u32 num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
 
-  for (int i = num_blocks_used; i < num_blocks_required; i++) {
-    if (i >= 12) {
-      assert(0);
-    }
-    int b = get_free_block(1 /*true*/);
-    assert(-1 != b);
-    inode->block_pointers[i] = b;
+  for (u32 i = num_blocks_used; i < num_blocks_required; i++) {
+    assert(ext2_allocate_block(inode, i));
   }
 
   inode->num_disk_sectors =
@@ -447,7 +508,6 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   for (int i = block_start; size; i++) {
     u32 block = get_block(inode, i);
     if (0 == block) {
-      kprintf("block_not_found\n");
       break;
     }
 
@@ -667,9 +727,10 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   entry_header.size = (sizeof(direntry_header_t) + entry_header.name_length);
   entry_header.size += (4 - (entry_header.size % 4));
 
-  u32 length_till_next_block = 1024 - (new_entry_offset % 1024);
+  u32 length_till_next_block =
+      block_byte_size - (new_entry_offset % block_byte_size);
   if (0 == length_till_next_block) {
-    length_till_next_block = 1024;
+    length_till_next_block = block_byte_size;
   }
   assert(entry_header.size < length_till_next_block);
   entry_header.size = length_till_next_block;
@@ -808,13 +869,8 @@ int ext2_create_file(const char *path, int mode) {
 }
 
 vfs_inode_t *ext2_mount(void) {
-  cache = kcalloc(NUM_BLOCK_CACHE, sizeof(struct BLOCK_CACHE));
-  if (!cache) {
-    return NULL;
-  }
   int fd = vfs_open("/dev/sda", O_RDWR, 0);
   if (0 > fd) {
-    kfree(cache);
     return NULL;
   }
   // TODO: Can this be done better? Maybe create a seperate function in
@@ -824,12 +880,29 @@ vfs_inode_t *ext2_mount(void) {
   // FIXME: This is a hacky solution
   relist_remove(&current_task->file_descriptors, fd);
   parse_superblock();
-  return vfs_create_inode(
+
+  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    cache[i].block = kmalloc(block_byte_size);
+    if (!cache[i].block) {
+      goto ext2_mount_error;
+    }
+  }
+  vfs_inode_t *inode = vfs_create_inode(
       0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/,
       0 /*is_open*/, NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
       ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
       ext2_stat, NULL /*send_signal*/, NULL /*connect*/);
+  if (!inode) {
+    goto ext2_mount_error;
+  }
+  return inode;
+ext2_mount_error:
+  vfs_close(fd);
+  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    kfree(cache[i].block);
+  }
+  return NULL;
 }
 
 void parse_superblock(void) {
