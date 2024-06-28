@@ -13,7 +13,7 @@
 
 #define MSS 536
 
-struct __attribute__((__packed__)) __attribute__((aligned(2))) TCP_HEADER {
+struct __attribute__((__packed__)) __attribute__((aligned(2))) TcpHeader {
   u16 src_port;
   u16 dst_port;
   u32 seq_num;
@@ -53,7 +53,7 @@ static inline u16 tcp_checksum_final(u32 cksum, const u8 *buffer, u32 size) {
 }
 
 u16 tcp_calculate_checksum(ipv4_t src_ip, u32 dst_ip, const u8 *payload,
-                           u16 payload_length, const struct TCP_HEADER *header,
+                           u16 payload_length, const struct TcpHeader *header,
                            int total) {
   if (total < header->data_offset + payload_length) {
     return 0;
@@ -88,7 +88,7 @@ static void tcp_send(struct TcpConnection *con, u8 *buffer, u16 length,
 }
 
 void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
-  struct TCP_HEADER header;
+  struct TcpHeader header;
   memset(&header, 0, sizeof(header));
   header.src_port = htons(con->incoming_port);
   header.dst_port = htons(con->outgoing_port);
@@ -109,7 +109,7 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   u16 payload_length = 0;
   header.checksum = tcp_calculate_checksum(
       ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
-      &header, sizeof(struct TCP_HEADER) + payload_length);
+      &header, sizeof(struct TcpHeader) + payload_length);
   int send_len = sizeof(header) + payload_length;
   u8 *send_buffer = kmalloc(send_len);
   memcpy(send_buffer, &header, sizeof(header));
@@ -173,7 +173,7 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
     payload += len;
     return send_tcp_packet(con, payload, payload_length);
   }
-  struct TCP_HEADER header = {0};
+  struct TcpHeader header = {0};
   header.src_port = htons(con->incoming_port);
   header.dst_port = htons(con->outgoing_port);
   header.seq_num = htonl(con->snd_nxt);
@@ -185,7 +185,7 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
   header.urgent_pointer = 0;
   header.checksum = tcp_calculate_checksum(
       ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
-      &header, sizeof(struct TCP_HEADER) + payload_length);
+      &header, sizeof(struct TcpHeader) + payload_length);
   int send_len = sizeof(header) + payload_length;
   u8 *send_buffer = kmalloc(send_len);
   assert(send_buffer);
@@ -201,7 +201,7 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
 
 void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
                 u32 payload_length) {
-  const struct TCP_HEADER *header = (const struct TCP_HEADER *)payload;
+  const struct TcpHeader *header = (const struct TcpHeader *)payload;
   u32 tcp_payload_length = payload_length - header->data_offset * sizeof(u32);
   const u8 *tcp_payload = payload + header->data_offset * sizeof(u32);
   u16 checksum =

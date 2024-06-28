@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-struct ETHERNET_HEADER {
+struct EthernetHeader {
   u8 mac_dst[6];
   u8 mac_src[6];
   u16 type;
@@ -49,10 +49,10 @@ u32 crc32(const char *buf, size_t len) {
 }
 
 void handle_ethernet(const u8 *packet, u64 packet_length) {
-  struct ETHERNET_HEADER *eth_header = (struct ETHERNET_HEADER *)packet;
-  packet += sizeof(struct ETHERNET_HEADER);
+  struct EthernetHeader *eth_header = (struct EthernetHeader *)packet;
+  packet += sizeof(struct EthernetHeader);
   const u8 *payload = packet;
-  packet += packet_length - sizeof(struct ETHERNET_HEADER);
+  packet += packet_length - sizeof(struct EthernetHeader);
 
   u16 type = ntohs(eth_header->type);
   switch (type) {
@@ -60,7 +60,7 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
     handle_arp(payload);
     break;
   case 0x0800:
-    handle_ipv4(payload, packet_length - sizeof(struct ETHERNET_HEADER));
+    handle_ipv4(payload, packet_length - sizeof(struct EthernetHeader));
     break;
   default:
     kprintf("Can't handle ethernet type 0x%x\n", type);
@@ -72,12 +72,12 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
                           u64 payload_length) {
   // FIXME: Janky allocation, do this better
   u64 buffer_size =
-      sizeof(struct ETHERNET_HEADER) + payload_length + sizeof(u32);
+      sizeof(struct EthernetHeader) + payload_length + sizeof(u32);
   u8 *buffer = kmalloc(buffer_size);
   memset(buffer, 0, buffer_size);
   u8 *buffer_start = buffer;
-  struct ETHERNET_HEADER *eth_header = (struct ETHERNET_HEADER *)buffer;
-  buffer += sizeof(struct ETHERNET_HEADER);
+  struct EthernetHeader *eth_header = (struct EthernetHeader *)buffer;
+  buffer += sizeof(struct EthernetHeader);
   memcpy(buffer, payload, payload_length);
   buffer += payload_length;
 

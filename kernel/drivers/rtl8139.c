@@ -28,7 +28,7 @@ u8 *device_buffer;
 u8 *send_buffers[4];
 int send_buffers_loop = 0;
 
-struct _INT_PACKET_HEADER {
+struct IntPacketHeader {
   u8 ROK : 1;
   u8 FAE : 1;
   u8 CRC : 1;
@@ -41,17 +41,17 @@ struct _INT_PACKET_HEADER {
   u8 MAR : 1;
 } __attribute__((packed));
 
-struct PACKET_HEADER {
+struct RTL8139PacketHeader {
   union {
     u16 raw;
-    struct _INT_PACKET_HEADER data;
+    struct IntPacketHeader data;
   };
 } __attribute__((packed));
 
 unsigned short current_packet_read = 0;
 
 void handle_packet(void) {
-  assert(sizeof(struct _INT_PACKET_HEADER) == sizeof(u16));
+  assert(sizeof(struct IntPacketHeader) == sizeof(u16));
 
   int had_error = 0;
 
@@ -60,7 +60,7 @@ void handle_packet(void) {
 
     u16 rx_size = *(u16 *)(device_buffer + ring_offset + sizeof(u16));
 
-    struct PACKET_HEADER packet_header;
+    struct RTL8139PacketHeader packet_header;
     packet_header.raw = device_buffer[ring_offset + 0];
 
     int error = (packet_header.data.FAE) || (packet_header.data.CRC) ||
