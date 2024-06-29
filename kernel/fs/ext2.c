@@ -348,7 +348,7 @@ int get_block(inode_t *inode, u32 i) {
 
 int get_free_block(int allocate) {
   bgdt_t block_group;
-  u8 bitmap[BLOCK_SIZE];
+  u8 bitmap[(superblock->num_blocks_in_group) / 8];
   assert(0 < superblock->num_blocks_unallocated);
   for (u32 g = 0; g < num_block_groups(); g++) {
     get_group_descriptor(g, &block_group);
@@ -357,26 +357,28 @@ int get_free_block(int allocate) {
       continue;
     }
 
-    ext2_read_block(block_group.block_usage_bitmap, bitmap, BLOCK_SIZE, 0);
+    ext2_read_block(block_group.block_usage_bitmap, bitmap,
+                    (superblock->num_blocks_in_group) / 8, 0);
     for (u32 i = 0; i < superblock->num_blocks_in_group; i++) {
       if (!(bitmap[i >> 3] & (1 << (i % 8)))) {
         if (allocate) {
           bitmap[i >> 3] |= (1 << (i % 8));
-          ext2_write_block(block_group.block_usage_bitmap, bitmap, BLOCK_SIZE,
-                           0);
+          ext2_write_block(block_group.block_usage_bitmap, bitmap,
+                           superblock->num_blocks_in_group / 8, 0);
           block_group.num_unallocated_blocks_in_group--;
           write_group_descriptor(g, &block_group);
           superblock->num_blocks_unallocated--;
           raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
 
-          // TODO: Temporary due to other code not being able to handle
-          // offsets deep into files.
+          // TODO: Temporary due to other code not
+          // being able to handle offsets deep into
+          // files.
           char buffer[block_byte_size];
           memset(buffer, 0, block_byte_size);
-          ext2_write_block(i + g * superblock->num_blocks_in_group + 1, buffer,
+          ext2_write_block(i + g * superblock->num_blocks_in_group, buffer,
                            block_byte_size, 0);
         }
-        return i + g * superblock->num_blocks_in_group + 1;
+        return i + g * superblock->num_blocks_in_group;
       }
     }
   }
@@ -393,14 +395,14 @@ int get_free_inode(int allocate) {
       continue;
     }
 
-    u8 bitmap[BLOCK_SIZE];
-    ext2_read_block(block_group.inode_usage_bitmap, bitmap, BLOCK_SIZE, 0);
+    u8 bitmap[block_byte_size];
+    ext2_read_block(block_group.inode_usage_bitmap, bitmap, block_byte_size, 0);
     for (u32 i = 0; i < superblock->num_inodes_in_group; i++) {
       if (!(bitmap[i / 8] & (1 << (i % 8)))) {
         if (allocate) {
           bitmap[i / 8] |= (1 << (i % 8));
-          ext2_write_block(block_group.inode_usage_bitmap, bitmap, BLOCK_SIZE,
-                           0);
+          ext2_write_block(block_group.inode_usage_bitmap, bitmap,
+                           block_byte_size, 0);
           block_group.num_unallocated_inodes_in_group--;
           write_group_descriptor(g, &block_group);
           superblock->num_inodes_unallocated--;
