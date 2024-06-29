@@ -22,7 +22,7 @@ int fd_to_stdout(int fd) {
 }
 
 int cat_main(int argc, char **argv) {
-  int fd = fd_stdin;
+  int fd = STDIN_FILENO;
 
   // If no file operands are specified, the standard input shall be
   // used.

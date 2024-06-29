@@ -16,13 +16,13 @@ typedef struct Command {
 
 #define STR2(_x) #_x
 #define STR(_x) STR2(_x)
-#define COMMAND(NAME)                                                          \
-  { STR(NAME), NAME##_main }
+#define COMMAND(NAME) {STR(NAME), NAME##_main}
 
 Command utilities[] = {COMMAND(minibox), COMMAND(ascii), COMMAND(echo),
                        COMMAND(cat),     COMMAND(yes),   COMMAND(wc),
                        COMMAND(init),    COMMAND(ls),    COMMAND(touch),
-                       COMMAND(ed), COMMAND(sh), COMMAND(kill)};
+                       COMMAND(ed),      COMMAND(sh),    COMMAND(kill),
+                       COMMAND(sha1sum)};
 
 char *parse_filename(char *str) {
   char *tmp = NULL, *is = str;
