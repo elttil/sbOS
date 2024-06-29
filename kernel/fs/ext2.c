@@ -20,8 +20,6 @@ u32 inodes_per_block;
 
 vfs_fd_t *mount_fd = NULL;
 
-#define BLOCK_SIZE (block_byte_size)
-
 void ext2_close(vfs_fd_t *fd) {
   return; // There is nothing to clear
 }
@@ -330,15 +328,16 @@ int get_block(inode_t *inode, u32 i) {
   }
 
   i -= 12;
-  u32 singly_block_size = block_byte_size / (32 / 8);
-  u32 double_block_size = (singly_block_size * singly_block_size);
-  if (i < singly_block_size) {
+  u32 singly_block_byte_size = block_byte_size / (32 / 8);
+  u32 double_block_byte_size =
+      (singly_block_byte_size * singly_block_byte_size);
+  if (i < singly_block_byte_size) {
     return get_singly_block_index(inode->single_indirect_block_pointer, i);
-  } else if (i < double_block_size) {
-    i -= singly_block_size;
+  } else if (i < double_block_byte_size) {
+    i -= singly_block_byte_size;
     u32 singly_entry = get_singly_block_index(
-        inode->double_indirect_block_pointer, i / singly_block_size);
-    u32 offset_in_entry = i % singly_block_size;
+        inode->double_indirect_block_pointer, i / singly_block_byte_size);
+    u32 offset_in_entry = i % singly_block_byte_size;
     int block = get_singly_block_index(singly_entry, offset_in_entry);
     return block;
   }
@@ -420,9 +419,9 @@ int get_free_inode(int allocate) {
 void write_to_indirect_block(u32 indirect_block, u32 index, u32 new_block) {
   index %= INDIRECT_BLOCK_CAPACITY;
   u32 buffer[INDIRECT_BLOCK_CAPACITY];
-  ext2_read_block(indirect_block, buffer, block_byte_size, 0);
+  ext2_read_block(indirect_block, buffer, sizeof(buffer), 0);
   buffer[index] = new_block;
-  ext2_write_block(indirect_block, buffer, block_byte_size, 0);
+  ext2_write_block(indirect_block, buffer, sizeof(buffer), 0);
 }
 
 int ext2_allocate_block(inode_t *inode, u32 index) {
@@ -436,7 +435,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
   }
   index -= 12;
   if (index < INDIRECT_BLOCK_CAPACITY) {
-    if (0 == inode->single_indirect_block_pointer) {
+    if (0 == index) {
       int n = get_free_block(1 /*true*/);
       if (-1 == n) {
         return 0;
@@ -448,7 +447,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
   }
   index -= INDIRECT_BLOCK_CAPACITY;
   if (index < INDIRECT_BLOCK_CAPACITY * INDIRECT_BLOCK_CAPACITY) {
-    if (0 == inode->double_indirect_block_pointer) {
+    if (0 == index) {
       int n = get_free_block(1 /*true*/);
       if (-1 == n) {
         return 0;
@@ -458,7 +457,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
 
     u32 value = get_singly_block_index(inode->double_indirect_block_pointer,
                                        index / INDIRECT_BLOCK_CAPACITY);
-    if (0 == value) {
+    if (0 == (index % INDIRECT_BLOCK_CAPACITY)) {
       int n = get_free_block(1 /*true*/);
       if (-1 == n) {
         return 0;
@@ -469,10 +468,9 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
     }
 
     write_to_indirect_block(value, index, b);
-  } else {
-    assert(0);
+    return 1;
   }
-  return 1;
+  return 0;
 }
 
 int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
@@ -910,7 +908,7 @@ ext2_mount_error:
 void parse_superblock(void) {
   superblock = ksbrk(2 * SECTOR_SIZE);
   raw_vfs_pread(mount_fd, superblock, 2 * SECTOR_SIZE,
-                EXT2_SUPERBLOCK_SECTOR * 512);
+                EXT2_SUPERBLOCK_SECTOR * SECTOR_SIZE);
 
   block_byte_size = 1024 << superblock->block_size;
 
