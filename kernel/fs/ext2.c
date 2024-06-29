@@ -78,20 +78,27 @@ void ext2_read_block(u32 block, void *address, size_t size, size_t offset) {
   cached_read_block(block, address, size, offset);
 }
 
-void ext2_write_block(u32 block, void *address, size_t size, size_t offset) {
-  // Invalidate a old cache
+void ext2_write_block(u32 block, u8 *address, size_t size, size_t offset) {
+  assert(offset + size <= block_byte_size);
+  int cache_index = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
     if (cache[i].block_num == block) {
-      cache[i].block_num = 0;
+      cache_index = i;
       break;
     }
+  }
+  if (-1 != cache_index) {
+    memcpy(cache[cache_index].block + offset, address, size);
+    raw_vfs_pwrite(mount_fd, cache[cache_index].block, block_byte_size,
+                   block * block_byte_size);
+    return;
   }
   raw_vfs_pwrite(mount_fd, address, size, block * block_byte_size + offset);
 }
 
 void write_group_descriptor(u32 group_index, bgdt_t *block_group) {
   int starting_block = (1024 == block_byte_size) ? 2 : 1;
-  ext2_write_block(starting_block, block_group, sizeof(bgdt_t),
+  ext2_write_block(starting_block, (u8 *)block_group, sizeof(bgdt_t),
                    group_index * sizeof(bgdt_t));
 }
 
@@ -418,10 +425,8 @@ int get_free_inode(int allocate) {
 
 void write_to_indirect_block(u32 indirect_block, u32 index, u32 new_block) {
   index %= INDIRECT_BLOCK_CAPACITY;
-  u32 buffer[INDIRECT_BLOCK_CAPACITY];
-  ext2_read_block(indirect_block, buffer, sizeof(buffer), 0);
-  buffer[index] = new_block;
-  ext2_write_block(indirect_block, buffer, sizeof(buffer), 0);
+  ext2_write_block(indirect_block, (u8 *)&new_block, sizeof(u32),
+                   index * sizeof(u32));
 }
 
 int ext2_allocate_block(inode_t *inode, u32 index) {
@@ -455,8 +460,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
       inode->double_indirect_block_pointer = n;
     }
 
-    u32 value = get_singly_block_index(inode->double_indirect_block_pointer,
-                                       index / INDIRECT_BLOCK_CAPACITY);
+    u32 value;
     if (0 == (index % INDIRECT_BLOCK_CAPACITY)) {
       int n = get_free_block(1 /*true*/);
       if (-1 == n) {
@@ -465,6 +469,9 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
       write_to_indirect_block(inode->double_indirect_block_pointer,
                               index / INDIRECT_BLOCK_CAPACITY, n);
       value = n;
+    } else {
+      value = get_singly_block_index(inode->double_indirect_block_pointer,
+                                     index / INDIRECT_BLOCK_CAPACITY);
     }
 
     write_to_indirect_block(value, index, b);
