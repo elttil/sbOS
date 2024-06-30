@@ -31,9 +31,11 @@ void get_inode_data_size(int inode_num, u64 *file_size) {
 }
 
 struct BLOCK_CACHE {
+  int is_used;
   u32 last_use;
   u32 block_num;
   u8 *block;
+  u8 has_write;
 };
 
 #define NUM_BLOCK_CACHE 100
@@ -45,13 +47,14 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   assert(offset + size <= block_byte_size);
   int free_found = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    if (!cache[i].is_used) {
+      free_found = i;
+      continue;
+    }
     if (cache[i].block_num == block) {
       cache[i].last_use = pit_num_ms();
       memcpy(address, cache[i].block + offset, size);
       return;
-    }
-    if (0 == cache[i].block_num) {
-      free_found = i;
     }
   }
 
@@ -68,8 +71,14 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   }
 
   struct BLOCK_CACHE *c = &cache[free_found];
+  if (c->is_used && c->has_write) {
+    raw_vfs_pwrite(mount_fd, c->block, block_byte_size,
+                   c->block_num * block_byte_size);
+  }
+  c->is_used = 1;
   c->block_num = block;
   c->last_use = pit_num_ms();
+  c->has_write = 0;
   raw_vfs_pread(mount_fd, c->block, block_byte_size, block * block_byte_size);
   cached_read_block(block, address, size, offset);
 }
@@ -78,10 +87,27 @@ void ext2_read_block(u32 block, void *address, size_t size, size_t offset) {
   cached_read_block(block, address, size, offset);
 }
 
+void ext2_flush_writes(void) {
+  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    if (!cache[i].is_used) {
+      continue;
+    }
+    if (!cache[i].has_write) {
+      continue;
+    }
+    raw_vfs_pwrite(mount_fd, cache[i].block, block_byte_size,
+                   cache[i].block_num * block_byte_size);
+    cache[i].has_write = 0;
+  }
+}
+
 void ext2_write_block(u32 block, u8 *address, size_t size, size_t offset) {
   assert(offset + size <= block_byte_size);
   int cache_index = -1;
   for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    if (!cache[i].is_used) {
+      continue;
+    }
     if (cache[i].block_num == block) {
       cache_index = i;
       break;
@@ -89,8 +115,7 @@ void ext2_write_block(u32 block, u8 *address, size_t size, size_t offset) {
   }
   if (-1 != cache_index) {
     memcpy(cache[cache_index].block + offset, address, size);
-    raw_vfs_pwrite(mount_fd, cache[cache_index].block, block_byte_size,
-                   block * block_byte_size);
+    cache[cache_index].has_write = 1;
     return;
   }
   raw_vfs_pwrite(mount_fd, address, size, block * block_byte_size + offset);
@@ -561,6 +586,7 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   inode->low_32size = fsize;
   inode->_upper_32size = (fsize >> 32);
   ext2_write_inode(inode_num, inode);
+  ext2_flush_writes();
   return bytes_written;
 }
 
