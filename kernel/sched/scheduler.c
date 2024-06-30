@@ -438,17 +438,16 @@ process_t *next_task(process_t *s) {
     if (!c) {
       c = ready_queue;
     }
-    if (c->is_interrupted) {
-      break;
-    }
     if (s == c) {
       // wait_for_interrupt();
     }
     if (c->sleep_until > pit_num_ms()) {
       continue;
     }
+    if (c->is_interrupted) {
+      break;
+    }
     if (c->dead) {
-      kprintf("dead process\n");
       continue;
     }
     if (is_halted(c)) {
