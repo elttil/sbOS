@@ -550,7 +550,7 @@ void *physical_to_virtual(void *address) {
     if (phys_to_virt_map[i].physical > (u32)address) {
       continue;
     }
-    return (void *)phys_to_virt_map[i].virtual;
+    return (void *)phys_to_virt_map[i].virtual + ((uintptr_t)address & 0xFFF);
   }
   assert(0);
   return NULL;
