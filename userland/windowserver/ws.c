@@ -115,7 +115,7 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   disp->wallpaper_buffer = rc;
   for (int i = 0; i < disp->size / disp->bpp; i++) {
     uint32_t *p = disp->wallpaper_buffer + i * sizeof(uint32_t);
-    *p = 0xFFFFFF;
+    *p = 0x9b9b9b;
   }
 }
 
@@ -544,18 +544,18 @@ int draw_window(DISPLAY *disp, WINDOW *w, int id) {
   x = px;
   y = py;
   int border_px = 1;
-  if (draw_button(disp, x + sx - 40, y - 20, 20, 20, 0x000000, 0x999999,
+  if (draw_button(disp, x + sx - 40, y - 20, 20, 20, 0x000000, 0xFFFFFF,
                   next_ui_id())) {
     w->minimized = 1;
   }
-  if (draw_button(disp, x + sx - 20, y - 20, 20, 20, 0x000000, 0x999999,
+  if (draw_button(disp, x + sx - 20, y - 20, 20, 20, 0x000000, 0xFF0000,
                   next_ui_id())) {
     send_kill_window(w);
   }
 
   uint32_t border_color = 0x999999;
   if (w == disp->active_window) {
-    border_color = 0xFF00FF;
+    border_color = 0xFFFFFF;
   }
   draw_outline(disp, x, y, sx, sy, border_px, border_color);
   x += border_px;
