@@ -291,8 +291,9 @@ void ahci_sata_setup(volatile struct HBA_PORT *port) {
 // Returns the command slot.
 // Sets err if no free slot was found.
 u8 get_free_command_slot(volatile struct HBA_PORT *port, u8 *err) {
+  u8 num_slots = (hba->cap >> 8) & 0x1F;
   u32 slots = (port->sact | port->ci);
-  for (u8 i = 0; i < 32; i++) {
+  for (u8 i = 0; i < num_slots; i++) {
     if (!((slots >> i) & 1)) {
       *err = 0;
       return i;
@@ -318,6 +319,7 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
   }
   struct HBA_CMD_HEADER *cmdheader =
       (struct HBA_CMD_HEADER *)physical_to_virtual((void *)port->clb);
+  assert(0x20 == sizeof(struct HBA_CMD_HEADER));
   cmdheader += command_slot;
   cmdheader->w = is_write;
   cmdheader->cfl = sizeof(struct FIS_REG_H2D) / sizeof(u32);
