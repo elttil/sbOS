@@ -354,25 +354,36 @@ int get_block(inode_t *inode, u32 i) {
 
 int get_free_block(int allocate) {
   bgdt_t block_group;
+  if (0 == superblock->num_blocks_unallocated) {
+    return -1;
+  }
+  assert(0 == superblock->num_blocks_in_group % 8);
   u8 bitmap[(superblock->num_blocks_in_group) / 8];
-  assert(0 < superblock->num_blocks_unallocated);
-  for (u32 g = 0; g < num_block_groups(); g++) {
-    get_group_descriptor(g, &block_group);
+  for (u32 group = 0; group < num_block_groups(); group++) {
+    get_group_descriptor(group, &block_group);
 
-    if (block_group.num_unallocated_blocks_in_group == 0) {
+    if (0 == block_group.num_unallocated_blocks_in_group) {
       continue;
     }
 
     ext2_read_block(block_group.block_usage_bitmap, bitmap,
                     (superblock->num_blocks_in_group) / 8, 0);
-    for (u32 i = 0; i < superblock->num_blocks_in_group; i++) {
-      if (!(bitmap[i >> 3] & (1 << (i % 8)))) {
+    for (u32 index = 0; index < superblock->num_blocks_in_group / 8; index++) {
+      if (0xFF == bitmap[index]) {
+        continue;
+      }
+      for (u32 offset = 0; offset < 8; offset++) {
+        if (bitmap[index] & (1 << offset)) {
+          continue;
+        }
+        u32 block_index =
+            index * 8 + offset + group * superblock->num_blocks_in_group;
         if (allocate) {
-          bitmap[i >> 3] |= (1 << (i % 8));
+          bitmap[index] |= (1 << offset);
           ext2_write_block(block_group.block_usage_bitmap, bitmap,
                            superblock->num_blocks_in_group / 8, 0);
           block_group.num_unallocated_blocks_in_group--;
-          write_group_descriptor(g, &block_group);
+          write_group_descriptor(group, &block_group);
           superblock->num_blocks_unallocated--;
           raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
 
@@ -381,10 +392,9 @@ int get_free_block(int allocate) {
           // files.
           char buffer[block_byte_size];
           memset(buffer, 0, block_byte_size);
-          ext2_write_block(i + g * superblock->num_blocks_in_group, buffer,
-                           block_byte_size, 0);
+          ext2_write_block(block_index, buffer, block_byte_size, 0);
         }
-        return i + g * superblock->num_blocks_in_group;
+        return block_index;
       }
     }
   }
@@ -393,28 +403,41 @@ int get_free_block(int allocate) {
 
 int get_free_inode(int allocate) {
   bgdt_t block_group;
-  assert(0 < superblock->num_inodes_unallocated);
-  for (u32 g = 0; g < num_block_groups(); g++) {
-    get_group_descriptor(g, &block_group);
+  if (0 == superblock->num_inodes_unallocated) {
+    return -1;
+  }
+  assert(0 == superblock->num_inodes_in_group % 8);
+  u8 bitmap[(superblock->num_inodes_in_group) / 8];
+  for (u32 group = 0; group < num_block_groups(); group++) {
+    get_group_descriptor(group, &block_group);
 
     if (0 == block_group.num_unallocated_inodes_in_group) {
       continue;
     }
 
-    u8 bitmap[block_byte_size];
-    ext2_read_block(block_group.inode_usage_bitmap, bitmap, block_byte_size, 0);
-    for (u32 i = 0; i < superblock->num_inodes_in_group; i++) {
-      if (!(bitmap[i / 8] & (1 << (i % 8)))) {
+    ext2_read_block(block_group.inode_usage_bitmap, bitmap,
+                    (superblock->num_inodes_in_group) / 8, 0);
+    for (u32 index = 0; index < superblock->num_inodes_in_group / 8; index++) {
+      if (0xFF == bitmap[index]) {
+        continue;
+      }
+      for (u32 offset = 0; offset < 8; offset++) {
+        if (bitmap[index] & (1 << offset)) {
+          continue;
+        }
+        u32 inode_index = index * 8 + offset +
+                          group * superblock->num_inodes_in_group +
+                          1 /* inodes are 1 addressed */;
         if (allocate) {
-          bitmap[i / 8] |= (1 << (i % 8));
+          bitmap[index] |= (1 << offset);
           ext2_write_block(block_group.inode_usage_bitmap, bitmap,
-                           block_byte_size, 0);
+                           superblock->num_inodes_in_group / 8, 0);
           block_group.num_unallocated_inodes_in_group--;
-          write_group_descriptor(g, &block_group);
+          write_group_descriptor(group, &block_group);
           superblock->num_inodes_unallocated--;
           raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
         }
-        return i + g * superblock->num_inodes_in_group + 1;
+        return inode_index;
       }
     }
   }
