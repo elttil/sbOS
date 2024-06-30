@@ -39,6 +39,20 @@ void __ubsan_handle_mul_overflow(struct OverflowData *data, unsigned long lhs,
   ubsan_log("handle_mul_overflow", data->location);
 }
 
+void __ubsan_handle_negate_overflow(struct OverflowData *data,
+                                    unsigned long lhs, unsigned long rhs) {
+  (void)lhs;
+  (void)rhs;
+  ubsan_log("handle_negate_overflow", data->location);
+}
+
+void __ubsan_handle_divrem_overflow(struct OverflowData *data,
+                                    unsigned long lhs, unsigned long rhs) {
+  (void)lhs;
+  (void)rhs;
+  ubsan_log("handle_divrem_overflow", data->location);
+}
+
 void __ubsan_handle_out_of_bounds(struct OutOfBoundsData *data, void *index) {
   (void)index;
   ubsan_log("handle_out_of_bounds", data->location);
