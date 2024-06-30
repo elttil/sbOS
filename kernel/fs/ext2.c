@@ -352,53 +352,63 @@ int get_block(inode_t *inode, u32 i) {
   return 0;
 }
 
-int get_free_block(int allocate) {
+int get_free_blocks(int allocate, int entries[], u32 num_entries) {
+  u32 current_entry = 0;
   bgdt_t block_group;
-  if (0 == superblock->num_blocks_unallocated) {
-    return -1;
+  if (num_entries > superblock->num_blocks_unallocated) {
+    kprintf("greater than\n");
+    return 0;
   }
   assert(0 == superblock->num_blocks_in_group % 8);
-  u8 bitmap[(superblock->num_blocks_in_group) / 8];
-  for (u32 group = 0; group < num_block_groups(); group++) {
+  for (u32 group = 0; group < num_block_groups() && current_entry < num_entries;
+       group++) {
     get_group_descriptor(group, &block_group);
 
     if (0 == block_group.num_unallocated_blocks_in_group) {
       continue;
     }
 
+    u8 bitmap[(superblock->num_blocks_in_group) / 8];
     ext2_read_block(block_group.block_usage_bitmap, bitmap,
                     (superblock->num_blocks_in_group) / 8, 0);
-    for (u32 index = 0; index < superblock->num_blocks_in_group / 8; index++) {
+    int found_block = 0;
+    for (u32 index = 0; index < superblock->num_blocks_in_group / 8 &&
+                        current_entry < num_entries;
+         index++) {
       if (0xFF == bitmap[index]) {
         continue;
       }
-      for (u32 offset = 0; offset < 8; offset++) {
+      for (u32 offset = 0; offset < 8 && current_entry < num_entries;
+           offset++) {
         if (bitmap[index] & (1 << offset)) {
           continue;
         }
         u32 block_index =
             index * 8 + offset + group * superblock->num_blocks_in_group;
-        if (allocate) {
-          bitmap[index] |= (1 << offset);
-          ext2_write_block(block_group.block_usage_bitmap, bitmap,
-                           superblock->num_blocks_in_group / 8, 0);
-          block_group.num_unallocated_blocks_in_group--;
-          write_group_descriptor(group, &block_group);
-          superblock->num_blocks_unallocated--;
-          raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
-
-          // TODO: Temporary due to other code not
-          // being able to handle offsets deep into
-          // files.
-          char buffer[block_byte_size];
-          memset(buffer, 0, block_byte_size);
-          ext2_write_block(block_index, buffer, block_byte_size, 0);
-        }
-        return block_index;
+        bitmap[index] |= (1 << offset);
+        entries[current_entry] = block_index;
+        current_entry++;
+        found_block = 1;
       }
     }
+    if (allocate && found_block) {
+      ext2_write_block(block_group.block_usage_bitmap, bitmap,
+                       superblock->num_blocks_in_group / 8, 0);
+      block_group.num_unallocated_blocks_in_group--;
+      write_group_descriptor(group, &block_group);
+      superblock->num_blocks_unallocated--;
+      raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
+    }
   }
-  return -1;
+  return current_entry;
+}
+
+int get_free_block(int allocate) {
+  int entry[1];
+  if (0 == get_free_blocks(allocate, entry, 1)) {
+    return -1;
+  }
+  return entry[0];
 }
 
 int get_free_inode(int allocate) {
@@ -452,13 +462,9 @@ void write_to_indirect_block(u32 indirect_block, u32 index, u32 new_block) {
                    index * sizeof(u32));
 }
 
-int ext2_allocate_block(inode_t *inode, u32 index) {
-  int b = get_free_block(1 /*true*/);
-  if (-1 == b) {
-    return 0;
-  }
+int ext2_allocate_block(inode_t *inode, u32 index, int block) {
   if (index < 12) {
-    inode->block_pointers[index] = b;
+    inode->block_pointers[index] = block;
     return 1;
   }
   index -= 12;
@@ -470,7 +476,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
       }
       inode->single_indirect_block_pointer = n;
     }
-    write_to_indirect_block(inode->single_indirect_block_pointer, index, b);
+    write_to_indirect_block(inode->single_indirect_block_pointer, index, block);
     return 1;
   }
   index -= INDIRECT_BLOCK_CAPACITY;
@@ -497,7 +503,7 @@ int ext2_allocate_block(inode_t *inode, u32 index) {
                                      index / INDIRECT_BLOCK_CAPACITY);
     }
 
-    write_to_indirect_block(value, index, b);
+    write_to_indirect_block(value, index, block);
     return 1;
   }
   return 0;
@@ -527,8 +533,11 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
 
   u32 num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
 
+  u32 delta = num_blocks_required - num_blocks_used;
+  int blocks[delta];
+  get_free_blocks(1, blocks, delta);
   for (u32 i = num_blocks_used; i < num_blocks_required; i++) {
-    assert(ext2_allocate_block(inode, i));
+    assert(ext2_allocate_block(inode, i, blocks[i - num_blocks_used]));
   }
 
   inode->num_disk_sectors =
