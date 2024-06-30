@@ -559,10 +559,12 @@ int write_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size,
   u32 num_blocks_required = BLOCKS_REQUIRED(fsize, block_byte_size);
 
   u32 delta = num_blocks_required - num_blocks_used;
-  int blocks[delta];
-  get_free_blocks(1, blocks, delta);
-  for (u32 i = num_blocks_used; i < num_blocks_required; i++) {
-    assert(ext2_allocate_block(inode, i, blocks[i - num_blocks_used]));
+  if (delta > 0) {
+    int blocks[delta];
+    get_free_blocks(1, blocks, delta);
+    for (u32 i = num_blocks_used; i < num_blocks_required; i++) {
+      assert(ext2_allocate_block(inode, i, blocks[i - num_blocks_used]));
+    }
   }
 
   inode->num_disk_sectors =

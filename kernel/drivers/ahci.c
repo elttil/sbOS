@@ -307,7 +307,7 @@ void ahci_wait_for_completion(volatile struct HBA_PORT *port) {
   u32 num_slots = ((hba->cap >> 8) & 0x1F);
   u32 slots = (port->ci);
   u32 num_free = 0;
-  for (; num_free < 10;) {
+  for (; num_free < num_slots;) {
     num_free = 0;
     for (u8 i = 0; i < num_slots + 1; i++) {
       if (!((slots >> i) & 1)) {
