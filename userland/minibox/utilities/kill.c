@@ -5,8 +5,6 @@
 #include <stdio.h>
 
 int kill_main(int argc, char **argv) {
-  int fd = open_process(4);
-  kill(fd, SIGTERM);
-  close(fd);
+  kill(4, SIGTERM);
   return 0;
 }

@@ -47,6 +47,7 @@
 #define SYS_SETSOCKOPT 39
 #define SYS_GETPEERNAME 40
 #define SYS_FCNTL 41
+#define SYS_CLOCK_GETTIME 42
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

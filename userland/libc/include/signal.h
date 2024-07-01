@@ -39,6 +39,7 @@ struct siginfo {
 typedef struct siginfo siginfo_t;
 
 int kill(int fd, int sig);
+int kill_fd(int fd, int sig);
 
 struct sigaction {
   void (*sa_handler)(int); // Pointer to a signal-catching function or one of

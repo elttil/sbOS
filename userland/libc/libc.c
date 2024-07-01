@@ -131,6 +131,7 @@ void _libc_setup(void) {
   __stderr_FILE->read = read_fd;
   __stderr_FILE->is_eof = 0;
   __stderr_FILE->has_error = 0;
+  __stdout_FILE->seek = NULL;
   __stderr_FILE->cookie = NULL;
   __stderr_FILE->fd = 2;
   __stderr_FILE->fflush = fflush_fd;
