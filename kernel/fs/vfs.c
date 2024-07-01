@@ -58,14 +58,12 @@ vfs_inode_t *vfs_create_inode(
   r->truncate = truncate;
   r->stat = stat;
   r->send_signal = send_signal;
-  r->ref = 0;
   r->connect = connect;
   return r;
 }
 
 int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
                   vfs_fd_t **fd) {
-  inode->ref++;
   vfs_fd_t *r = kmalloc(sizeof(vfs_fd_t));
   r->flags = flags;
   r->mode = mode;
@@ -301,14 +299,10 @@ int vfs_close_process(process_t *p, int fd) {
   assert(relist_remove(&p->file_descriptors, fd));
   // If no references left then free the contents
   if (0 == fd_ptr->reference_count) {
-    assert(0 < fd_ptr->inode->ref);
-    fd_ptr->inode->ref--;
-    if (0 >= fd_ptr->inode->ref) {
-      if (fd_ptr->inode->close) {
-        fd_ptr->inode->close(fd_ptr);
-      }
-      kfree(fd_ptr->inode);
+    if (fd_ptr->inode->close) {
+      fd_ptr->inode->close(fd_ptr);
     }
+    kfree(fd_ptr->inode);
     kfree(fd_ptr);
   }
   return 0;

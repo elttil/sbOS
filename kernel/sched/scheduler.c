@@ -134,7 +134,6 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
         continue;
       }
       if (out) {
-        out->inode->ref++;
         out->reference_count++;
       }
     }

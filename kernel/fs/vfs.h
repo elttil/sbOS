@@ -46,7 +46,6 @@ struct vfs_fd {
 struct vfs_inode {
   int inode_num;
   int type;
-  int ref;
   int (*_has_data)(vfs_inode_t *iinode);
   int (*_can_write)(vfs_inode_t *iinode);
   u8 is_open;

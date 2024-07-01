@@ -26,7 +26,6 @@ vfs_inode_t *devfs_add_file(
   i->_has_data = has_data;
   i->_can_write = can_write;
   i->is_open = 1;
-  i->ref = 1;
   num_files++;
   return i;
 }
@@ -34,11 +33,17 @@ vfs_inode_t *devfs_add_file(
 vfs_inode_t *devfs_open(const char *file) {
   for (int i = 0; i < num_files; i++) {
     if (isequal_n(files[i].name, file, strlen(files[i].name))) {
-      return files[i].inode;
+      // FIXME: Temporary hack
+      vfs_inode_t *r = kmalloc(sizeof(vfs_inode_t));
+      if (!r) {
+        return NULL; // TODO: Give some error condition
+      }
+      memcpy(r, files[i].inode, sizeof(vfs_inode_t));
+      return r;
     }
   }
 
-  return 0;
+  return NULL;
 }
 
 int devfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -97,7 +102,6 @@ void add_stdout(void) {
 
 vfs_inode_t *devfs_mount(void) {
   vfs_inode_t *root = kcalloc(1, sizeof(vfs_inode_t));
-  root->ref++;
   root->open = devfs_open;
   root->read = devfs_read;
   root->write = devfs_write;
