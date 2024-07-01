@@ -5,16 +5,16 @@
 #include <poll.h>
 #include <pty.h>
 #include <signal.h>
-#include <sys/socket.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #define TERM_BACKGROUND 0x000000
 
-char terminal_char_buffer[1920 / 8][1080 / 8] = {0};
+char terminal_char_buffer[1080 / 8][1920 / 8] = {0};
 
 int cmdfd;
 GUI_Window *global_w;
@@ -230,8 +230,14 @@ void handle_escape_codes_or_print(char *buffer, int len) {
 void terminal_resize(uint32_t sx, uint32_t sy) {
   assert(GUI_BufferResize(global_w, sx, sy));
   for (int y = 0; y < sy; y += 8) {
+    if (y / 8 >= 1080 / 8) {
+      break;
+    }
     int x = 0;
     for (; x < sx; x += 8) {
+      if (x / 8 >= 1920 / 8) {
+        break;
+      }
       GUI_DrawFont(global_w, x, y, terminal_char_buffer[y / 8][x / 8]);
     }
   }
