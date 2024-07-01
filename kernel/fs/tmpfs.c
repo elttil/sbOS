@@ -22,6 +22,9 @@ int tmp_can_write(vfs_inode_t *inode) {
 }
 
 int tmp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  if (!fd->inode->is_open) {
+    return -EPIPE;
+  }
   tmp_inode *calling_file = fd->inode->internal_object;
   tmp_inode *child_file = calling_file->read_inode->internal_object;
   if (child_file->is_closed) {
@@ -32,6 +35,9 @@ int tmp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 int tmp_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
+  if (!fd->inode->is_open) {
+    return -EPIPE;
+  }
   tmp_inode *calling_file = fd->inode->internal_object;
   if (calling_file->is_closed) {
     return -EPIPE;
