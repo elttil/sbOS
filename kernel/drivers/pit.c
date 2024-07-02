@@ -1,4 +1,5 @@
 #include "pit.h"
+#include <arch/i386/tsc.h>
 
 #define PIT_IO_CHANNEL_0 0x40
 #define PIT_IO_MODE_COMMAND 0x43
@@ -8,8 +9,9 @@ u32 pit_counter = 0;
 u32 switch_counter = 0;
 u16 hertz;
 
+u64 cpu_mhz = 0;
 u64 pit_num_ms(void) {
-  return clock_num_ms_ticks;
+  return (get_tsc()) / (cpu_mhz * 1000);
 }
 
 u16 read_pit_count(void) {
@@ -24,6 +26,8 @@ u16 read_pit_count(void) {
 }
 
 void set_pit_count(u16 _hertz) {
+  cpu_mhz = get_hz() / 10000;
+
   hertz = _hertz;
   u16 divisor = 1193180 / hertz;
 
@@ -45,9 +49,18 @@ void set_pit_count(u16 _hertz) {
 
 int last_flush = 0;
 
+u64 last_tsc = 0;
+
 extern int is_switching_tasks;
 void int_clock(reg_t *regs) {
-  clock_num_ms_ticks += 5;
+  u64 current_tsc = get_tsc();
+
+  u64 delta = (current_tsc - last_tsc) / (cpu_mhz * 1000);
+
+  clock_num_ms_ticks += delta;
+
+  last_tsc = current_tsc;
+
   switch_counter++;
   if (clock_num_ms_ticks - last_flush > 50) {
     tcp_flush_acks();
