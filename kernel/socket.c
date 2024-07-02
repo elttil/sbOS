@@ -355,7 +355,7 @@ int tcp_connect(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen) {
   con->snd_wnd = 0;
   con->sent_ack = 0;
 
-  ringbuffer_init(&con->incoming_buffer, con->rcv_wnd * 4);
+  ringbuffer_init(&con->incoming_buffer, con->rcv_wnd * 64);
   ringbuffer_init(&con->outgoing_buffer, 8192);
   con->snd_wnd = ringbuffer_unused(&con->outgoing_buffer);
   relist_add(&open_tcp_connections, con, NULL);
