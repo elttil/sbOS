@@ -303,23 +303,9 @@ u8 get_free_command_slot(volatile struct HBA_PORT *port, u8 *err) {
   return 0;
 }
 
-void ahci_wait_for_completion(volatile struct HBA_PORT *port) {
-  u32 num_slots = ((hba->cap >> 8) & 0x1F);
-  u32 slots = (port->ci);
-  u32 num_free = 0;
-  for (; num_free < num_slots;) {
-    num_free = 0;
-    for (u8 i = 0; i < num_slots + 1; i++) {
-      if (!((slots >> i) & 1)) {
-        num_free++;
-      }
-    }
-  }
-}
-
 // is_write: Determins whether a read or write command will be used.
 u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
-                        u32 count, u16 *buffer, u8 is_write, u8 async) {
+                        u32 count, u16 *buffer, u8 is_write) {
   // TODO: The number of PRDT tables are hardcoded at a seemingly
   // very low number. It can be up to 65,535. Should it maybe be
   // changed?
@@ -394,10 +380,6 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
 
   port->ci = 1 << command_slot; // Issue command
 
-  if (async) {
-    return 1;
-  }
-
   // Wait for completion
   for (;;) {
     // In some longer duration reads, it may be helpful to spin on the DPS bit
@@ -421,13 +403,13 @@ u8 ahci_perform_command(volatile struct HBA_PORT *port, u32 startl, u32 starth,
 }
 
 u8 ahci_raw_write(volatile struct HBA_PORT *port, u32 startl, u32 starth,
-                  u32 count, u16 *inbuffer, u8 async) {
-  return ahci_perform_command(port, startl, starth, count, inbuffer, 1, async);
+                  u32 count, u16 *inbuffer) {
+  return ahci_perform_command(port, startl, starth, count, inbuffer, 1);
 }
 
 u8 ahci_raw_read(volatile struct HBA_PORT *port, u32 startl, u32 starth,
-                 u32 count, u16 *outbuffer, u8 async) {
-  return ahci_perform_command(port, startl, starth, count, outbuffer, 0, async);
+                 u32 count, u16 *outbuffer) {
+  return ahci_perform_command(port, startl, starth, count, outbuffer, 0);
 }
 
 int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -445,13 +427,13 @@ int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   if (offset > 0) {
     u8 tmp_buffer[512];
-    ahci_raw_read(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer, 0);
+    ahci_raw_read(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
 
     int left = 512 - offset;
     int write = min(left, len);
 
     memcpy(tmp_buffer + offset, buffer, write);
-    ahci_raw_write(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer, 0);
+    ahci_raw_write(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
 
     offset = 0;
     len -= write;
@@ -460,28 +442,22 @@ int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   }
 
   for (; sector_count >= num_prdt; lba++) {
-    ahci_raw_write(&hba->ports[port], lba, 0, num_prdt, (u16 *)buffer, 1);
+    ahci_raw_write(&hba->ports[port], lba, 0, num_prdt, (u16 *)buffer);
     buffer += num_prdt * 512;
     len -= num_prdt * 512;
     sector_count -= num_prdt;
   }
 
-  if (sector_count >= num_prdt) {
-    ahci_wait_for_completion(&hba->ports[port]);
-  }
-
   if (sector_count > 0 && (0 == len % SECTOR_SIZE)) {
-    ahci_raw_write(&hba->ports[port], lba, 0, sector_count, (u16 *)buffer, 0);
+    ahci_raw_write(&hba->ports[port], lba, 0, sector_count, (u16 *)buffer);
     return rc;
   }
 
   if (sector_count > 0 && len > 0) {
     u8 tmp_buffer[512 * sector_count];
-    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer,
-                  0);
+    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
     memcpy(tmp_buffer + offset, buffer, len);
-    ahci_raw_write(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer,
-                   0);
+    ahci_raw_write(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
   }
   return rc;
 }
@@ -500,7 +476,7 @@ int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   }
   u8 tmp_buffer[512 * num_prdt];
   for (; sector_count >= num_prdt; lba++) {
-    ahci_raw_read(&hba->ports[port], lba, 0, num_prdt, (u16 *)tmp_buffer, 0);
+    ahci_raw_read(&hba->ports[port], lba, 0, num_prdt, (u16 *)tmp_buffer);
     memcpy(buffer, tmp_buffer + offset, 512 * num_prdt);
     offset = 0;
     buffer += num_prdt * 512;
@@ -509,8 +485,7 @@ int ahci_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   }
 
   if (sector_count > 0) {
-    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer,
-                  0);
+    ahci_raw_read(&hba->ports[port], lba, 0, sector_count, (u16 *)tmp_buffer);
     memcpy(buffer, tmp_buffer + offset, len);
   }
   return rc;
