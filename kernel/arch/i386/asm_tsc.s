@@ -1,17 +1,17 @@
 .intel_syntax noprefix
 
-.global get_tsc
-.global get_hz
+.global tsc_get
+.global tsc_get_hz
 
 # 1.193182 MHz
 # So 0xFFFF is roughly 0.05492 seconds
 # So take the result times 18 and you got your Hz
 
-get_tsc:
+tsc_get:
 	rdtsc
 	ret
 
-get_hz:
+tsc_get_hz:
 	cli
 	# Disable the gate for channel 2 so the clock can be set.
 	# This should only matter if the channel already has count

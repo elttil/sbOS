@@ -19,6 +19,7 @@
 #include <random.h>
 #include <socket.h>
 #include <string.h>
+#include <timer.h>
 #include <typedefs.h>
 
 struct two_args {
@@ -137,9 +138,7 @@ int syscall_chdir(const char *path) {
 int syscall_clock_gettime(clockid_t clock_id, struct timespec *tp) {
   // FIXME: Actually implement this
   if (tp) {
-    u64 ms = pit_num_ms();
-    tp->tv_sec = ms / 1000;
-    tp->tv_nsec = ms * 1000 * 1000;
+    timer_get(tp);
   }
   return 0;
 }
@@ -226,7 +225,9 @@ void *syscall_mmap(SYS_MMAP_PARAMS *args) {
 }
 
 void syscall_msleep(u32 ms) {
-  current_task->sleep_until = pit_num_ms() + ms;
+  struct timespec t;
+  timer_get(&t);
+  current_task->sleep_until = timer_get_ms() + ms;
   switch_task();
 }
 
@@ -371,7 +372,7 @@ int syscall_socket(SYS_SOCKET_PARAMS *args) {
 }
 
 u32 syscall_uptime(void) {
-  return (u32)pit_num_ms();
+  return timer_get_uptime();
 }
 
 int syscall_write(int fd, const char *buf, size_t count) {

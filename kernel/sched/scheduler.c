@@ -7,7 +7,9 @@
 #include <errno.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
+#include <sched/scheduler.h>
 #include <signal.h>
+#include <timer.h>
 
 // FIXME: Use the process_t struct instead or keep this contained in it.
 TCB *current_task_TCB;
@@ -432,6 +434,7 @@ extern PageDirectory *active_directory;
 
 process_t *next_task(process_t *s) {
   process_t *c = s;
+  u64 ms_time = timer_get_ms();
   c = c->next;
   for (;; c = c->next) {
     if (!c) {
@@ -440,7 +443,7 @@ process_t *next_task(process_t *s) {
     if (s == c) {
       // wait_for_interrupt();
     }
-    if (c->sleep_until > pit_num_ms()) {
+    if (c->sleep_until > ms_time) {
       continue;
     }
     if (c->is_interrupted) {

@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include <timer.h>
 #include <typedefs.h>
 
 #if defined(__linux__)
@@ -76,6 +77,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   ata_init();
   klog(LOG_SUCCESS, "ATA Initalized");
 
+  timer_init();
+
   tasking_init();
   klog(LOG_SUCCESS, "Tasking Initalized");
 
@@ -96,6 +99,9 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   add_stdout();
   add_serial();
   add_random_devices();
+
+  timer_add_clock();
+
   shm_init();
 
   setup_random();
@@ -123,7 +129,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
     }
   }
   for (;;) {
-    current_task->sleep_until = pit_num_ms() + 100000000;
+    current_task->sleep_until = timer_get_ms() + 100000000;
     wait_for_interrupt();
   }
 }

@@ -1,4 +1,6 @@
 #include <typedefs.h>
 
-u64 get_tsc();
-u64 get_hz();
+void tsc_init(void);
+u64 tsc_get(void);
+u64 tsc_get_mhz(void);
+u64 tsc_calculate_ms(u64 tsc);

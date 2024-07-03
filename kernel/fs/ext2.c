@@ -6,6 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <timer.h>
 #include <typedefs.h>
 
 #define EXT2_SUPERBLOCK_SECTOR 2
@@ -52,7 +53,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
       continue;
     }
     if (cache[i].block_num == block) {
-      cache[i].last_use = pit_num_ms();
+      cache[i].last_use = timer_get_uptime();
       memcpy(address, cache[i].block + offset, size);
       return;
     }
@@ -77,7 +78,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   }
   c->is_used = 1;
   c->block_num = block;
-  c->last_use = pit_num_ms();
+  c->last_use = timer_get_uptime();
   c->has_write = 0;
   raw_vfs_pread(mount_fd, c->block, block_byte_size, block * block_byte_size);
   cached_read_block(block, address, size, offset);

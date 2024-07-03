@@ -8,5 +8,4 @@
 
 void pit_install(void);
 void set_pit_count(u16 hertz);
-u64 pit_num_ms(void);
 #endif
