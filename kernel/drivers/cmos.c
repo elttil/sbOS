@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <cpu/idt.h>
 #include <cpu/io.h>
 #include <drivers/cmos.h>
 
@@ -30,6 +31,7 @@
 #define CMOS_MONTH 0x08
 #define CMOS_YEAR 0x09
 #define CMOS_CENTURY 0x32
+#define CMOS_REG_B 0x0B
 
 #define NMI_disable_bit 1
 
@@ -72,29 +74,65 @@ u8 days_in_month[] = {
     31, // December: 31 days
 };
 
-static int cmos_update_in_progress(void) {
-  return (cmos_get_register(0x0A) & (1 << 7));
+static i64 cmos_get_time(void);
+static void cmos_set_time(i64 time);
+
+int cmos_has_command = 0;
+int cmos_command_is_read = 0;
+int *cmos_done_ptr = NULL;
+i64 *cmos_time_ptr = NULL;
+
+void cmos_handler(reg_t *reg) {
+  (void)reg;
+  if (!cmos_has_command) {
+    goto cmos_handler_exit;
+  }
+
+  if (cmos_command_is_read) {
+    *cmos_time_ptr = cmos_get_time();
+    *cmos_done_ptr = 1;
+    goto cmos_handler_exit;
+  }
+
+  if (!cmos_command_is_read) {
+    cmos_set_time(*cmos_time_ptr);
+    *cmos_done_ptr = 1;
+    goto cmos_handler_exit;
+  }
+
+cmos_handler_exit:
+  cmos_has_command = 0;
+  u8 reg_b = cmos_get_register(CMOS_REG_B);
+  reg_b &= ~0x40; // Disable interrupts
+  cmos_set_register(CMOS_REG_B, reg_b);
+  EOI(0x8);
 }
 
-// TODO: Optimize by using interrupts as osdev wiki recommends
-static void cmos_wait(void) {
-  // It firsts wait until there is a update
-  // Then we wait for it to be done.
-  // This is to avoid race conditions.
-  for (; !cmos_update_in_progress();)
-    ;
+void cmos_init(void) {
+  install_handler((interrupt_handler)cmos_handler, INT_32_INTERRUPT_GATE(0x0),
+                  0x28);
+}
 
-  for (; cmos_update_in_progress();)
-    ;
+int cmos_start_call(int is_read, int *done, i64 *time) {
+  if (cmos_has_command) {
+    return 0;
+  }
+  *done = 0;
+  cmos_done_ptr = done;
+  cmos_time_ptr = time;
+  cmos_command_is_read = is_read;
+  cmos_has_command = 1;
+  u8 reg_b = cmos_get_register(CMOS_REG_B);
+  reg_b |= 0x40; // Enable interrupts
+  cmos_set_register(CMOS_REG_B, reg_b);
+  return 1;
 }
 
 // This function returns the current unix timestamp from the CMOS RTC
 // TODO: It currently makes the assumption that time travel is not possible and
 // as a result will not give negative values. This support should maybe be added
 // to prepare ourselves for the past.
-i64 cmos_get_time(void) {
-  cmos_wait();
-
+static i64 cmos_get_time(void) {
   u8 seconds = cmos_get_register(CMOS_SECONDS);
   u8 minutes = cmos_get_register(CMOS_MINUTES);
 
@@ -146,9 +184,8 @@ i64 cmos_get_time(void) {
   return second_sum;
 }
 
-void cmos_set_time(i64 time) {
+static void cmos_set_time(i64 time) {
   assert(time > 0); // TODO: Add support for time travelers
-  cmos_wait();
   u8 reg_b = cmos_get_register(0x0B);
 
   u8 seconds = 0;

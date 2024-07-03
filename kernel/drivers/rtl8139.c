@@ -7,6 +7,7 @@
 #include <mmu.h>
 #include <network/arp.h>
 #include <network/ethernet.h>
+#include <sched/scheduler.h>
 
 #define RBSTART 0x30
 #define CMD 0x37

@@ -67,6 +67,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   idt_init();
   klog(LOG_SUCCESS, "IDT Initalized");
 
+  timer_start_init();
+
   syscalls_init();
   klog(LOG_SUCCESS, "Syscalls Initalized");
 
@@ -77,7 +79,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   ata_init();
   klog(LOG_SUCCESS, "ATA Initalized");
 
-  timer_init();
+  timer_start_init();
 
   tasking_init();
   klog(LOG_SUCCESS, "Tasking Initalized");
@@ -100,6 +102,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   add_serial();
   add_random_devices();
 
+  timer_wait_for_init();
   timer_add_clock();
 
   shm_init();

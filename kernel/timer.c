@@ -1,17 +1,29 @@
 #include <arch/i386/tsc.h>
 #include <drivers/cmos.h>
 #include <fs/devfs.h>
+#include <interrupts.h>
 #include <math.h>
 #include <time.h>
+#include <timer.h>
 #include <typedefs.h>
 
+int has_unix_time;
 i64 start_unix_time;
 u64 start_tsc_time;
 
-void timer_init(void) {
+void timer_start_init(void) {
   tsc_init();
   start_tsc_time = tsc_get();
-  start_unix_time = cmos_get_time();
+  enable_interrupts();
+  cmos_init();
+  cmos_start_call(1, &has_unix_time, &start_unix_time);
+  enable_interrupts();
+}
+
+void timer_wait_for_init(void) {
+  enable_interrupts();
+  for (; !has_unix_time;)
+    ;
 }
 
 u64 timer_get_uptime(void) {
@@ -55,7 +67,11 @@ int clock_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   i64 delta = new_value_seconds - current_unix_time_seconds;
   start_unix_time += delta;
-  cmos_set_time(new_value_seconds);
+  int done;
+  enable_interrupts();
+  cmos_start_call(0, &done, &new_value_seconds);
+  for (; !done;)
+    ;
   return sizeof(i64);
 }
 

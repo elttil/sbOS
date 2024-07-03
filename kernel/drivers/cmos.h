@@ -1,4 +1,4 @@
 #include <typedefs.h>
 
-i64 cmos_get_time(void);
-void cmos_set_time(i64 time);
+void cmos_init(void);
+int cmos_start_call(int is_read, int *done, i64 *time);
