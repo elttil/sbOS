@@ -41,3 +41,4 @@ int sh_main(int argc, char **argv);
 int kill_main(int argc, char **argv);
 int init_main(void);
 int sha1sum_main(int argc, char **argv);
+int rdate_main(int argc, char **argv);
