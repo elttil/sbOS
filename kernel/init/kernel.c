@@ -60,12 +60,15 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   klog(LOG_SUCCESS, "Paging Initalized");
   mb = mmu_map_frames((multiboot_info_t *)addr, sizeof(multiboot_info_t));
   assert(mb);
+  assert(display_driver_init(mb));
 
   gdt_init();
   klog(LOG_SUCCESS, "GDT Initalized");
 
   idt_init();
   klog(LOG_SUCCESS, "IDT Initalized");
+
+  setup_random();
 
   timer_start_init();
 
@@ -107,8 +110,6 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
 
   shm_init();
 
-  setup_random();
-
   add_keyboard();
   add_mouse();
 
@@ -121,8 +122,8 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   setup_network(gateway, bitmask);
 
   gen_ipv4(&ip_address, 10, 0, 2, 15);
+  enable_interrupts();
 
-  assert(display_driver_init(mb));
   add_vbe_device();
   int pid;
   if (0 == (pid = fork())) {

@@ -104,9 +104,25 @@ void add_hash_pool(void) {
   memcpy(internal_chacha_block + KEY, new_chacha_key, KEY_SIZE);
 
   mix_chacha();
+
+  u64 seed[4];
+  get_random((u8 *)seed, sizeof(seed));
+  seed_xoshiro_256_pp(seed);
 }
 
-void add_entropy(u8 *buffer, size_t size) {
+u64 entropy_fast_state = 0;
+
+static inline uint64_t xorshift64(void) {
+  uint64_t x = entropy_fast_state;
+  x ^= x << 13;
+  x ^= x >> 7;
+  x ^= x << 17;
+  return entropy_fast_state = x;
+}
+
+void random_add_entropy(u8 *buffer, u64 size) {
+  SHA1_Update(&hash_pool, &entropy_fast_state, sizeof(entropy_fast_state));
+  xorshift64();
   SHA1_Update(&hash_pool, buffer, size);
   hash_pool_size += size;
   if (hash_pool_size >= HASH_LEN * 2) {
@@ -114,38 +130,27 @@ void add_entropy(u8 *buffer, size_t size) {
   }
 }
 
+void random_add_entropy_fast(u8 *buffer, u64 size) {
+  for (u64 i = 0; i < size; i++) {
+    entropy_fast_state ^= (buffer[i] << (8 * (i % 8)));
+    if (0 == i % 8) {
+      xorshift64();
+    }
+  }
+  xorshift64();
+}
+
 void setup_random(void) {
   SHA1_Init(&hash_pool);
-
-  BYTE seed[1024];
-  int rand_fd = vfs_open("/etc/seed", O_RDWR, 0);
-  if (0 > rand_fd) {
-    klog(LOG_WARN, "/etc/seed not found");
-    return;
-  }
-
-  size_t offset = 0;
-  for (int rc; (rc = vfs_pread(rand_fd, seed, 1024, offset)); offset += rc) {
-    if (0 > rc) {
-      klog(LOG_WARN, "/etc/seed read error");
-      break;
-    }
-    add_entropy(seed, rc);
-  }
-  add_hash_pool();
-
-  // Update the /etc/seed file to ensure we get a new state upon next
-  // boot.
-  get_random(seed, 1024);
-  vfs_pwrite(rand_fd, seed, 1024, 0);
-  vfs_close(rand_fd);
+  return;
 }
 
 int random_write(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
-  add_entropy(buffer, len);
-  return len; // add_entropy() never fails to recieve (len) amount of data.
+  random_add_entropy(buffer, len);
+  return len; // random_add_entropy() never fails to recieve (len) amount of
+              // data.
 }
 
 int random_read(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -156,6 +161,30 @@ int random_read(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void add_random_devices(void) {
+  BYTE seed[1024];
+  int rand_fd = vfs_open("/etc/seed", O_RDWR, 0);
+  if (0 > rand_fd) {
+    klog(LOG_WARN, "/etc/seed not found");
+    add_hash_pool();
+    return;
+  }
+
+  size_t offset = 0;
+  for (int rc; (rc = vfs_pread(rand_fd, seed, 1024, offset)); offset += rc) {
+    if (0 > rc) {
+      klog(LOG_WARN, "/etc/seed read error");
+      break;
+    }
+    random_add_entropy(seed, rc);
+  }
+  add_hash_pool();
+
+  // Update the /etc/seed file to ensure we get a new state upon next
+  // boot.
+  get_random(seed, 1024);
+  vfs_pwrite(rand_fd, seed, 1024, 0);
+  vfs_close(rand_fd);
+
   devfs_add_file("/random", random_read, random_write, NULL, always_has_data,
                  always_can_write, FS_TYPE_CHAR_DEVICE);
   devfs_add_file("/urandom", random_read, random_write, NULL, always_has_data,

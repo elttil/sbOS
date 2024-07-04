@@ -3,6 +3,7 @@
 #include <fs/devfs.h>
 #include <interrupts.h>
 #include <math.h>
+#include <random.h>
 #include <time.h>
 #include <timer.h>
 #include <typedefs.h>
@@ -14,6 +15,7 @@ u64 start_tsc_time;
 void timer_start_init(void) {
   tsc_init();
   start_tsc_time = tsc_get();
+  random_add_entropy((u8 *)&start_tsc_time, sizeof(start_tsc_time));
   enable_interrupts();
   cmos_init();
   cmos_start_call(1, &has_unix_time, &start_unix_time);
@@ -26,6 +28,7 @@ void timer_wait_for_init(void) {
     ;
 }
 
+u64 timer_current_uptime = 0; // This gets updated by the PIT handler
 u64 timer_get_uptime(void) {
   return tsc_calculate_ms(tsc_get());
 }

@@ -1,5 +1,6 @@
 #include "pit.h"
 #include <arch/i386/tsc.h>
+#include <random.h>
 
 #define PIT_IO_CHANNEL_0 0x40
 #define PIT_IO_MODE_COMMAND 0x43
@@ -46,7 +47,8 @@ u64 last_tsc = 0;
 
 extern int is_switching_tasks;
 void int_clock(reg_t *regs) {
-
+  u64 current_tsc = tsc_get();
+  random_add_entropy_fast((u8 *)&current_tsc, sizeof(current_tsc));
   switch_counter++;
   if (clock_num_ms_ticks - last_flush > 50) {
     tcp_flush_acks();
