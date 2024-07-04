@@ -29,7 +29,7 @@ void timer_wait_for_init(void) {
 
 u64 timer_current_uptime = 0; // This gets updated by the PIT handler
 u64 timer_get_uptime(void) {
-  return tsc_calculate_ms(tsc_get());
+  return timer_current_uptime;
 }
 
 void timer_get(struct timespec *tp) {

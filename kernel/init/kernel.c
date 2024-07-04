@@ -131,7 +131,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
     }
   }
   for (;;) {
-    current_task->sleep_until = timer_get_ms() + 100000000;
+    current_task->sleep_until = timer_get_uptime() + 100000000;
     wait_for_interrupt();
   }
 }

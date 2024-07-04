@@ -434,7 +434,7 @@ extern PageDirectory *active_directory;
 
 process_t *next_task(process_t *s) {
   process_t *c = s;
-  u64 ms_time = timer_get_ms();
+  u64 ms_time = timer_get_uptime();
   c = c->next;
   for (;; c = c->next) {
     if (!c) {
