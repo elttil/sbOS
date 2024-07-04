@@ -55,7 +55,7 @@ void dual_pipe(int fd[2]) {
     int is_open = 1;
     void *internal_object = pipe;
     vfs_inode_t *inode = vfs_create_inode(
-        0 /*inode_num*/, 0 /*type*/, tmp_has_data, tmp_can_write, is_open,
+        0 /*inode_num*/, 0 /*type*/, tmp_has_data, tmp_can_write, is_open, 0,
         internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tmp_read, tmp_write, tmp_close, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
@@ -86,7 +86,7 @@ void pipe(int fd[2]) {
     int is_open = 1;
     void *internal_object = pipe;
     vfs_inode_t *inode = vfs_create_inode(
-        0 /*inode_num*/, 0 /*type*/, tmp_has_data, tmp_can_write, is_open,
+        0 /*inode_num*/, 0 /*type*/, tmp_has_data, tmp_can_write, is_open, 0,
         internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
         tmp_read, tmp_write, tmp_close, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,

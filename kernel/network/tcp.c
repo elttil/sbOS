@@ -224,9 +224,15 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   u32 seq_num = htonl(n_seq_num);
   u32 ack_num = htonl(n_ack_num);
   u16 window_size = htons(n_window_size);
-  struct TcpConnection *con =
-      tcp_find_connection(src_ip, src_port, dst_ip, dst_port);
+
+  struct TcpConnection *con = NULL;
+  if (SYN == flags) {
+    con = tcp_connect_to_listen(src_ip, src_port, dst_ip, dst_port);
+  } else {
+    con = tcp_find_connection(src_ip, src_port, dst_ip, dst_port);
+  }
   if (!con) {
+    kprintf("Unable to find connection for port: %d\n", dst_port);
     return;
   }
 
@@ -318,6 +324,12 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     if (ACK & flags) {
       tcp_destroy_connection(con);
       break;
+    }
+    break;
+  }
+  case TCP_STATE_FIN_WAIT2: {
+    if (FIN & flags) {
+      tcp_send_empty_payload(con, ACK);
     }
     break;
   }

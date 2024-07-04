@@ -261,7 +261,7 @@ int syscall_open_process(int pid) {
 
   vfs_inode_t *inode = vfs_create_inode(
       process->pid, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/, 1 /*is_open*/,
-      process /*internal_object*/, 0 /*file_size*/, NULL /*open*/,
+      0, process /*internal_object*/, 0 /*file_size*/, NULL /*open*/,
       NULL /*create_file*/, NULL /*read*/, NULL /*write*/, NULL /*close*/,
       NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
       NULL /*stat*/, process_signal, NULL /*connect*/);

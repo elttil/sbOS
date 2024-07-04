@@ -6,6 +6,7 @@ typedef int socklen_t;
 #include <fs/vfs.h>
 #include <lib/buffered_write.h>
 #include <lib/relist.h>
+#include <lib/list.h>
 #include <lib/ringbuffer.h>
 #include <lib/stack.h>
 #include <stddef.h>
@@ -69,10 +70,14 @@ struct TcpConnection {
   u32 snd_nxt;
   u32 snd_max;
   u32 snd_wnd;
+
+  struct list incoming_connections;
 };
 
 struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
                                           ipv4_t dst_ip, u16 dst_port);
+struct TcpConnection *tcp_connect_to_listen(ipv4_t src_ip, u16 src_port,
+                                            ipv4_t dst_ip, u16 dst_port);
 struct UdpConnection *udp_find_connection(ipv4_t src_ip, u16 src_port,
                                           u16 dst_port);
 

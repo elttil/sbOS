@@ -5,6 +5,7 @@
 #include <fs/tmpfs.h>
 #include <interrupts.h>
 #include <lib/ringbuffer.h>
+#include <lib/stack.h>
 #include <math.h>
 #include <network/bytes.h>
 #include <network/tcp.h>
@@ -15,8 +16,14 @@
 #include <stdatomic.h>
 #include <sys/socket.h>
 
+#define OBJECT_UNIX 0
+#define OBJECT_TCP 1
+
 struct list open_udp_connections;
 struct relist open_tcp_connections;
+
+struct TcpConnection *tcp_get_incoming_connection(struct TcpConnection *con,
+                                                  int remove);
 
 void global_socket_init(void) {
   list_init(&open_udp_connections);
@@ -46,6 +53,58 @@ void tcp_remove_connection(struct TcpConnection *con) {
       break;
     }
   }
+}
+
+struct TcpConnection *tcp_connect_to_listen(ipv4_t src_ip, u16 src_port,
+                                            ipv4_t dst_ip, u16 dst_port) {
+  for (int i = 0;; i++) {
+    struct TcpConnection *c;
+    int end;
+    if (!relist_get(&open_tcp_connections, i, (void **)&c, &end)) {
+      if (end) {
+        break;
+      }
+      continue;
+    }
+    if (TCP_STATE_CLOSED == c->state) {
+      continue;
+    }
+    if (TCP_STATE_LISTEN != c->state) {
+      continue;
+    }
+    kprintf("c->incoming_port: %d\n", c->incoming_port);
+    kprintf("dst_port: %d\n", dst_port);
+    if (c->incoming_port == dst_port) {
+      struct TcpConnection *new_connection =
+          kmalloc(sizeof(struct TcpConnection));
+      memcpy(new_connection, c, sizeof(struct TcpConnection));
+      new_connection->outgoing_port = src_port;
+      new_connection->outgoing_ip = src_ip.d;
+      new_connection->state = TCP_STATE_LISTEN;
+      new_connection->rcv_wnd = 65535;
+
+      ringbuffer_init(&new_connection->outgoing_buffer, 8192);
+      ringbuffer_init(&new_connection->incoming_buffer,
+                      new_connection->rcv_wnd * 64);
+      new_connection->max_seg = 1;
+
+      new_connection->rcv_nxt = 0;
+      new_connection->rcv_adv = 0;
+
+      new_connection->snd_una = 0;
+      new_connection->snd_nxt = 0;
+      new_connection->snd_max = 0;
+      new_connection->snd_wnd = 0;
+      new_connection->sent_ack = 0;
+
+      new_connection->snd_wnd =
+          ringbuffer_unused(&new_connection->outgoing_buffer);
+      assert(relist_add(&open_tcp_connections, new_connection, NULL));
+      assert(list_add(&c->incoming_connections, new_connection, NULL));
+      return new_connection;
+    }
+  }
+  return NULL;
 }
 
 struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
@@ -197,6 +256,9 @@ int tcp_has_data(vfs_inode_t *inode) {
 
 int tcp_can_write(vfs_inode_t *inode) {
   struct TcpConnection *con = inode->internal_object;
+  if (TCP_STATE_ESTABLISHED != con->state) {
+    return 0;
+  }
   if (con->no_delay) {
     return (0 != tcp_can_send(con));
   }
@@ -480,8 +542,8 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
   vfs_fd_t *fd_ptr = get_vfs_fd(socket, NULL);
   assert(fd_ptr);
   vfs_inode_t *inode = fd_ptr->inode;
-  SOCKET *s = (SOCKET *)inode->internal_object;
-  if (AF_UNIX == s->domain) {
+  if (OBJECT_UNIX == inode->internal_object_type) {
+    SOCKET *s = (SOCKET *)inode->internal_object;
     for (; NULL == s->incoming_fd;) {
       // Wait until we have gotten a connection
       struct pollfd fds[1];
@@ -497,10 +559,11 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
     s->incoming_fd = NULL;
     return index;
   }
-  if (AF_INET == s->domain) {
-    struct TcpListen *tcp_listen = s->object;
-    assert(tcp_listen);
-    if (stack_isempty(&tcp_listen->incoming_connections)) {
+  if (OBJECT_TCP == inode->internal_object_type) {
+    struct TcpConnection *con = inode->internal_object;
+
+    struct TcpConnection *connection = tcp_get_incoming_connection(con, 1);
+    if (!connection) {
       if (fd_ptr->flags & O_NONBLOCK) {
         return -EWOULDBLOCK;
       }
@@ -508,17 +571,17 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
       fds[0].fd = socket;
       fds[0].events = POLLIN;
       fds[0].revents = 0;
-      poll(fds, 1, 0);
+      for (; 1 != poll(fds, 1, 0);)
+        ;
+      connection = tcp_get_incoming_connection(con, 1);
     }
-    struct TcpConnection *connection =
-        stack_pop(&tcp_listen->incoming_connections);
     assert(connection);
     vfs_inode_t *inode = vfs_create_inode(
         0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, tcp_has_data, tcp_can_write, 1,
-        connection, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
-        tcp_read, tcp_write, tcp_close /*close*/, NULL /*create_directory*/,
-        NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-        NULL /*send_signal*/, NULL /*connect*/);
+        OBJECT_TCP, connection, 0 /*file_size*/, NULL /*open*/,
+        NULL /*create_file*/, tcp_read, tcp_write, tcp_close /*close*/,
+        NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
+        NULL /*stat*/, NULL /*send_signal*/, NULL /*connect*/);
     assert(inode);
     return vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, NULL);
   }
@@ -536,6 +599,35 @@ int bind_can_write(vfs_inode_t *inode) {
   return 1;
 }
 
+struct TcpConnection *tcp_get_incoming_connection(struct TcpConnection *con,
+                                                  int remove) {
+  for (int i = 0;; i++) {
+    struct TcpConnection *c;
+    if (!list_get(&con->incoming_connections, i, (void **)&c)) {
+      break;
+    }
+    if (!c) {
+      continue;
+    }
+    if (TCP_STATE_ESTABLISHED == c->state) {
+      if (remove) {
+        assert(list_set(&con->incoming_connections, i, NULL));
+      }
+      return c;
+    }
+    // TODO: More handling with dead connections?
+  }
+  return NULL;
+}
+
+int tcp_has_incoming_connection(vfs_inode_t *inode) {
+  struct TcpConnection *con = inode->internal_object;
+  if (NULL != tcp_get_incoming_connection(con, 0)) {
+    return 1;
+  }
+  return 0;
+}
+
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   (void)addrlen;
   vfs_fd_t *fd = get_vfs_fd(sockfd, NULL);
@@ -549,8 +641,8 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
   if (FS_TYPE_UNIX_SOCKET != inode->type) {
     return -ENOTSOCK;
   }
-  SOCKET *s = (SOCKET *)inode->internal_object;
-  if (AF_UNIX == s->domain) {
+  if (OBJECT_UNIX == inode->internal_object_type) {
+    SOCKET *s = (SOCKET *)inode->internal_object;
     struct sockaddr_un *un = (struct sockaddr_un *)addr;
     size_t path_len = strlen(un->sun_path);
     s->path = kmalloc(path_len + 1);
@@ -573,8 +665,20 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     devfs_add_file(us->path, NULL, NULL, NULL, NULL, bind_can_write,
                    FS_TYPE_UNIX_SOCKET);
     return 0;
-  } else if (AF_INET == s->domain) {
-    assert(0);
+  } else if (OBJECT_TCP == inode->internal_object_type) {
+    struct TcpConnection *con = inode->internal_object;
+    // TODO: These should not be asserts
+    assert(AF_INET == addr->sa_family);
+    assert(addrlen == sizeof(struct sockaddr_in));
+    struct sockaddr_in *in = (struct sockaddr_in *)addr;
+    con->incoming_port = ntohs(in->sin_port); // TODO: Check so that it can
+                                              // actually do this
+
+    // TODO: Move this to listen()
+    con->state = TCP_STATE_LISTEN;
+    list_init(&con->incoming_connections);
+    fd->inode->_has_data = tcp_has_incoming_connection;
+    assert(relist_add(&open_tcp_connections, con, NULL));
     return 0;
   }
   ASSERT_NOT_REACHED;
@@ -617,10 +721,11 @@ int tcp_create_fd(int is_nonblock) {
   con->should_send_ack = 0;
 
   vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1, con,
-      0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, tcp_read, tcp_write,
-      NULL /*close*/, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/, tcp_connect);
+      0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1,
+      OBJECT_TCP, con, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
+      tcp_read, tcp_write, NULL /*close*/, NULL /*create_directory*/,
+      NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
+      NULL /*send_signal*/, tcp_connect);
   if (!inode) {
     kfree(con);
     return -ENOMEM;
@@ -657,11 +762,11 @@ int socket(int domain, int type, int protocol) {
   if (AF_UNIX == domain) {
     vfs_inode_t *inode = vfs_create_inode(
         0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, bind_has_data, socket_can_write,
-        1 /*is_open*/, new_socket /*internal_object*/, 0 /*file_size*/,
-        NULL /*open*/, NULL /*create_file*/, socket_read, socket_write,
-        socket_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/,
-        NULL /*connect*/);
+        1 /*is_open*/, OBJECT_UNIX, new_socket /*internal_object*/,
+        0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, socket_read,
+        socket_write, socket_close, NULL /*create_directory*/,
+        NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
+        NULL /*send_signal*/, NULL /*connect*/);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;
@@ -688,9 +793,10 @@ int socket(int domain, int type, int protocol) {
 
     vfs_inode_t *inode = vfs_create_inode(
         0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1,
-        new_socket, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, NULL,
-        NULL, NULL /*close*/, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/, udp_connect);
+        OBJECT_UNIX, new_socket, 0 /*file_size*/, NULL /*open*/,
+        NULL /*create_file*/, NULL, NULL, NULL /*close*/,
+        NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
+        NULL /*stat*/, NULL /*send_signal*/, udp_connect);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;

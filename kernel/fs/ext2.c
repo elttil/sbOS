@@ -742,7 +742,7 @@ vfs_inode_t *ext2_open(const char *path) {
   }
 
   return vfs_create_inode(
-      inode_num, type, NULL, NULL, 1 /*is_open*/, NULL /*internal_object*/,
+      inode_num, type, NULL, NULL, 1 /*is_open*/, 0, NULL /*internal_object*/,
       file_size, ext2_open, ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
       ext2_stat, NULL /*send_signal*/, NULL /*connect*/);
@@ -957,7 +957,7 @@ vfs_inode_t *ext2_mount(void) {
   }
   vfs_inode_t *inode = vfs_create_inode(
       0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/,
-      0 /*is_open*/, NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
+      0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
       ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
       ext2_stat, NULL /*send_signal*/, NULL /*connect*/);

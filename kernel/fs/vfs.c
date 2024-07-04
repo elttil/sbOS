@@ -27,8 +27,9 @@ vfs_fd_t *get_vfs_fd(int fd, process_t *p) {
 
 vfs_inode_t *vfs_create_inode(
     int inode_num, int type, int (*has_data)(vfs_inode_t *inode),
-    int (*can_write)(vfs_inode_t *inode), u8 is_open, void *internal_object,
-    u64 file_size, vfs_inode_t *(*open)(const char *path),
+    int (*can_write)(vfs_inode_t *inode), u8 is_open, int internal_object_type,
+    void *internal_object, u64 file_size,
+    vfs_inode_t *(*open)(const char *path),
     int (*create_file)(const char *path, int mode),
     int (*read)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
     int (*write)(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd),
@@ -46,6 +47,7 @@ vfs_inode_t *vfs_create_inode(
   r->_has_data = has_data;
   r->_can_write = can_write;
   r->is_open = is_open;
+  r->internal_object_type = internal_object_type;
   r->internal_object = internal_object;
   r->file_size = file_size;
   r->open = open;

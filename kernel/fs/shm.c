@@ -87,10 +87,11 @@ int shm_open(const char *name, int oflag, mode_t mode) {
   }
 
   vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, 0 /*type*/, NULL, NULL, 1 /*is_open*/, internal_object,
-      0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, shm_read, shm_write,
-      NULL /*close*/, NULL /*create_directory*/, shm_get_vm_object,
-      shm_ftruncate, NULL /*stat*/, NULL /*send_signal*/, NULL /*connect*/);
+      0 /*inode_num*/, 0 /*type*/, NULL, NULL, 1 /*is_open*/, 0,
+      internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
+      shm_read, shm_write, NULL /*close*/, NULL /*create_directory*/,
+      shm_get_vm_object, shm_ftruncate, NULL /*stat*/, NULL /*send_signal*/,
+      NULL /*connect*/);
 
   vfs_fd_t *fd_ptr;
   int fd = vfs_create_fd(oflag, mode, 0 /*is_tty*/, inode, &fd_ptr);
