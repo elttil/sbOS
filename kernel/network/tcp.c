@@ -288,7 +288,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     }
     if (tcp_payload_length > 0) {
       if (tcp_payload_length > ringbuffer_unused(&con->incoming_buffer)) {
-        return;
+        break;
       }
       int rc = ringbuffer_write(&con->incoming_buffer, tcp_payload,
                                 tcp_payload_length);

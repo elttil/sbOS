@@ -51,7 +51,8 @@ void int_clock(reg_t *regs) {
   timer_current_uptime = tsc_calculate_ms(current_tsc);
   random_add_entropy_fast((u8 *)&current_tsc, sizeof(current_tsc));
   switch_counter++;
-  if (timer_current_uptime - last_flush > 50) {
+  if (timer_current_uptime - last_flush > 5) {
+    tcp_flush_buffers();
     tcp_flush_acks();
     last_flush = timer_current_uptime;
   }

@@ -144,4 +144,5 @@ int setsockopt(int socket, int level, int option_name, const void *option_value,
                socklen_t option_len);
 void tcp_remove_connection(struct TcpConnection *con);
 void tcp_flush_acks(void);
+void tcp_flush_buffers(void);
 #endif

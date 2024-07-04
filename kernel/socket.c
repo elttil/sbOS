@@ -69,6 +69,24 @@ struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
   return NULL;
 }
 
+int tcp_sync_buffer(struct TcpConnection *con);
+void tcp_flush_buffers(void) {
+  for (int i = 0;; i++) {
+    struct TcpConnection *c;
+    int end;
+    if (!relist_get(&open_tcp_connections, i, (void **)&c, &end)) {
+      if (end) {
+        break;
+      }
+      continue;
+    }
+    if (TCP_STATE_CLOSED == c->state) {
+      continue;
+    }
+    tcp_sync_buffer(c);
+  }
+}
+
 void tcp_flush_acks(void) {
   for (int i = 0;; i++) {
     struct TcpConnection *c;
@@ -127,9 +145,7 @@ struct UdpConnection *udp_find_connection(ipv4_t src_ip, u16 src_port,
   return NULL;
 }
 
-int tcp_sync_buffer(vfs_fd_t *fd) {
-  struct TcpConnection *con = fd->inode->internal_object;
-  assert(con);
+int tcp_sync_buffer(struct TcpConnection *con) {
   if (TCP_STATE_CLOSED == con->state) {
     return 0;
   }
@@ -156,7 +172,7 @@ int tcp_sync_buffer(vfs_fd_t *fd) {
 void tcp_close(vfs_fd_t *fd) {
   struct TcpConnection *con = fd->inode->internal_object;
   assert(con);
-  tcp_sync_buffer(fd);
+  tcp_sync_buffer(con);
 
   tcp_close_connection(con);
 }
@@ -214,7 +230,7 @@ int tcp_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   struct ringbuffer *rb = &con->outgoing_buffer;
   if (ringbuffer_unused(rb) < len) {
-    if (!tcp_sync_buffer(fd)) {
+    if (!tcp_sync_buffer(con)) {
       return 0;
     }
     if (!send_tcp_packet(con, buffer, len)) {

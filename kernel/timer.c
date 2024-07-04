@@ -19,7 +19,6 @@ void timer_start_init(void) {
   enable_interrupts();
   cmos_init();
   cmos_start_call(1, &has_unix_time, &start_unix_time);
-  enable_interrupts();
 }
 
 void timer_wait_for_init(void) {
