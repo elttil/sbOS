@@ -47,7 +47,6 @@ struct TcpConnection {
   u32 outgoing_ip;
   u16 outgoing_port;
 
-  int unhandled_packet;
   struct ringbuffer incoming_buffer;
   struct ringbuffer outgoing_buffer;
 

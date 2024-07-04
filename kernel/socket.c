@@ -596,6 +596,7 @@ int tcp_create_fd(int is_nonblock) {
   if (!con) {
     return -ENOMEM;
   }
+  memset(con, 0, sizeof(struct TcpConnection));
   con->state = TCP_STATE_CLOSED;
   con->should_send_ack = 0;
 

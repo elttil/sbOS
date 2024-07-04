@@ -5,7 +5,6 @@
 #define PIT_IO_CHANNEL_0 0x40
 #define PIT_IO_MODE_COMMAND 0x43
 
-u64 clock_num_ms_ticks = 0;
 u32 pit_counter = 0;
 u32 switch_counter = 0;
 u16 hertz;
@@ -45,14 +44,16 @@ int last_flush = 0;
 
 u64 last_tsc = 0;
 
+extern u64 timer_current_uptime;
 extern int is_switching_tasks;
 void int_clock(reg_t *regs) {
   u64 current_tsc = tsc_get();
+  timer_current_uptime = tsc_calculate_ms(current_tsc);
   random_add_entropy_fast((u8 *)&current_tsc, sizeof(current_tsc));
   switch_counter++;
-  if (clock_num_ms_ticks - last_flush > 50) {
+  if (timer_current_uptime - last_flush > 50) {
     tcp_flush_acks();
-    last_flush = clock_num_ms_ticks;
+    last_flush = timer_current_uptime;
   }
   if (switch_counter >= hertz) {
     EOI(0x20);

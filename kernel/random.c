@@ -132,7 +132,7 @@ void random_add_entropy(u8 *buffer, u64 size) {
 
 void random_add_entropy_fast(u8 *buffer, u64 size) {
   for (u64 i = 0; i < size; i++) {
-    entropy_fast_state ^= (buffer[i] << (8 * (i % 8)));
+    entropy_fast_state ^= ((u64)buffer[i] << (8 * (i % 8)));
     if (0 == i % 8) {
       xorshift64();
     }

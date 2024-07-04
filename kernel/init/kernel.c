@@ -82,8 +82,6 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   ata_init();
   klog(LOG_SUCCESS, "ATA Initalized");
 
-  timer_start_init();
-
   tasking_init();
   klog(LOG_SUCCESS, "Tasking Initalized");
 
