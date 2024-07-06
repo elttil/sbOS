@@ -136,7 +136,10 @@ void tcp_close_connection(struct TcpConnection *con) {
     return;
   }
   if (TCP_STATE_ESTABLISHED == con->state) {
-    tcp_send_empty_payload(con, FIN);
+    // FIXME:
+    // Book says it should be FIN but observed network traffic says it
+    // should be FIN|ACK?
+    tcp_send_empty_payload(con, FIN | ACK);
     con->state = TCP_STATE_FIN_WAIT1;
     return;
   }
@@ -191,6 +194,10 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
   assert(send_buffer);
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
+
+  if (header.flags & ACK) {
+    con->should_send_ack = 0;
+  }
 
   tcp_send(con, send_buffer, send_len, con->snd_nxt, payload_length);
 
@@ -290,6 +297,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     if (FIN & flags) {
       tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_CLOSE_WAIT;
+      tcp_strip_connection(con);
       break;
     }
     if (tcp_payload_length > 0) {
@@ -330,6 +338,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   case TCP_STATE_FIN_WAIT2: {
     if (FIN & flags) {
       tcp_send_empty_payload(con, ACK);
+      con->state = TCP_STATE_CLOSED;
+      tcp_destroy_connection(con);
     }
     break;
   }

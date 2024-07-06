@@ -37,8 +37,6 @@ void gen_ipv4(ipv4_t *ip, u8 i1, u8 i2, u8 i3, u8 i4) {
 }
 
 void tcp_remove_connection(struct TcpConnection *con) {
-  // TODO: It should also be freed but I am unsure if a inode might
-  // still have a pointer(that should not be the case)
   for (int i = 0;; i++) {
     struct TcpConnection *c;
     int end;
@@ -50,6 +48,7 @@ void tcp_remove_connection(struct TcpConnection *con) {
     }
     if (c == con) {
       relist_remove(&open_tcp_connections, i);
+      kfree(con);
       break;
     }
   }
@@ -72,8 +71,6 @@ struct TcpConnection *tcp_connect_to_listen(ipv4_t src_ip, u16 src_port,
     if (TCP_STATE_LISTEN != c->state) {
       continue;
     }
-    kprintf("c->incoming_port: %d\n", c->incoming_port);
-    kprintf("dst_port: %d\n", dst_port);
     if (c->incoming_port == dst_port) {
       struct TcpConnection *new_connection =
           kmalloc(sizeof(struct TcpConnection));
@@ -99,8 +96,9 @@ struct TcpConnection *tcp_connect_to_listen(ipv4_t src_ip, u16 src_port,
 
       new_connection->snd_wnd =
           ringbuffer_unused(&new_connection->outgoing_buffer);
-      assert(relist_add(&open_tcp_connections, new_connection, NULL));
-      assert(list_add(&c->incoming_connections, new_connection, NULL));
+      u32 index;
+      assert(relist_add(&open_tcp_connections, new_connection, &index));
+      assert(relist_add(&c->incoming_connections, new_connection, NULL));
       return new_connection;
     }
   }
@@ -228,11 +226,18 @@ int tcp_sync_buffer(struct TcpConnection *con) {
   }
 }
 
+void tcp_strip_connection(struct TcpConnection *con) {
+  ringbuffer_free(&con->incoming_buffer);
+  ringbuffer_free(&con->outgoing_buffer);
+}
+
 void tcp_close(vfs_fd_t *fd) {
   struct TcpConnection *con = fd->inode->internal_object;
   assert(con);
   tcp_sync_buffer(con);
-
+  if (TCP_STATE_ESTABLISHED == con->state) {
+    tcp_strip_connection(con);
+  }
   tcp_close_connection(con);
 }
 
@@ -603,15 +608,19 @@ struct TcpConnection *tcp_get_incoming_connection(struct TcpConnection *con,
                                                   int remove) {
   for (int i = 0;; i++) {
     struct TcpConnection *c;
-    if (!list_get(&con->incoming_connections, i, (void **)&c)) {
-      break;
+    int end;
+    if (!relist_get(&con->incoming_connections, i, (void **)&c, &end)) {
+      if (end) {
+        break;
+      }
+      continue;
     }
     if (!c) {
       continue;
     }
     if (TCP_STATE_ESTABLISHED == c->state) {
       if (remove) {
-        assert(list_set(&con->incoming_connections, i, NULL));
+        assert(relist_remove(&con->incoming_connections, i));
       }
       return c;
     }
@@ -676,7 +685,7 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
     // TODO: Move this to listen()
     con->state = TCP_STATE_LISTEN;
-    list_init(&con->incoming_connections);
+    relist_init(&con->incoming_connections);
     fd->inode->_has_data = tcp_has_incoming_connection;
     assert(relist_add(&open_tcp_connections, con, NULL));
     return 0;

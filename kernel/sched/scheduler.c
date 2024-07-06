@@ -441,6 +441,7 @@ process_t *next_task(process_t *s) {
       c = ready_queue;
     }
     if (s == c) {
+      ms_time = timer_get_uptime();
       // wait_for_interrupt();
     }
     if (c->sleep_until > ms_time) {

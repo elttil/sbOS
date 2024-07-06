@@ -5,8 +5,8 @@ typedef int socklen_t;
 #include <fs/fifo.h>
 #include <fs/vfs.h>
 #include <lib/buffered_write.h>
-#include <lib/relist.h>
 #include <lib/list.h>
+#include <lib/relist.h>
 #include <lib/ringbuffer.h>
 #include <lib/stack.h>
 #include <stddef.h>
@@ -71,7 +71,7 @@ struct TcpConnection {
   u32 snd_max;
   u32 snd_wnd;
 
-  struct list incoming_connections;
+  struct relist incoming_connections;
 };
 
 struct TcpConnection *tcp_find_connection(ipv4_t src_ip, u16 src_port,
@@ -150,4 +150,5 @@ int setsockopt(int socket, int level, int option_name, const void *option_value,
 void tcp_remove_connection(struct TcpConnection *con);
 void tcp_flush_acks(void);
 void tcp_flush_buffers(void);
+void tcp_strip_connection(struct TcpConnection *con);
 #endif
