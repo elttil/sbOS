@@ -114,7 +114,7 @@ int relist_remove(struct relist *list, u32 index) {
     assert(0);
     return 0;
   }
-  int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64)));
+  int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64))) ? 1 : 0;
   if (!is_used) {
     assert(0);
     return 0;
@@ -144,7 +144,7 @@ int relist_get(const struct relist *list, u32 index, void **out, int *end) {
     }
     return 0;
   }
-  int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64)));
+  int is_used = (list->bitmap[index / 64] & ((u64)1 << (index % 64))) ? 1 : 0;
   if (!is_used) {
     return 0;
   }
