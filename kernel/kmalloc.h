@@ -8,6 +8,8 @@ void kmalloc_align_free(void *p, size_t s);
 
 void kmalloc_allocate_heap(void);
 
+void kmalloc_scan(void);
+
 void *kmalloc(size_t s);
 void *krealloc(void *ptr, size_t size);
 void *kreallocarray(void *ptr, size_t nmemb, size_t size);

@@ -1,5 +1,6 @@
 #include "pit.h"
 #include <arch/i386/tsc.h>
+#include <kmalloc.h>
 #include <random.h>
 
 #define PIT_IO_CHANNEL_0 0x40
@@ -47,6 +48,7 @@ u64 last_tsc = 0;
 extern u64 timer_current_uptime;
 extern int is_switching_tasks;
 void int_clock(reg_t *regs) {
+  kmalloc_scan();
   u64 current_tsc = tsc_get();
   timer_current_uptime = tsc_calculate_ms(current_tsc);
   random_add_entropy_fast((u8 *)&current_tsc, sizeof(current_tsc));

@@ -100,7 +100,7 @@ int add_heap_memory(size_t min_desired) {
   return 1;
 }
 
-MallocHeader *next_header(MallocHeader *a) {
+static MallocHeader *next_header(MallocHeader *a) {
   assert(a->magic == 0xdde51ab9410268b1);
   if (a->n) {
     if (a->n->magic != 0xdde51ab9410268b1) {
@@ -113,7 +113,16 @@ MallocHeader *next_header(MallocHeader *a) {
   return NULL;
 }
 
-MallocHeader *next_close_header(MallocHeader *a) {
+void kmalloc_scan(void) {
+  if (!head) {
+    return;
+  }
+  MallocHeader *p = head;
+  for (; (p = next_header(p));)
+    ;
+}
+
+static MallocHeader *next_close_header(MallocHeader *a) {
   if (!a) {
     kprintf("next close header fail\n");
     for (;;)
