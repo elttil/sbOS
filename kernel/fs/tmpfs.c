@@ -7,6 +7,9 @@
 #include <typedefs.h>
 
 void tmp_close(vfs_fd_t *fd) {
+  if (!fd->inode->is_open) {
+    return;
+  }
   fd->inode->is_open = 0;
   ((tmp_inode *)fd->inode->internal_object)->read_inode->is_open = 0;
 }
