@@ -227,7 +227,7 @@ void *syscall_mmap(SYS_MMAP_PARAMS *args) {
 void syscall_msleep(u32 ms) {
   struct timespec t;
   timer_get(&t);
-  current_task->sleep_until = timer_get_ms() + ms;
+  current_task->sleep_until = timer_get_uptime() + ms;
   switch_task();
 }
 
