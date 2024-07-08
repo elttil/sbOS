@@ -111,6 +111,7 @@ MallocHeader *next_close_header(MallocHeader *a) {
   return next_header(a);
 }
 
+int merge_headers(MallocHeader *b);
 MallocHeader *find_free_entry(u32 s) {
   // A new header is required as well as the newly allocated chunk
   s += sizeof(MallocHeader);
@@ -125,6 +126,11 @@ MallocHeader *find_free_entry(u32 s) {
     }
     u64 required_size = s;
     if (p->size < required_size) {
+      for (; merge_headers(p);)
+        ;
+      if (p->size >= required_size) {
+        return p;
+      }
       continue;
     }
     return p;
@@ -132,30 +138,27 @@ MallocHeader *find_free_entry(u32 s) {
   return NULL;
 }
 
-void merge_headers(MallocHeader *b) {
+int merge_headers(MallocHeader *b) {
   if (!(b->flags & IS_FREE)) {
-    return;
+    return 0;
   }
 
   MallocHeader *n = next_close_header(b);
   if (!n) {
-    return;
+    return 0;
   }
 
   if (!(n->flags & IS_FREE)) {
-    return;
+    return 0;
   }
 
   b->size += n->size;
   b->flags |= n->flags & IS_FINAL;
   b->n = n->n;
-  assert(b->magic == 0xdde51ab9410268b1);
-  if (b->n) {
-    assert(b->n->magic == 0xdde51ab9410268b1);
-  }
   if (n == final) {
     final = b;
   }
+  return 1;
 }
 
 void *int_malloc(size_t s, int recursion) {
