@@ -68,14 +68,14 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
   }
 }
 
+u8 ethernet_buffer[0x1000];
 void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
                           u64 payload_length) {
-  // FIXME: Janky allocation, do this better
   u64 buffer_size =
       sizeof(struct EthernetHeader) + payload_length + sizeof(u32);
-  u8 *buffer = kmalloc(buffer_size);
-  memset(buffer, 0, buffer_size);
-  u8 *buffer_start = buffer;
+  assert(buffer_size < 0x1000);
+  memset(ethernet_buffer, 0, buffer_size);
+  u8 *buffer = ethernet_buffer;
   struct EthernetHeader *eth_header = (struct EthernetHeader *)buffer;
   buffer += sizeof(struct EthernetHeader);
   memcpy(buffer, payload, payload_length);
@@ -84,8 +84,8 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
   memcpy(eth_header->mac_dst, mac_dst, sizeof(u8[6]));
   get_mac_address(eth_header->mac_src);
   eth_header->type = htons(type);
-  *(u32 *)(buffer) = htonl(crc32((const char *)buffer_start, buffer_size - 4));
+  *(u32 *)(buffer) =
+      htonl(crc32((const char *)ethernet_buffer, buffer_size - 4));
 
-  rtl8139_send_data(buffer_start, buffer_size);
-  kfree(buffer_start);
+  rtl8139_send_data(ethernet_buffer, buffer_size);
 }

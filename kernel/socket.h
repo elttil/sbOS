@@ -40,7 +40,6 @@ struct UdpConnection {
 };
 
 struct TcpConnection {
-
   int state;
 
   u16 incoming_port;

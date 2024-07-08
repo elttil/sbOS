@@ -7,7 +7,7 @@
 #include <mmu.h>
 #include <random.h>
 #include <stdint.h>
-#define NEW_ALLOC_SIZE 0x5000
+#define NEW_ALLOC_SIZE 0x40000
 
 // #define KMALLOC_DEBUG
 

@@ -87,6 +87,7 @@ static void tcp_send(struct TcpConnection *con, u8 *buffer, u16 length,
   send_ipv4_packet((ipv4_t){.d = con->outgoing_ip}, 6, buffer, length);
 }
 
+u8 tcp_buffer[0x1000];
 void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   struct TcpHeader header;
   memset(&header, 0, sizeof(header));
@@ -110,8 +111,10 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
   header.checksum = tcp_calculate_checksum(
       ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
       &header, sizeof(struct TcpHeader) + payload_length);
-  int send_len = sizeof(header) + payload_length;
-  u8 *send_buffer = kmalloc(send_len);
+  u32 send_len = sizeof(header) + payload_length;
+
+  assert(send_len < sizeof(tcp_buffer));
+  u8 *send_buffer = tcp_buffer;
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
 
@@ -133,13 +136,15 @@ void tcp_close_connection(struct TcpConnection *con) {
   if (TCP_STATE_CLOSE_WAIT == con->state) {
     tcp_send_empty_payload(con, FIN);
     con->state = TCP_STATE_LAST_ACK;
+    tcp_destroy_connection(con); // Client does not appear to respond
+                                 // with last ack?
     return;
   }
   if (TCP_STATE_ESTABLISHED == con->state) {
     // FIXME:
     // Book says it should be FIN but observed network traffic says it
     // should be FIN|ACK?
-    tcp_send_empty_payload(con, FIN | ACK);
+    tcp_send_empty_payload(con, FIN);
     con->state = TCP_STATE_FIN_WAIT1;
     return;
   }
@@ -189,9 +194,9 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
   header.checksum = tcp_calculate_checksum(
       ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
       &header, sizeof(struct TcpHeader) + payload_length);
-  int send_len = sizeof(header) + payload_length;
-  u8 *send_buffer = kmalloc(send_len);
-  assert(send_buffer);
+  u32 send_len = sizeof(header) + payload_length;
+  assert(send_len < sizeof(tcp_buffer));
+  u8 *send_buffer = tcp_buffer;
   memcpy(send_buffer, &header, sizeof(header));
   memcpy(send_buffer + sizeof(header), payload, payload_length);
 

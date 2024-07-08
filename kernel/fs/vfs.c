@@ -41,7 +41,7 @@ vfs_inode_t *vfs_create_inode(
     int (*send_signal)(vfs_fd_t *fd, int signal),
     int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr,
                    socklen_t addrlen)) {
-  vfs_inode_t *r = kmalloc(sizeof(inode_t));
+  vfs_inode_t *r = kcalloc(1, sizeof(inode_t));
   r->inode_num = inode_num;
   r->type = type;
   r->_has_data = has_data;
@@ -325,14 +325,6 @@ int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
 }
 
 int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
-  if (fd >= 100) {
-    kprintf("EBADF : %x\n", fd);
-    return -EBADF;
-  }
-  if (fd < 0) {
-    kprintf("EBADF : %x\n", fd);
-    return -EBADF;
-  }
   vfs_fd_t *vfs_fd = get_vfs_fd(fd, NULL);
   if (!vfs_fd) {
     return -EBADF;

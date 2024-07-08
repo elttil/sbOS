@@ -48,6 +48,7 @@ struct vfs_inode {
   int type;
   int (*_has_data)(vfs_inode_t *iinode);
   int (*_can_write)(vfs_inode_t *iinode);
+  int (*_is_open)(vfs_inode_t *iinode);
   u8 is_open;
   int internal_object_type;
   void *internal_object;

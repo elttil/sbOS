@@ -43,6 +43,13 @@ int queue_get_entries(struct queue_list *list, struct queue_entry *events,
         }
       }
     }
+    if (QUEUE_WAIT_CLOSE & entry->listen) {
+      if (ptr->inode->_is_open) {
+        if (!ptr->inode->_is_open(ptr->inode)) {
+          should_add = 1;
+        }
+      }
+    }
     if (should_add) {
       if (events) {
         memcpy(events + rc, entry, sizeof(struct queue_entry));
@@ -130,7 +137,7 @@ int queue_mod_entries(int fd, int flag, struct queue_entry *entries,
       }
       for (int j = 0; j < num_entries; j++) {
         if (entry->fd == entries[j].fd) {
-          relist_remove(&list->entries, i);
+          assert(relist_remove(&list->entries, i));
           kfree(entry);
           break;
         }

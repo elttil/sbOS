@@ -13,6 +13,7 @@
 #include <drivers/rtl8139.h>
 #include <drivers/serial.h>
 #include <drivers/vbe.h>
+#include <fcntl.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
 #include <fs/shm.h>

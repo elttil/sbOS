@@ -26,6 +26,7 @@ static u16 ip_checksum(const u16 *data, u16 length) {
   return htons(~acc);
 }
 
+u8 ipv4_buffer[0x1000];
 void send_ipv4_packet(ipv4_t ip, u8 protocol, const u8 *payload, u16 length) {
   u16 header[10];
   header[0] = (4 /*version*/ << 4) | (5 /*IHL*/);
@@ -46,7 +47,8 @@ void send_ipv4_packet(ipv4_t ip, u8 protocol, const u8 *payload, u16 length) {
 
   header[5] = ip_checksum(header, 20);
   u16 packet_length = length + 20;
-  u8 *packet = kmalloc(packet_length);
+  assert(packet_length < sizeof(ipv4_buffer));
+  u8 *packet = ipv4_buffer;
   memcpy(packet, header, 20);
   memcpy(packet + 20, payload, length);
 
@@ -54,7 +56,6 @@ void send_ipv4_packet(ipv4_t ip, u8 protocol, const u8 *payload, u16 length) {
   for (; !get_mac_from_ip(ip, mac);)
     ;
   send_ethernet_packet(mac, 0x0800, packet, packet_length);
-  kfree(packet);
 }
 
 void handle_ipv4(const u8 *payload, u32 packet_length) {

@@ -4,6 +4,7 @@
 
 #define QUEUE_WAIT_READ (1 << 0)
 #define QUEUE_WAIT_WRITE (1 << 1)
+#define QUEUE_WAIT_CLOSE (1 << 2)
 
 #define QUEUE_MOD_ADD 0
 #define QUEUE_MOD_CHANGE 1

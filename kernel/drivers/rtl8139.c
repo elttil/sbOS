@@ -68,6 +68,7 @@ void handle_packet(void) {
                 (!packet_header.data.ROK);
 
     if (error) {
+      klog(LOG_ERROR, "RTL8139 packet error");
       current_packet_read = 0;
       outb(rtl8139.gen.base_mem_io + 0x37, 0x4);
       outb(rtl8139.gen.base_mem_io + 0x37, 0x4 | 0x8);
