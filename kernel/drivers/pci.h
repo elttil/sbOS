@@ -1,9 +1,12 @@
 #include <typedefs.h>
 
+#define PCI_BAR_MEM 1
+#define PCI_BAR_IO 2
+
 struct PCI_BaseAddressRegister {
   u32 address;
   u32 size;
-  // TODO: Add a "type".
+  u8 type;
 };
 
 struct GENERAL_DEVICE {

@@ -18,6 +18,12 @@ u8 pci_get_bar(const struct PCI_DEVICE *device, u8 bar_index,
   }
   u8 offset = 0x10 + bar_index * sizeof(u32);
   u32 physical_bar = pci_config_read32(device, 0, offset);
+  u8 type;
+  if (physical_bar & 0x1) {
+    type = PCI_BAR_IO;
+  } else {
+    type = PCI_BAR_MEM;
+  }
   u32 original_bar = physical_bar;
   physical_bar &= 0xFFFFFFF0;
   // Now we do the konami code of PCI devices to figure out the size of what
@@ -26,9 +32,9 @@ u8 pci_get_bar(const struct PCI_DEVICE *device, u8 bar_index,
   // Comments taken from https://wiki.osdev.org/PCI#Address_and_size_of_the_BAR
 
   // write a value of all 1's to the register,
-  pci_config_write32(device, 0, 0x24, 0xFFFFFFFF);
+  pci_config_write32(device, 0, offset, 0xFFFFFFFF);
   // then read it back.
-  u32 bar_result = pci_config_read32(device, 0, 0x24);
+  u32 bar_result = pci_config_read32(device, 0, offset);
 
   // The amount of memory can then be determined by masking the information
   // bits,
@@ -43,10 +49,11 @@ u8 pci_get_bar(const struct PCI_DEVICE *device, u8 bar_index,
   bar_result++;
 
   // Restore the old result
-  pci_config_write32(device, 0, 0x24, original_bar);
+  pci_config_write32(device, 0, offset, original_bar);
 
   bar->address = physical_bar;
   bar->size = bar_result;
+  bar->type = type;
   return 1;
 }
 
