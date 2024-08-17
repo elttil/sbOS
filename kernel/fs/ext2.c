@@ -293,7 +293,7 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
     u8 *p = (u8 *)&tmp_entry;
     size_t l = sizeof(struct dirent);
 
-    l = min(len - rc, l);
+    l = min(len, l);
     memcpy(buffer + rc, p, l);
     len -= l;
     rc += l;
