@@ -59,15 +59,23 @@ complete_return:
   return 1;
 }
 
-void skip_whitespace(struct sv *s) {
-  *s = sv_skip_chars(*s, " \t\n\r");
+void skip_whitespace_and_comment(struct sv *s) {
+  struct sv start;
+  do {
+    start = *s;
+    *s = sv_skip_chars(*s, " \t\n\r");
+    if (!sv_partial_eq(*s, C_TO_SV("#"))) {
+      return;
+    }
+    (void)sv_split_delim(*s, s, '\n');
+  } while (start.length != s->length);
 }
 
 struct TOKEN *lex(struct sv code) {
   struct TOKEN *head = NULL;
   struct TOKEN *prev = NULL;
   for (; !sv_isempty(code);) {
-    skip_whitespace(&code);
+    skip_whitespace_and_comment(&code);
     if (sv_isempty(code)) {
       break;
     }
@@ -80,7 +88,6 @@ struct TOKEN *lex(struct sv code) {
     } else if (parse_operand(&code, cur)) {
     } else {
       free(cur);
-      printf("at: %s\n", code);
       assert(0 && "Unknown token");
     }
     if (!head)
