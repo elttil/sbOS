@@ -5,6 +5,7 @@
 #include <drivers/pit.h>
 #include <elf.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
 #include <sched/scheduler.h>
@@ -296,6 +297,74 @@ u32 setup_stack(u32 stack_pointer, int argc, char **argv, int *err) {
   return ptr;
 }
 
+int exec_shebang(const char *filename, char **argv, int dealloc_argv,
+                 int dealloc_filename) {
+  int fd = vfs_open(filename, O_READ, 0);
+  if (-1 == fd) {
+    assert(0);
+    return 0;
+  }
+
+  char two_chars[2];
+  if (2 != vfs_pread(fd, two_chars, 2, 0)) {
+    goto exit_exec_shebang;
+  }
+
+  if (0 != memcmp("#!", two_chars, 2)) {
+    goto exit_exec_shebang;
+  }
+
+  // FIXME: A very lazy and shitty solution
+  char *new_argv[256];
+  char buffer[8192];
+  memset(buffer, 0, 8192);
+  int rc;
+  if (0 == (rc = vfs_pread(fd, buffer, 8192 - 1 /* null termination */, 2))) {
+    goto exit_exec_shebang;
+  }
+
+  int new_argc = 0;
+  char *start = buffer;
+  for (int i = 0;; i++) {
+    if (i >= rc) {
+      new_argv[new_argc] = start;
+      new_argc++;
+      break;
+    }
+    if ('\n' == buffer[i]) {
+      buffer[i] = '\0';
+      new_argv[new_argc] = start;
+      new_argc++;
+      break;
+    }
+    if (' ' == buffer[i]) {
+      buffer[i] = '\0';
+      new_argv[new_argc] = start;
+      new_argc++;
+      start = &buffer[i];
+    }
+  }
+
+  new_argv[new_argc] = (char *)filename;
+  new_argc++;
+
+  for (int i = 0; argv[i] && i < 256 - new_argc; i++, new_argc++) {
+    new_argv[new_argc] = argv[i];
+  }
+  new_argv[new_argc] = NULL;
+
+  if (dealloc_argv) {
+    for (int i = 0; argv[i]; i++) {
+      kfree(argv[i]);
+    }
+  }
+
+  return exec(new_argv[0], new_argv, 0, 0);
+exit_exec_shebang:
+  vfs_close(fd);
+  return 0;
+}
+
 int exec(const char *filename, char **argv, int dealloc_argv,
          int dealloc_filename) {
   // exec() will "takeover" the process by loading the file specified in
@@ -308,8 +377,12 @@ int exec(const char *filename, char **argv, int dealloc_argv,
 
   u32 end_of_code;
   void *entry = load_elf_file(filename, &end_of_code);
-  if (!entry) {
-    return 0;
+  int is_elf_file = (NULL != entry);
+  if (!is_elf_file) {
+    if (!exec_shebang(filename, argv, dealloc_argv, dealloc_filename)) {
+      return 0;
+    }
+    ASSERT_NOT_REACHED;
   }
 
   strlcpy(current_task->program_name, filename,
