@@ -40,5 +40,6 @@ int ls_main(int argc, char **argv) {
     printf("%s", namelist[i]->d_name);
   }
   putchar('\n');
+  scandir_sane_free(namelist);
   return 0;
 }

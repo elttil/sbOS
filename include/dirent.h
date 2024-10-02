@@ -7,7 +7,7 @@
 #ifndef KERNEL
 #include <fcntl.h>
 #include <unistd.h>
-#endif
+#endif // KERNEL
 
 struct dirent {
   ino_t d_ino;           // File serial number.
@@ -20,6 +20,7 @@ typedef struct {
   int dir_num;
 } DIR;
 
+#ifndef KERNEL
 DIR *opendir(const char *dirname);
 struct dirent *readdir(DIR *dir);
 int closedir(DIR *dirp);
@@ -27,4 +28,10 @@ int alphasort(const struct dirent **d1, const struct dirent **d2);
 int scandir(const char *dir, struct dirent ***namelist,
             int (*sel)(const struct dirent *),
             int (*compar)(const struct dirent **, const struct dirent **));
-#endif
+int scandir_sane(const char *dir, struct dirent ***namelist,
+                 int (*sel)(const struct dirent *),
+                 int (*compar)(const struct dirent **,
+                               const struct dirent **));
+void scandir_sane_free(struct dirent **namelist);
+#endif // KERNEL
+#endif // DIRENT_H

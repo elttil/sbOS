@@ -10,6 +10,8 @@ typedef size_t size_t; // only for 32 bit
 
 void *malloc(size_t s);
 void *calloc(size_t nelem, size_t elsize);
+void *allocarray(size_t nmemb, size_t size);
+void *reallocarray(void *ptr, size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void free(void *p);
 char *getenv(const char *name);
