@@ -641,11 +641,9 @@ void printf_test(void) {
     char out_buffer[100];
     memset(out_buffer, 'A', 100);
     assert(5 == snprintf(out_buffer, 5, "hello"));
-    memcmp("helloAAAAA", out_buffer, 10);
+    assert(0 == memcmp("hell\0AAAAA", out_buffer, 10));
     assert(10 == snprintf(out_buffer, 5, "hellofoooo"));
-    memcmp("helloAAAAA", out_buffer, 10);
-    assert(10 == snprintf(out_buffer, 10, "hellofoooo"));
-    memcmp("hellofoookAA", out_buffer, 12);
+    assert(0 == memcmp("hell\0AAAAA", out_buffer, 10));
   }
   dbgln("printf TEST PASSED");
 }
