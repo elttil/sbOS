@@ -155,8 +155,25 @@ struct sv sv_take(struct sv s, struct sv *rest, size_t n) {
     return s;
   }
   s.length = n;
-  rest->length -= n;
-  rest->s += n;
+  if (rest) {
+    rest->length -= n;
+    rest->s += n;
+  }
+  return s;
+}
+
+struct sv sv_take_end(struct sv s, struct sv *rest, size_t n) {
+  if (s.length < n) {
+    if (rest) {
+      rest->length = 0;
+    }
+    return s;
+  }
+  if (rest) {
+    rest->length = s.length - n;
+  }
+  s.s += (s.length - n);
+  s.length = n;
   return s;
 }
 

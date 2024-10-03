@@ -8,5 +8,6 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
   // On  success, fwrite() return the number of items
   // written.
   rc /= size;
+  fflush(stream);
   return rc;
 }

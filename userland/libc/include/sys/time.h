@@ -2,9 +2,9 @@
 #define TIME_H
 #include <stddef.h>
 #include <sys/types.h>
-#include <time.h>
 
 #define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC_RAW 1
 
 struct tm {
   int tm_sec;

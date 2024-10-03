@@ -56,5 +56,6 @@ FILE *fopen(const char *pathname, const char *mode) {
   r->fd = fd;
   r->read_buffer = NULL;
   r->read_buffer_stored = 0;
+  r->fflush = fflush_fd;
   return r;
 }

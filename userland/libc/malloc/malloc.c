@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <fcntl.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -8,7 +9,7 @@
 #include <sys/random.h>
 #include <typedefs.h>
 #include <unistd.h>
-#define NEW_ALLOC_SIZE 0x5000
+#define NEW_ALLOC_SIZE 0x20000
 
 #define IS_FREE (1 << 0)
 #define IS_FINAL (1 << 1)
@@ -37,6 +38,12 @@ int debug_vprintf(const char *fmt, va_list ap) {
     return -1;
   }
   write(1, buffer, rc);
+
+  static int serial_fd = -1;
+  if (-1 == serial_fd) {
+    serial_fd = open("/dev/serial", O_RDWR);
+  }
+  write(serial_fd, buffer, rc);
   return rc;
 }
 
@@ -258,6 +265,8 @@ void free(void *p) {
   MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
   assert(h->magic == 0xdde51ab9410268b1);
   assert(!(h->flags & IS_FREE));
+
+  randomfill(p, h->size);
 
   h->flags |= IS_FREE;
   merge_headers(h);

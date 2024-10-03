@@ -16,7 +16,7 @@ char *realpath(const char *filename, char *resolvedname) {
   strcat(cwd, filename); // FIXME: bounds check
 
   struct sb string;
-  sb_init(&string);
+  sb_init(&string, 512);
 
   struct sv path = C_TO_SV(cwd);
 

@@ -14,3 +14,4 @@
 #define HUGE_VALL ((long double)INFINITY)
 
 double ldexp(double x, int exp);
+double fmin(double x, double y);

@@ -12,7 +12,6 @@ void *memcpy(void *dest, const void *src, uint32_t n) {
 
   for (; n >= 2; n -= 2, d += 2, s += 2)
     *(uint16_t *)d = *(uint16_t *)s;
-
   for (; n; n--)
     *d++ = *s++;
   return dest;

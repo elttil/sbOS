@@ -1,12 +1,12 @@
-#include <tb/sb.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tb/sb.h>
 
-void sb_init(struct sb *ctx) {
-  ctx->string = malloc(512);
+void sb_init(struct sb *ctx, size_t starting_capacity) {
+  ctx->string = malloc(starting_capacity);
   ctx->length = 0;
-  ctx->capacity = 512;
+  ctx->capacity = starting_capacity;
 }
 
 void sb_free(struct sb *ctx) {
@@ -59,11 +59,15 @@ void sb_prepend_sv(struct sb *ctx, struct sv sv) {
   ctx->length += sv.length;
 }
 
-void sb_append_sv(struct sb *ctx, struct sv sv) {
-  if (sv.length > ctx->capacity - ctx->length) {
-    ctx->capacity += sv.length;
+void sb_append_buffer(struct sb *ctx, const char *buffer, size_t length) {
+  if (length > ctx->capacity - ctx->length) {
+    ctx->capacity += length;
     ctx->string = realloc(ctx->string, ctx->capacity);
   }
-  memcpy(ctx->string + ctx->length, sv.s, sv.length);
-  ctx->length += sv.length;
+  memcpy(ctx->string + ctx->length, buffer, length);
+  ctx->length += length;
+}
+
+void sb_append_sv(struct sb *ctx, struct sv sv) {
+  sb_append_buffer(ctx, sv.s, sv.length);
 }

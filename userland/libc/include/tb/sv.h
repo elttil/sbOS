@@ -25,6 +25,7 @@ struct sv sv_skip_chars(const struct sv input, const char *chars);
 struct sv sv_split_function(const struct sv input, struct sv *rest,
                             int (*function)(int));
 struct sv sv_take(struct sv s, struct sv *rest, size_t n);
+struct sv sv_take_end(struct sv s, struct sv *rest, size_t n);
 struct sv sv_next(struct sv s);
 int sv_isempty(struct sv s);
 char sv_peek(struct sv s);
