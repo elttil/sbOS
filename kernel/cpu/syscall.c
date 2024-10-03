@@ -567,6 +567,83 @@ int syscall_queue_wait(int fd, struct queue_entry *events, int num_events) {
   return queue_wait(fd, events, num_events);
 }
 
+u32 syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t count,
+                     int *error_rc) {
+  int is_inf = (0 == count);
+
+  if (offset) {
+    if (!mmu_is_valid_userpointer(offset, sizeof(off_t))) {
+      return -EFAULT;
+    }
+  }
+  if (error_rc) {
+    if (!mmu_is_valid_userpointer(error_rc, sizeof(int))) {
+      return -EFAULT;
+    }
+  }
+
+  vfs_fd_t *in_fd_ptr = get_vfs_fd(in_fd, NULL);
+  if (!in_fd_ptr) {
+    return -EBADF;
+  }
+
+  vfs_fd_t *out_fd_ptr = get_vfs_fd(out_fd, NULL);
+  if (!out_fd_ptr) {
+    return -EBADF;
+  }
+
+  int real_rc = 0;
+
+  off_t read_offset = (offset) ? (*offset) : in_fd_ptr->offset;
+
+  for (; count > 0 || is_inf;) {
+    u8 buffer[8192];
+    int read_amount = min(sizeof(buffer), count);
+    if (is_inf) {
+      read_amount = sizeof(buffer);
+    }
+    int rc = vfs_pread(in_fd, buffer, read_amount, read_offset);
+    if (0 > rc) {
+      if (error_rc) {
+        *error_rc = rc;
+      }
+      return real_rc;
+    }
+
+    if (0 == rc) {
+      break;
+    }
+
+    int rc2 = vfs_pwrite(out_fd, buffer, rc, out_fd_ptr->offset);
+    if (0 > rc2) {
+      if (error_rc) {
+        *error_rc = rc2;
+      }
+      return real_rc;
+    }
+    real_rc += rc2;
+    if (!is_inf) {
+      count -= rc2;
+    }
+    out_fd_ptr->offset += rc2;
+
+    read_offset += rc2;
+    if (offset) {
+      *offset = read_offset;
+    } else {
+      in_fd_ptr->offset = read_offset;
+    }
+
+    if (rc < read_amount) {
+      break;
+    }
+  }
+  if (error_rc) {
+    *error_rc = 0;
+  }
+  return real_rc;
+}
+
 int (*syscall_functions[])() = {
     (void(*))syscall_open,
     (void(*))syscall_read,
@@ -614,7 +691,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_queue_create,
     (void(*))syscall_queue_mod_entries,
     (void(*))syscall_queue_wait,
-
+    (void(*))syscall_sendfile,
 };
 
 void int_syscall(reg_t *r);
