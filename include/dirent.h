@@ -34,5 +34,6 @@ int scandir_sane(const char *dir, struct dirent ***namelist,
                  int (*compar)(const struct dirent **,
                                const struct dirent **));
 void scandir_sane_free(struct dirent **namelist);
+int readdir_multi(DIR *dir, struct dirent *entries, int num_entries);
 #endif // KERNEL
 #endif // DIRENT_H
