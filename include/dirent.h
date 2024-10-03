@@ -22,6 +22,7 @@ typedef struct {
 
 #ifndef KERNEL
 DIR *opendir(const char *dirname);
+DIR *fdopendir(int fd);
 struct dirent *readdir(DIR *dir);
 int closedir(DIR *dirp);
 int alphasort(const struct dirent **d1, const struct dirent **d2);
