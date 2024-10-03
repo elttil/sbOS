@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <fs/shm.h>
 #include <fs/vfs.h>
 #include <hashmap/hashmap.h>
@@ -82,6 +83,9 @@ int shm_open(const char *name, int oflag, mode_t mode) {
   vfs_vm_object_t *internal_object =
       hashmap_get_entry(shared_memory_objects, name);
   if (!internal_object) {
+    if (!(oflag & O_CREAT)) {
+      return -ENOENT;
+    }
     internal_object = kcalloc(1, sizeof(vfs_vm_object_t));
     hashmap_add_entry(shared_memory_objects, name, internal_object, NULL, 0);
   }
