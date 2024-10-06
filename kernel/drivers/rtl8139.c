@@ -111,6 +111,24 @@ void rtl8139_handler(void *regs) {
   EOI(0xB);
 }
 
+u8 *nic_get_buffer(void) {
+  if (send_buffers_loop > 3) {
+    send_buffers_loop = 0;
+  }
+  return send_buffers[send_buffers_loop];
+}
+
+void nic_send_buffer(u16 data_size) {
+  const struct PCI_DEVICE *device = &rtl8139;
+  outl(device->gen.base_mem_io + 0x20 + send_buffers_loop * 4,
+       (u32)virtual_to_physical(send_buffers[send_buffers_loop], NULL));
+  outl(device->gen.base_mem_io + 0x10 + send_buffers_loop * 4, data_size);
+  send_buffers_loop += 1;
+  if (send_buffers_loop > 3) {
+    send_buffers_loop = 0;
+  }
+}
+
 void rtl8139_send_data(u8 *data, u16 data_size) {
   if (data_size > 0x1000) {
     rtl8139_send_data(data, 0x1000);

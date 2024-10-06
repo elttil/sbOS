@@ -9,12 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 
-struct EthernetHeader {
-  u8 mac_dst[6];
-  u8 mac_src[6];
-  u16 type;
-};
-
 u32 crc32(const char *buf, size_t len) {
   static u32 table[256];
   static int have_table = 0;
@@ -66,6 +60,27 @@ void handle_ethernet(const u8 *packet, u64 packet_length) {
     kprintf("Can't handle ethernet type 0x%x\n", type);
     break;
   }
+}
+
+void send_ethernet_packet2(u8 mac_dst[6], u16 type, u64 payload_length) {
+  u64 buffer_size =
+      sizeof(struct EthernetHeader) + payload_length + sizeof(u32);
+  assert(buffer_size < 0x1000);
+
+  u8 *buffer = nic_get_buffer();
+  struct EthernetHeader *eth_header = (struct EthernetHeader *)buffer;
+  memset(eth_header, 0, sizeof(struct EthernetHeader));
+  buffer += sizeof(struct EthernetHeader);
+  buffer += payload_length;
+
+  memcpy(eth_header->mac_dst, mac_dst, sizeof(u8[6]));
+  get_mac_address(eth_header->mac_src);
+  eth_header->type = htons(type);
+  *(u32 *)(buffer) =
+      htonl(crc32((const char *)nic_get_buffer(), buffer_size - 4));
+
+  nic_send_buffer(buffer_size);
+  //  rtl8139_send_data(ethernet_buffer, buffer_size);
 }
 
 u8 ethernet_buffer[0x1000];

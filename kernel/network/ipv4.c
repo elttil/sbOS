@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <drivers/pit.h>
+#include <drivers/rtl8139.h>
 #include <kmalloc.h>
 #include <network/arp.h>
 #include <network/bytes.h>
@@ -24,6 +25,37 @@ static u16 ip_checksum(const u16 *data, u16 length) {
 
   // Return the checksum in network byte order.
   return htons(~acc);
+}
+
+void send_ipv4_packet2(ipv4_t ip, u8 protocol, u16 length) {
+  u16 header[10];
+  header[0] = (4 /*version*/ << 4) | (5 /*IHL*/);
+
+  header[1] = htons(length + 20);
+
+  header[2] = 0;
+
+  header[3] = 0;
+  header[4] = (protocol << 8) | 0xF8;
+
+  header[5] = 0;
+  header[6] = (ip_address.d >> 0) & 0xFFFF;
+  header[7] = (ip_address.d >> 16) & 0xFFFF;
+
+  header[8] = (ip.d >> 0) & 0xFFFF;
+  header[9] = (ip.d >> 16) & 0xFFFF;
+
+  header[5] = ip_checksum(header, 20);
+  u16 packet_length = length + 20;
+  // TODO
+  //  assert(packet_length < sizeof(ipv4_buffer));
+  u8 *packet = nic_get_buffer() + sizeof(struct EthernetHeader);
+  memcpy(packet, header, 20);
+
+  u8 mac[6];
+  for (; !get_mac_from_ip(ip, mac);)
+    ;
+  send_ethernet_packet2(mac, 0x0800, packet_length);
 }
 
 u8 ipv4_buffer[0x1000];

@@ -1,11 +1,13 @@
 #include <assert.h>
 #include <cpu/arch_inst.h>
 #include <drivers/pit.h>
+#include <drivers/rtl8139.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
 #include <math.h>
 #include <network/arp.h>
 #include <network/bytes.h>
+#include <network/ethernet.h>
 #include <network/ipv4.h>
 #include <network/tcp.h>
 #include <network/udp.h>
@@ -82,43 +84,37 @@ u16 tcp_calculate_checksum(ipv4_t src_ip, u32 dst_ip, const u8 *payload,
   return htons(tcp_checksum_final(tmp, payload, payload_length));
 }
 
-static void tcp_send(struct TcpConnection *con, u8 *buffer, u16 length,
-                     u32 seq_num, u32 payload_length) {
-  send_ipv4_packet((ipv4_t){.d = con->outgoing_ip}, 6, buffer, length);
+static u8 *tcp_get_buffer(void) {
+  u8 *nb = nic_get_buffer();
+  return nb + sizeof(struct EthernetHeader) + sizeof(u16[10]);
 }
 
-u8 tcp_buffer[0x1000];
 void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
-  struct TcpHeader header;
-  memset(&header, 0, sizeof(header));
-  header.src_port = htons(con->incoming_port);
-  header.dst_port = htons(con->outgoing_port);
-  header.seq_num = htonl(con->snd_nxt);
+  struct TcpHeader *header = (struct TcpHeader *)tcp_get_buffer();
+  memset(header, 0, sizeof(struct TcpHeader));
+  header->src_port = htons(con->incoming_port);
+  header->dst_port = htons(con->outgoing_port);
+  header->seq_num = htonl(con->snd_nxt);
   if (flags & ACK) {
     con->should_send_ack = 0;
-    header.ack_num = htonl(con->rcv_nxt);
+    header->ack_num = htonl(con->rcv_nxt);
   } else {
-    header.ack_num = 0;
+    header->ack_num = 0;
   }
-  header.data_offset = 5;
-  header.reserved = 0;
-  header.flags = flags;
-  header.window_size = htons(con->rcv_wnd);
-  header.urgent_pointer = 0;
+  header->data_offset = 5;
+  header->reserved = 0;
+  header->flags = flags;
+  header->window_size = htons(con->rcv_wnd);
+  header->urgent_pointer = 0;
 
   u8 payload[] = {0};
   u16 payload_length = 0;
-  header.checksum = tcp_calculate_checksum(
-      ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
-      &header, sizeof(struct TcpHeader) + payload_length);
-  u32 send_len = sizeof(header) + payload_length;
+  header->checksum = tcp_calculate_checksum(
+      ip_address, con->outgoing_ip, (const u8 *)payload, payload_length, header,
+      sizeof(struct TcpHeader) + payload_length);
+  u32 send_len = sizeof(struct TcpHeader) + payload_length;
 
-  assert(send_len < sizeof(tcp_buffer));
-  u8 *send_buffer = tcp_buffer;
-  memcpy(send_buffer, &header, sizeof(header));
-  memcpy(send_buffer + sizeof(header), payload, payload_length);
-
-  tcp_send(con, send_buffer, send_len, con->snd_nxt, 0);
+  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
 
   con->snd_nxt += (flags & SYN) ? 1 : 0;
   con->snd_nxt += (flags & FIN) ? 1 : 0;
@@ -144,7 +140,7 @@ void tcp_close_connection(struct TcpConnection *con) {
     // FIXME:
     // Book says it should be FIN but observed network traffic says it
     // should be FIN|ACK?
-    tcp_send_empty_payload(con, FIN);
+    tcp_send_empty_payload(con, FIN | ACK);
     con->state = TCP_STATE_FIN_WAIT1;
     return;
   }
@@ -181,30 +177,28 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
     payload += len;
     return send_tcp_packet(con, payload, payload_length);
   }
-  struct TcpHeader header = {0};
-  header.src_port = htons(con->incoming_port);
-  header.dst_port = htons(con->outgoing_port);
-  header.seq_num = htonl(con->snd_nxt);
-  header.ack_num = htonl(con->rcv_nxt);
-  header.data_offset = 5;
-  header.reserved = 0;
-  header.flags = PSH | ACK;
-  header.window_size = htons(con->rcv_wnd);
-  header.urgent_pointer = 0;
-  header.checksum = tcp_calculate_checksum(
-      ip_address, con->outgoing_ip, (const u8 *)payload, payload_length,
-      &header, sizeof(struct TcpHeader) + payload_length);
-  u32 send_len = sizeof(header) + payload_length;
-  assert(send_len < sizeof(tcp_buffer));
-  u8 *send_buffer = tcp_buffer;
-  memcpy(send_buffer, &header, sizeof(header));
-  memcpy(send_buffer + sizeof(header), payload, payload_length);
+  struct TcpHeader *header = (struct TcpHeader *)tcp_get_buffer();
+  header->src_port = htons(con->incoming_port);
+  header->dst_port = htons(con->outgoing_port);
+  header->seq_num = htonl(con->snd_nxt);
+  header->ack_num = htonl(con->rcv_nxt);
+  header->data_offset = 5;
+  header->reserved = 0;
+  header->flags = PSH | ACK;
+  header->window_size = htons(con->rcv_wnd);
+  header->urgent_pointer = 0;
+  header->checksum = tcp_calculate_checksum(
+      ip_address, con->outgoing_ip, (const u8 *)payload, payload_length, header,
+      sizeof(struct TcpHeader) + payload_length);
+  u32 send_len = sizeof(struct TcpHeader) + payload_length;
+  u8 *send_buffer = tcp_get_buffer();
+  memcpy(send_buffer + sizeof(struct TcpHeader), payload, payload_length);
 
-  if (header.flags & ACK) {
+  if (header->flags & ACK) {
     con->should_send_ack = 0;
   }
 
-  tcp_send(con, send_buffer, send_len, con->snd_nxt, payload_length);
+  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
 
   con->snd_nxt += payload_length;
   con->snd_max = max(con->snd_nxt, con->snd_max);
