@@ -22,4 +22,5 @@ void sb_append_buffer(struct sb *ctx, const char *buffer,
                       size_t length);
 void sb_append_sv(struct sb *ctx, struct sv sv);
 void sb_prepend_sv(struct sb *ctx, struct sv sv);
+void sb_prepend_buffer(struct sb *ctx, const char *buffer, size_t length);
 #endif

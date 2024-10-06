@@ -50,13 +50,17 @@ void sb_append(struct sb *ctx, const char *s) {
 }
 
 void sb_prepend_sv(struct sb *ctx, struct sv sv) {
-  if (sv.length > ctx->capacity - ctx->length) {
-    ctx->capacity += sv.length;
+  sb_prepend_buffer(ctx, sv.s, sv.length);
+}
+
+void sb_prepend_buffer(struct sb *ctx, const char *buffer, size_t length) {
+  if (length > ctx->capacity - ctx->length) {
+    ctx->capacity += length;
     ctx->string = realloc(ctx->string, ctx->capacity);
   }
-  memmove(ctx->string + sv.length, ctx->string, ctx->length);
-  memcpy(ctx->string, sv.s, sv.length);
-  ctx->length += sv.length;
+  memmove(ctx->string + length, ctx->string, ctx->length);
+  memcpy(ctx->string, buffer, length);
+  ctx->length += length;
 }
 
 void sb_append_buffer(struct sb *ctx, const char *buffer, size_t length) {
