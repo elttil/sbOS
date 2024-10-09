@@ -40,7 +40,7 @@ int parse_operand(struct sv *code_ptr, struct TOKEN *cur) {
   struct sv code = *code_ptr;
 #define TRY_PARSE_STRING(_s, _token)                                           \
   if (sv_partial_eq(code, C_TO_SV(_s))) {                                      \
-    cur->type = TOKEN_AND;                                                     \
+    cur->type = _token;                                                        \
     cur->string_rep = sv_take(code, &code, strlen(_s));                        \
     goto complete_return;                                                      \
   }
