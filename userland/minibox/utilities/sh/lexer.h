@@ -11,6 +11,7 @@ typedef enum {
   TOKEN_PIPE,
   TOKEN_STREAM,
   TOKEN_STREAM_APPEND,
+  TOKEN_BACKGROUND,
 } token_type_t;
 
 struct TOKEN {

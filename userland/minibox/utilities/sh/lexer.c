@@ -49,7 +49,7 @@ int parse_operand(struct sv *code_ptr, struct TOKEN *cur) {
   TRY_PARSE_STRING(">>", TOKEN_STREAM_APPEND);
   TRY_PARSE_STRING(">", TOKEN_STREAM);
   TRY_PARSE_STRING("|", TOKEN_PIPE);
-  // TODO: &
+  TRY_PARSE_STRING("&", TOKEN_BACKGROUND);
 
   // Failed to parse
   return 0;

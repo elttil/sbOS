@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+int active_processes = 0;
+
 int execute_command(struct AST *ast, int input_fd);
 
 int execute_binary(struct AST *ast, int input_fd) {
@@ -69,9 +71,20 @@ int execute_binary(struct AST *ast, int input_fd) {
       close(out);
     return execute_command(ast->pipe_rhs, slave_input);
   }
+
+  active_processes++;
+  if (ast->should_background) {
+    return pid;
+  }
+
   int rc;
   // FIXME: Should use waitpid ... when my OS supports that
-  wait(&rc);
+  for (; active_processes > 0;) {
+    if (-1 == wait(&rc)) {
+      continue;
+    }
+    active_processes--;
+  }
   return rc;
 }
 

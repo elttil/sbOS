@@ -61,6 +61,11 @@ int parse_command(struct TOKEN **token_ptr, struct AST *cur) {
     cur->file_out = token->string_rep;
     token = token->next;
   }
+  // Parse '&'
+  if (token && TOKEN_BACKGROUND == token->type) {
+    cur->should_background = 1;
+    token = token->next;
+  }
   // Parse pipe '|'
   if (token && TOKEN_PIPE == token->type) {
     cur->pipe_rhs = allocate_ast();
