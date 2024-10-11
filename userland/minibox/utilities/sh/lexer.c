@@ -50,6 +50,7 @@ int parse_operand(struct sv *code_ptr, struct TOKEN *cur) {
   TRY_PARSE_STRING(">", TOKEN_STREAM);
   TRY_PARSE_STRING("|", TOKEN_PIPE);
   TRY_PARSE_STRING("&", TOKEN_BACKGROUND);
+  TRY_PARSE_STRING("\n", TOKEN_NEWLINE);
 
   // Failed to parse
   return 0;
@@ -63,7 +64,7 @@ void skip_whitespace_and_comment(struct sv *s) {
   struct sv start;
   do {
     start = *s;
-    *s = sv_skip_chars(*s, " \t\n\r");
+    *s = sv_skip_chars(*s, " \t\r");
     if (!sv_partial_eq(*s, C_TO_SV("#"))) {
       return;
     }

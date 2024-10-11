@@ -75,6 +75,9 @@ int parse_command(struct TOKEN **token_ptr, struct AST *cur) {
       exit(1);
     }
   }
+  if (token && TOKEN_NEWLINE == token->type) {
+    token = token->next;
+  }
   *token_ptr = token;
   return 1;
 }
