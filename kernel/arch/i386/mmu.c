@@ -127,6 +127,9 @@ Page *get_page(void *ptr, PageDirectory *directory, int create_new_page,
     }
   }
   Page *p = &directory->tables[table_index]->pages[address % 1024];
+  if (!p->present && !create_new_page) {
+    return 0;
+  }
   if (create_new_page) {
     p->present = 0;
     p->user = set_user;
