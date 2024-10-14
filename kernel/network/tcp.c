@@ -296,7 +296,6 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
     if (FIN & flags) {
       tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_CLOSE_WAIT;
-      tcp_strip_connection(con);
       break;
     }
     if (tcp_payload_length > 0) {
@@ -305,6 +304,7 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
       }
       int rc = ringbuffer_write(&con->incoming_buffer, tcp_payload,
                                 tcp_payload_length);
+      assert(!ringbuffer_isempty(&con->incoming_buffer));
       con->rcv_nxt += rc;
       con->should_send_ack = 1;
     }
