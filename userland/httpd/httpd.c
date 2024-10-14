@@ -24,8 +24,6 @@
 
 struct sb response;
 
-struct sv default_error = C_TO_SV("ERROR");
-
 struct http_request {
   int socket;
   char buffer[8192];
@@ -94,6 +92,25 @@ void httpd_handle_incoming(int socket, int q) {
   }
 }
 
+void request_try_file(struct http_request *request, const char *path) {
+  int fd = open(path, O_RDONLY);
+  if (-1 == fd) {
+    request->status_code = 404;
+    return;
+  }
+  request->file_fd = fd;
+  struct stat statbuf;
+  if (-1 == fstat(request->file_fd, &statbuf)) {
+    close(request->file_fd);
+    request->status_code = 500;
+    // The only possible error(I believe)
+    assert(ENOMEM == errno);
+    return;
+  }
+  request->is_directory = S_ISDIR(statbuf.st_mode);
+  request->status_code = 200;
+}
+
 void parse_incoming_request(struct http_request *request) {
   struct sv l = SB_TO_SV(request->client_buffer);
   struct sv method = sv_split_delim(l, &l, ' ');
@@ -107,25 +124,25 @@ void parse_incoming_request(struct http_request *request) {
     return;
   }
 
-  {
-    char path_buffer[256];
-    sv_to_cstring_buffer(path, path_buffer, 256);
-    request->file_fd = open(path_buffer, O_RDONLY);
-  }
-  if (-1 == request->file_fd) {
-    request->status_code = 404;
+  // The difference in buffer size is intentional to be able to append
+  // '/index.html' later
+  char path_buffer[256 + 11];
+  sv_to_cstring_buffer(path, path_buffer, 256);
+  request_try_file(request, path_buffer);
+
+  if (request->is_directory) {
+    strcat(path_buffer, "/index.html");
+    request_try_file(request, path_buffer);
     return;
   }
-  struct stat statbuf;
-  if (-1 == fstat(request->file_fd, &statbuf)) {
-    close(request->file_fd);
-    request->status_code = 500;
-    // The only possible error(I believe)
-    assert(ENOMEM == errno);
-    return;
+  if (200 != request->status_code) {
+    printf("status_code: %d\n", request->status_code);
+    const int tmp = request->status_code;
+    sprintf(path_buffer, "/%3d.html", request->status_code);
+    printf("path_buffer: %s\n", path_buffer);
+    request_try_file(request, path_buffer);
+    request->status_code = tmp;
   }
-  request->is_directory = S_ISDIR(statbuf.st_mode);
-  request->status_code = 200;
   return;
 }
 
@@ -164,11 +181,17 @@ void httpd_handle_client(int q, int fd, void *data) {
     if (request->is_directory) {
       sprintf(buffer, "HTTP/1.1 %d\r\nKeep-Alive: timeout=5, max=1000\r\n",
               request->status_code);
-    } else if (200 != request->status_code) {
+    } else if (-1 == request->file_fd) {
+      // This sends more than the header...
+      char error_message[4096];
+      int rc = sprintf(error_message, "<!DOCTYPE html><html>Error %3d<br>\
+The server administrator was too lazy to create a custom error page for this.</html>",
+                       request->status_code);
       sprintf(buffer,
               "HTTP/1.1 %d\r\nKeep-Alive: timeout=5, "
-              "max=1000\r\nContent-Length: %lu\r\n\r\n",
-              request->status_code, default_error.length);
+              "max=1000\r\nContent-Length: %d\r\n\r\n%s",
+              request->status_code, rc, error_message);
+      request_reinit(request, q);
     } else {
       struct stat statbuf;
       if (-1 == fstat(request->file_fd, &statbuf)) { // TODO: Use the old
@@ -195,17 +218,6 @@ void httpd_handle_client(int q, int fd, void *data) {
     request->state = REQUEST_SEND_DATA;
   }
   if (REQUEST_SEND_DATA == request->state) {
-    if (200 != request->status_code) {
-      if (-1 == write(fd, default_error.s, default_error.length)) {
-        if (EWOULDBLOCK != errno) {
-          goto end_connection;
-        }
-        return;
-      }
-      request_reinit(request, q);
-      return;
-    }
-
     if (request->is_directory) {
       // No attempt at buffering directory listing
       // since that is annoying and not as if a
