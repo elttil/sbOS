@@ -23,10 +23,32 @@ int parse_ppm_header(FILE *fp, struct PPM_IMAGE *img) {
   int width;
   int height;
   int maxval;
-  // TODO: Use %2s when scanf supports that
+
+  int v = 0;
+
   char c1;
   char c2;
-  fscanf(fp, "%c%c\n%d %d\n%d", &c1, &c2, &width, &height, &maxval);
+  for (; v < 3;) {
+    char c = fgetc(fp);
+    if ('#' != c) {
+      ungetc(c, fp);
+      if (0 == v) {
+        // TODO: Use %2s when scanf supports that
+        fscanf(fp, "%c%c", &c1, &c2);
+      }
+      if (1 == v) {
+        fscanf(fp, "%d %d", &width, &height);
+      }
+      if (2 == v) {
+        fscanf(fp, "%d", &maxval);
+      }
+
+      v++;
+    }
+    for (; '\n' != fgetc(fp);)
+      ;
+  }
+
   if ('P' != c1) {
     printf("c1: %c\n", c1);
     return 0;
@@ -48,7 +70,6 @@ int parse_ppm_header(FILE *fp, struct PPM_IMAGE *img) {
   img->height = height;
   img->maxval = maxval;
   img->file_location = ftell(fp);
-  img->file_location++;
   return 1;
 }
 
@@ -74,7 +95,7 @@ int load_ppm6_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
   u32 buf_size = buf_height * buf_width;
   if (1 == modifier) {
     int c = 0;
-    for (int i = 0; i < rc && i < buf_size; i++, c += 3) {
+    for (int i = 0; i < rc && cy * buf_width + cx < buf_size; i++, c += 3) {
       if (cx > buf_width) {
         i--;
       } else {
@@ -93,7 +114,8 @@ int load_ppm6_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
       }
     }
   } else {
-    for (int i = 0; i < rc && i < buf_size; i++, p = ((uint8_t *)p) + 3) {
+    for (int i = 0; i < rc && cy * buf_width + cx < buf_size;
+         i++, p = ((uint8_t *)p) + 3) {
       ((uint8_t *)p)[0] *= modifier;
       ((uint8_t *)p)[1] *= modifier;
       ((uint8_t *)p)[2] *= modifier;
@@ -196,14 +218,17 @@ int main(int argc, char **argv) {
     fclose(fp);
     GUI_EventLoop(global_w, NULL);
   } else {
-    int wallpaper_fd = shm_open("wallpaper", O_RDWR, 0);
-    assert(wallpaper_fd >= 0);
+    int wallpaper_fd;
+    do {
+      wallpaper_fd = shm_open("wallpaper", O_RDWR | O_CREAT, 0);
+    } while (-1 == wallpaper_fd);
 
     struct DISPLAY_INFO inf;
     int fd = open("/dev/display_info", O_READ, 0);
     assert(fd >= 0);
     assert(sizeof(inf) == read(fd, &inf, sizeof(inf)));
 
+    ftruncate(wallpaper_fd, inf.width * inf.height * sizeof(uint32_t));
     void *rc = mmap(NULL, inf.width * inf.height * sizeof(uint32_t), 0, 0,
                     wallpaper_fd, 0);
     assert(rc);
