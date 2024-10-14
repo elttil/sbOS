@@ -78,6 +78,12 @@ int shm_ftruncate(vfs_fd_t *fd, size_t length) {
   return 0;
 }
 
+void shm_close(vfs_fd_t *fd) {
+  vfs_vm_object_t *internal_object = fd->inode->internal_object;
+  assert(internal_object->num_of_references > 0);
+  internal_object->num_of_references--;
+}
+
 int shm_open(const char *name, int oflag, mode_t mode) {
   // Try to find or create a new shared memory object.
   vfs_vm_object_t *internal_object =
@@ -90,10 +96,11 @@ int shm_open(const char *name, int oflag, mode_t mode) {
     hashmap_add_entry(shared_memory_objects, name, internal_object, NULL, 0);
   }
 
+  internal_object->num_of_references++;
   vfs_inode_t *inode = vfs_create_inode(
       0 /*inode_num*/, 0 /*type*/, NULL, NULL, 1 /*is_open*/, 0,
       internal_object, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
-      shm_read, shm_write, NULL /*close*/, NULL /*create_directory*/,
+      shm_read, shm_write, shm_close, NULL /*create_directory*/,
       shm_get_vm_object, shm_ftruncate, NULL /*stat*/, NULL /*send_signal*/,
       NULL /*connect*/);
 
@@ -107,6 +114,19 @@ int shm_open(const char *name, int oflag, mode_t mode) {
 }
 
 int shm_unlink(const char *name) {
-  (void)name;
+  vfs_vm_object_t *p = hashmap_get_entry(shared_memory_objects, name);
+  if (!p) {
+    return -ENOENT;
+  }
+  if (0 != p->num_of_references) {
+    p->num_of_references--;
+  }
+  if (0 == p->num_of_references && p->real_pointer) {
+    u8 *mem_region = p->real_pointer;
+    mmu_free_address_range(mem_region, align_page(p->size), NULL);
+    p->real_pointer = NULL;
+    p->size = 0;
+  }
+  assert(hashmap_delete_entry(shared_memory_objects, name));
   return 0;
 }

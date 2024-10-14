@@ -28,14 +28,6 @@ u32 next_pid = 0;
 
 extern u32 read_eip(void);
 
-process_t *get_current_task(void) {
-  return current_task;
-}
-
-process_t *get_ready_queue(void) {
-  return ready_queue;
-}
-
 void process_push_restore_context(process_t *p, reg_t r) {
   if (!p) {
     p = current_task;
@@ -535,20 +527,27 @@ process_t *next_task(process_t *s) {
 
 void signal_process(process_t *p, int sig) {
   assert(sig < 32);
-  kprintf("sending signal to: %x\n", p);
+  int talking_to_itself = (p == current_task);
   if (!p->signal_handlers[sig]) {
     if (SIGTERM == sig) {
       kprintf("HAS NO SIGTERM\n");
       exit_process(p, 1 /*TODO: what should the status be?*/);
-      ASSERT_NOT_REACHED;
+      if (talking_to_itself) {
+        ASSERT_NOT_REACHED;
+      }
     } else if (SIGSEGV == sig) {
       kprintf("HAS NO SIGSEGV\n");
       exit_process(p, 1 /*TODO: what should the status be?*/);
-      ASSERT_NOT_REACHED;
+      if (talking_to_itself) {
+        ASSERT_NOT_REACHED;
+      }
     } else {
       // TODO: Should also exit proess(I think)
-      ASSERT_NOT_REACHED;
+      if (talking_to_itself) {
+        ASSERT_NOT_REACHED;
+      }
     }
+    return;
   }
   signal_t signal = {.handler_ip = (uintptr_t)p->signal_handlers[sig]};
   process_push_signal(p, signal);

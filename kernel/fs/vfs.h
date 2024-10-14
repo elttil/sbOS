@@ -25,6 +25,7 @@ struct vfs_vm_object {
   void *virtual_object;
   void **object;
   u64 size;
+  u32 num_of_references;
 };
 
 struct vfs_mounts {

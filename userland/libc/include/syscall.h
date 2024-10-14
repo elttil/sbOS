@@ -52,6 +52,7 @@
 #define SYS_QUEUE_MOD_ENTRIES 44
 #define SYS_QUEUE_WAIT 45
 #define SYS_SENDFILE 46
+#define SYS_SHM_UNLINK 47
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

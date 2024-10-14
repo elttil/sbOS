@@ -76,6 +76,7 @@ int wait(int *stat_loc);
 void exit(int status);
 void *memcpy(void *dest, const void *src, uint32_t n);
 int shm_open(const char *name, int oflag, mode_t mode);
+int shm_unlink(const char *name);
 int dprintf(int fd, const char *format, ...);
 int vdprintf(int fd, const char *format, va_list ap);
 int vprintf(const char *format, va_list ap);

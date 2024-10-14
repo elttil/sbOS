@@ -272,3 +272,7 @@ int shm_open(const char *name, int oflag, mode_t mode) {
   };
   RC_ERRNO(syscall(SYS_SHM_OPEN, (u32)&args, 0, 0, 0, 0));
 }
+
+int shm_unlink(const char *name) {
+  RC_ERRNO(syscall(SYS_SHM_UNLINK, (u32)name, 0, 0, 0, 0));
+}

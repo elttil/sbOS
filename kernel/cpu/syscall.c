@@ -362,6 +362,13 @@ int syscall_shm_open(SYS_SHM_OPEN_PARAMS *args) {
   return shm_open(args->name, args->oflag, args->mode);
 }
 
+int syscall_shm_unlink(const char *name) {
+  if (!mmu_is_valid_user_c_string(name, NULL)) {
+    return -EPERM; // TODO: Is this correct?
+  }
+  return shm_unlink(name);
+}
+
 int syscall_sigaction(int sig, const struct sigaction *restrict act,
                       struct sigaction *restrict oact) {
   set_signal_handler(sig, act->sa_handler);
@@ -692,6 +699,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_queue_mod_entries,
     (void(*))syscall_queue_wait,
     (void(*))syscall_sendfile,
+    (void(*))syscall_shm_unlink,
 };
 
 void int_syscall(reg_t *r);
