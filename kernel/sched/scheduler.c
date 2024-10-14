@@ -193,7 +193,7 @@ void free_process(process_t *p) {
       continue;
     }
     MemoryMap *m = p->maps[i];
-    mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
+    munmap(m->u_address, m->length);
   }
 
   list_free(&p->read_list);
@@ -660,6 +660,9 @@ int munmap(void *addr, size_t length) {
       continue;
     }
     if (addr == m->u_address) {
+      assert(m->underlying_object->num_of_references > 0);
+      m->underlying_object->num_of_references--;
+      mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);
       current_task->maps[i] = NULL;
       return 0;
     }
@@ -722,5 +725,7 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
   free_map->k_address = NULL;
   free_map->length = length;
   free_map->fd = fd;
+  free_map->underlying_object = vmobject;
+  vmobject->num_of_references++;
   return rc;
 }

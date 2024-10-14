@@ -2,7 +2,7 @@
 .section .text
 # Due to x86 not giving the interrupt number these isr stubs are
 # created. This is to allow a general isr stub for all interrupts. This
-# stub will act as a # multiplexer to the correct interrupt.
+# stub will act as a multiplexer to the correct interrupt.
 .macro ISR_NOERRCODE num
   .global isr\num
   isr\num:

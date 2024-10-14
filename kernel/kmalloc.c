@@ -242,8 +242,7 @@ void kfree(void *p) {
   if (!p) {
     return;
   }
-  // FIXME: This assumes that p is at the start of a allocated area.
-  // Could this be avoided in a simple way?
+
   MallocHeader *h = (MallocHeader *)((uintptr_t)p - sizeof(MallocHeader));
   assert(h->magic == 0xdde51ab9410268b1);
   assert(!(h->flags & IS_FREE));

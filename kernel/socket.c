@@ -15,6 +15,7 @@
 #include <socket.h>
 #include <stdatomic.h>
 #include <sys/socket.h>
+#include <timer.h>
 
 #define OBJECT_UNIX 0
 #define OBJECT_TCP 1

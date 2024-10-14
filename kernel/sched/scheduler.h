@@ -37,6 +37,7 @@ typedef struct {
   void *k_address;
   u32 length;
   int fd;
+  struct vfs_vm_object *underlying_object;
 } MemoryMap;
 
 typedef struct {

@@ -161,6 +161,10 @@ int random_read(BYTEPTR buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 }
 
 void add_random_devices(void) {
+  devfs_add_file("/random", random_read, random_write, NULL, always_has_data,
+                 always_can_write, FS_TYPE_CHAR_DEVICE);
+  devfs_add_file("/urandom", random_read, random_write, NULL, always_has_data,
+                 always_can_write, FS_TYPE_CHAR_DEVICE);
   BYTE seed[1024];
   int rand_fd = vfs_open("/etc/seed", O_RDWR, 0);
   if (0 > rand_fd) {
@@ -184,9 +188,4 @@ void add_random_devices(void) {
   get_random(seed, 1024);
   vfs_pwrite(rand_fd, seed, 1024, 0);
   vfs_close(rand_fd);
-
-  devfs_add_file("/random", random_read, random_write, NULL, always_has_data,
-                 always_can_write, FS_TYPE_CHAR_DEVICE);
-  devfs_add_file("/urandom", random_read, random_write, NULL, always_has_data,
-                 always_can_write, FS_TYPE_CHAR_DEVICE);
 }
