@@ -11,6 +11,15 @@ char *SV_TO_C(struct sv s) {
   return c_string;
 }
 
+size_t sv_to_cstring_buffer(struct sv s, char *buffer, size_t length) {
+  if (0 == length || length - 1 < s.length) {
+    return s.length;
+  }
+  memcpy(buffer, s.s, s.length);
+  buffer[s.length] = '\0';
+  return s.length;
+}
+
 struct sv sv_next(struct sv s) {
   if (0 == s.length) {
     return s;

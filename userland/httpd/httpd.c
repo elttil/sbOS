@@ -107,9 +107,11 @@ void parse_incoming_request(struct http_request *request) {
     return;
   }
 
-  char *p = SV_TO_C(path);
-  request->file_fd = open(p, O_RDONLY);
-  free(p);
+  {
+    char path_buffer[256];
+    sv_to_cstring_buffer(path, path_buffer, 256);
+    request->file_fd = open(path_buffer, O_RDONLY);
+  }
   if (-1 == request->file_fd) {
     request->status_code = 404;
     return;

@@ -17,6 +17,7 @@ struct sv {
 };
 
 char *SV_TO_C(struct sv s);
+size_t sv_to_cstring_buffer(struct sv s, char *buffer, size_t length);
 struct sv sv_split_delim(const struct sv input, struct sv *rest, char delim);
 struct sv sv_end_split_delim(const struct sv input, struct sv *rest,
                              char delim);
