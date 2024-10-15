@@ -119,27 +119,25 @@ void parse_incoming_request(struct http_request *request) {
   request->file_fd = -1;
   request->is_directory = 0;
 
-  if (!sv_eq(method, C_TO_SV("GET"))) {
-    request->status_code = 400;
-    return;
-  }
-
-  // The difference in buffer size is intentional to be able to append
-  // '/index.html' later
   char path_buffer[256 + 11];
-  sv_to_cstring_buffer(path, path_buffer, 256);
-  request_try_file(request, path_buffer);
-
-  if (request->is_directory) {
-    strcat(path_buffer, "/index.html");
+  if (sv_eq(method, C_TO_SV("GET"))) {
+    // The difference in buffer size is intentional to be able to append
+    // '/index.html' later
+    sv_to_cstring_buffer(path, path_buffer, 256);
     request_try_file(request, path_buffer);
-    return;
+
+    if (request->is_directory) {
+      strcat(path_buffer, "/index.html");
+      request_try_file(request, path_buffer);
+      return;
+    }
+  } else {
+    request->status_code = 400;
   }
+
   if (200 != request->status_code) {
-    printf("status_code: %d\n", request->status_code);
     const int tmp = request->status_code;
     sprintf(path_buffer, "/%3d.html", request->status_code);
-    printf("path_buffer: %s\n", path_buffer);
     request_try_file(request, path_buffer);
     request->status_code = tmp;
   }
