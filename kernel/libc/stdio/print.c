@@ -1,17 +1,17 @@
 #include <assert.h>
-#include <drivers/serial.h>
+#include <log.h>
 #include <stdio.h>
 #include <string.h>
 
 #define TAB_SIZE 8
 
 inline void putc(const char c) {
-  write_serial(c);
+  log_char(c);
 }
 
 void put_string(const char *s, int l) {
   for (; l > 0; l--, s++) {
-    write_serial(*s);
+    log_char(*s);
   }
 }
 

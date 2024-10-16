@@ -1,6 +1,7 @@
 #include <cpu/arch_inst.h>
 #include <cpu/idt.h>
 #include <interrupts.h>
+#include <log.h>
 #include <sched/scheduler.h>
 #include <stdio.h>
 
@@ -50,6 +51,14 @@ __attribute__((no_caller_saved_registers)) void EOI(u8 irq) {
 }
 
 void general_protection_fault(reg_t *regs) {
+  int is_userspace = (regs->error_code & (1 << 2));
+  if (is_userspace) {
+    signal_process(current_task, SIGSEGV);
+    return;
+  }
+
+  log_enable_screen();
+
   klog(LOG_ERROR, "General Protetion Fault");
   kprintf(" Error Code: %x\n", regs->error_code);
   kprintf("Instruction Pointer: %x\n", regs->eip);
@@ -89,6 +98,8 @@ void page_fault(reg_t *regs) {
     signal_process(current_task, SIGSEGV);
     return;
   }
+
+  log_enable_screen();
 
   klog(LOG_ERROR, "Page Fault");
   kprintf("CR2: %x\n", cr2);

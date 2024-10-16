@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <drivers/vbe.h>
+#include <fonts.h>
 #include <fs/devfs.h>
 #include <fs/vfs.h>
 #include <mmu.h>
@@ -23,6 +24,43 @@ struct DISPLAY_INFO {
 };
 
 struct DISPLAY_INFO vbe_info;
+
+#define place_pixel_pos(_p, _pos)                                              \
+  { *(u32 *)((u32 *)framebuffer + _pos) = _p; }
+
+static int get_bitmap_value(const unsigned char bitmap[], int i) {
+  int array_index = i / 8;
+  int byte_index = i % 8;
+  int rc = (bitmap[array_index] >> byte_index) & 0x1;
+  return rc;
+}
+
+void vbe_drawfont(u32 px, u32 py, const u8 c) {
+  u32 x, y;
+  x = px;
+  y = py;
+  if (px + 8 > framebuffer_width) {
+    return;
+  }
+  if (py + 8 > framebuffer_height) {
+    return;
+  }
+  const unsigned char *bitmap = font8x8_basic[c];
+  for (int i = 0; i < 8 * 8; i++) {
+    u32 pos = x + y * framebuffer_width;
+    if (get_bitmap_value(bitmap, i)) {
+      place_pixel_pos(0xFFFFFF, pos);
+    }
+    x++;
+    if (x >= 8 + px) {
+      y++;
+      x = px;
+    }
+    if (y > py + 8) {
+      break;
+    }
+  }
+}
 
 int display_driver_init(multiboot_info_t *mbi) {
   assert(CHECK_FLAG(mbi->flags, 12));
