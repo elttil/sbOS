@@ -98,6 +98,9 @@ void request_try_file(struct http_request *request, const char *path) {
     request->status_code = 404;
     return;
   }
+  if (-1 != request->file_fd) {
+    close(request->file_fd);
+  }
   request->file_fd = fd;
   struct stat statbuf;
   if (-1 == fstat(request->file_fd, &statbuf)) {
