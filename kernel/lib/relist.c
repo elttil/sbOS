@@ -80,7 +80,7 @@ int relist_add(struct relist *list, void *value, u32 *index) {
   u32 entry;
   if (!relist_find_free_entry(list, &entry)) {
     u32 new_capacity = list->bitmap_capacity + 1;
-    u64 *new_allocation = kcalloc(sizeof(u64), new_capacity);
+    u64 *new_allocation = krecalloc(list->bitmap, sizeof(u64), new_capacity);
     if (!new_allocation) {
       return 0;
     }
@@ -93,7 +93,6 @@ int relist_add(struct relist *list, void *value, u32 *index) {
     if (list->bitmap) {
       size_t to_copy = min(list->bitmap_capacity, new_capacity) * sizeof(u64);
       memcpy(new_allocation, list->bitmap, to_copy);
-      kfree(list->bitmap);
     }
     list->bitmap = new_allocation;
     list->bitmap_capacity = new_capacity;
