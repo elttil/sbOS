@@ -198,10 +198,10 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
                        u32 *physical_address) {
   PageTable *new_table =
       kmalloc_align(sizeof(PageTable), (void **)physical_address);
-  memset(new_table, 0, sizeof(PageTable));
   if (!new_table) {
     return NULL;
   }
+  memset(new_table, 0, sizeof(PageTable));
   PageTable *src = src_directory->tables[src_index];
 
   // Copy all the pages
