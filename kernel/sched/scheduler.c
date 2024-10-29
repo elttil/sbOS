@@ -605,7 +605,7 @@ void switch_task() {
   switch_to_task(current_task->tcb);
 }
 
-MemoryMap **get_free_map(void) {
+MemoryMap **get_map(void) {
   for (int i = 0; i < 100; i++) {
     if (!(current_task->maps[i])) {
       return &(current_task->maps[i]);
@@ -670,47 +670,54 @@ int munmap(void *addr, size_t length) {
   return 0;
 }
 
+int add_memory_map(MemoryMap *map) {
+  MemoryMap **ptr = get_map();
+  if (!ptr) {
+    return 0;
+  }
+  *ptr = map;
+  return 1;
+}
+
 void *mmap(void *addr, size_t length, int prot, int flags, int fd,
            size_t offset) {
   (void)addr;
+  MemoryMap *map = NULL;
+  int fail_rc;
   if (0 == length) {
-    kprintf("EINVAL\n");
-    return (void *)-EINVAL;
+    fail_rc = -EINVAL;
+    goto mmap_fail;
   }
 
-  MemoryMap **ptr = get_free_map();
-  if (!ptr) {
-    klog(LOG_WARN, "mmap(): No free memory map.");
-    return (void *)-1;
+  map = kmalloc(sizeof(MemoryMap));
+  if (!map) {
+    fail_rc = -ENOMEM;
+    goto mmap_fail;
   }
-  *ptr = kmalloc(sizeof(MemoryMap));
-  if (!*ptr) {
-    return (void *)-ENOMEM;
-  }
-  MemoryMap *free_map = *ptr;
 
   if (-1 == fd) {
     void *rc = allocate_virtual_user_memory(length, prot, flags);
     if (!rc) {
-      return (void *)-ENOMEM;
+      fail_rc = -ENOMEM;
+      goto mmap_fail;
     }
-    free_map->u_address = rc;
-    free_map->k_address = NULL;
-    free_map->length = length;
-    free_map->fd = -1;
+    map->u_address = rc;
+    map->k_address = NULL;
+    map->length = length;
+    map->fd = -1;
     return rc;
   }
 
   vfs_vm_object_t *vmobject = vfs_get_vm_object(fd, length, offset);
   if (!vmobject) {
-    kprintf("ENODEV\n");
-    return (void *)-ENODEV;
+    fail_rc = -ENODEV;
+    goto mmap_fail;
   }
 
   if (vmobject->size < length) {
-    kprintf("EOVERFLOW\n");
-    return (void *)-EOVERFLOW; // TODO: Check if this is the correct
-                               // code.
+    fail_rc = -EOVERFLOW; // TODO: Check if this is the correct
+                          // code.
+    goto mmap_fail;
   }
 
   if (length > vmobject->size) {
@@ -718,14 +725,22 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd,
   }
   void *rc = create_physical_mapping(vmobject->object, length);
   if (!rc) {
-    kprintf("ENOMEM\n");
-    return (void *)-ENOMEM;
+    fail_rc = -ENOMEM;
+    goto mmap_fail;
   }
-  free_map->u_address = rc;
-  free_map->k_address = NULL;
-  free_map->length = length;
-  free_map->fd = fd;
-  free_map->underlying_object = vmobject;
+  map->u_address = rc;
+  map->k_address = NULL;
+  map->length = length;
+  map->fd = fd;
+  map->underlying_object = vmobject;
   vmobject->num_of_references++;
+
+  if (!add_memory_map(map)) {
+    fail_rc = -ENOMEM;
+    goto mmap_fail;
+  }
   return rc;
+mmap_fail:
+  kfree(map);
+  return (void *)fail_rc;
 }
