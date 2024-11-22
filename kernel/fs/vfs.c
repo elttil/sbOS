@@ -399,6 +399,7 @@ int vfs_dup2(int org_fd, int new_fd) {
   if (org_fd == new_fd) {
     return -EINVAL;
   }
+  vfs_close(new_fd);
 
   vfs_fd_t *orig;
   if (!relist_get(&current_task->file_descriptors, org_fd, (void **)&orig,
