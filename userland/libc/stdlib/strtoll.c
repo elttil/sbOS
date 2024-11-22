@@ -28,8 +28,18 @@ long long strtoll(const char *str, char **restrict endptr, int base) {
   }
 
   if (0 == base) {
-    // FIXME
-    assert(0);
+    char prefix = *str;
+    if ('0' == prefix) {
+      str++;
+      if ('x' == tolower(*str)) {
+        str++;
+        base = 16;
+      } else {
+        base = 8;
+      }
+    } else {
+      base = 10;
+    }
   }
 
   if (2 <= base && 36 >= base) {

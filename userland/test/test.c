@@ -379,11 +379,41 @@ void strspn_test(void) {
 void strtol_test(void) {
   dbgln("strtol TEST");
   {
-    char *s = "1234";
-    char *e;
-    long r;
-    assert(1234 == strtol(s, &e, 10));
-    assert(e == (s + 4));
+    {
+      char *s = "1234";
+      char *e;
+      long r;
+      assert(1234 == strtol(s, &e, 10));
+      assert(e == (s + 4));
+    }
+    {
+      char *s = "1234";
+      char *e;
+      long r;
+      assert(1234 == strtol(s, &e, 0));
+      assert(e == (s + 4));
+    }
+    {
+      char *s = "0234";
+      char *e;
+      long r;
+      assert(156 == strtol(s, &e, 0));
+      assert(e == (s + 4));
+    }
+    {
+      char *s = "0x234";
+      char *e;
+      long r;
+      assert(564 == strtol(s, &e, 0));
+      assert(e == (s + 5));
+    }
+    {
+      char *s = "0X234";
+      char *e;
+      long r;
+      assert(564 == strtol(s, &e, 0));
+      assert(e == (s + 5));
+    }
   }
   dbgln("strtol TEST PASSED");
 }
