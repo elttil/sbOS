@@ -44,12 +44,15 @@ long strtol(const char *str, char **restrict endptr, int base) {
 
   if (2 <= base && 36 >= base) {
     for (; *str; str++) {
+      int val = get_value(*str, base);
+      if (-1 == val) {
+        break;
+      }
       if (ret_value > LONG_MAX / base) {
         errno = ERANGE;
         return LONG_MAX;
       }
       ret_value *= base;
-      int val = get_value(*str, base);
       if (ret_value > LONG_MAX - val) {
         errno = ERANGE;
         return LONG_MAX;

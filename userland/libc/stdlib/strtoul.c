@@ -7,16 +7,17 @@
 extern int errno;
 int get_value(char c, long base) {
   int r;
-  if (c >= '0' && c <= '9')
-    r = c - '0';
-  else if (c >= 'A' && c <= 'Z')
-    r = c - 'A';
-  else if (c >= 'a' && c <= 'z')
-    r = c - 'a';
-  else
+  int l = tolower(c);
+  if (l >= '0' && l <= '9') {
+    r = l - '0';
+  } else if (l >= 'a' && l <= 'z') {
+    r = (l - 'a') + 10;
+  } else {
     return -1;
-  if (r >= base)
+  }
+  if (r >= base) {
     return -1;
+  }
   return r;
 }
 
@@ -59,13 +60,14 @@ unsigned long strtoul(const char *restrict str, char **restrict endptr,
 
   if (2 <= base && 36 >= base) {
     for (; *str; str++) {
-      ret_value *= base;
       int val = get_value(*str, base);
-      /*
       if (-1 == val) {
-        errno = ERANGE;
-        return 0;
-      }*/
+        break;
+      }
+      if (-1 == val) {
+        break;
+      }
+      ret_value *= base;
       if (ret_value > ULONG_MAX - val) {
         errno = ERANGE;
         return 0;
@@ -78,6 +80,6 @@ unsigned long strtoul(const char *restrict str, char **restrict endptr,
     return 0;
   }
   if (endptr)
-    *endptr = (char*)str;
+    *endptr = (char *)str;
   return ret_value;
 }
