@@ -217,15 +217,15 @@ int dup2(int org_fd, int new_fd) {
 }
 
 int fork(void) {
-  return s_syscall(SYS_FORK);
+  RC_ERRNO(s_syscall(SYS_FORK));
 }
 
 int brk(void *addr) {
-  return syscall(SYS_BRK, addr, 0, 0, 0, 0);
+  RC_ERRNO(syscall(SYS_BRK, addr, 0, 0, 0, 0));
 }
 
 void *sbrk(intptr_t increment) {
-  return (void *)syscall(SYS_SBRK, (void *)increment, 0, 0, 0, 0);
+  RC_ERRNO(syscall(SYS_SBRK, (void *)increment, 0, 0, 0, 0));
 }
 
 int poll(struct pollfd *fds, size_t nfds, int timeout) {
