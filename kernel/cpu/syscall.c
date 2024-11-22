@@ -439,6 +439,10 @@ int syscall_read(int fd, void *buf, size_t count) {
   return rc;
 }
 
+int syscall_dup(int fd) {
+  return vfs_dup(fd);
+}
+
 int syscall_dup2(SYS_DUP2_PARAMS *args) {
   return vfs_dup2(args->org_fd, args->new_fd);
 }
@@ -700,6 +704,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_queue_wait,
     (void(*))syscall_sendfile,
     (void(*))syscall_shm_unlink,
+    (void(*))syscall_dup,
 };
 
 void int_syscall(reg_t *r);

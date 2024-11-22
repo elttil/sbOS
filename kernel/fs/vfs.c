@@ -395,6 +395,19 @@ vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
   return r;
 }
 
+int vfs_dup(int fd) {
+  vfs_fd_t *ptr = get_vfs_fd(fd, NULL);
+  if (!ptr) {
+    return -EBADF;
+  }
+  int index;
+  if (!relist_add(&current_task->file_descriptors, ptr, &index)) {
+    return -EMFILE;
+  }
+  ptr->reference_count++;
+  return index;
+}
+
 int vfs_dup2(int org_fd, int new_fd) {
   if (org_fd == new_fd) {
     return -EINVAL;
