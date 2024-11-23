@@ -72,6 +72,8 @@ int vfs_close_process(process_t *p, int fd);
 vfs_fd_t *get_vfs_fd(int fd, process_t *p);
 int vfs_open(const char *file, int flags, int mode);
 void vfs_mount(char *path, vfs_inode_t *local_root);
+int vfs_lseek(int fd, int offset, int whence);
+int vfs_write(int fd, const char *buf, u64 count);
 int vfs_pwrite(int fd, void *buf, u64 count, u64 offset);
 int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset);
 int raw_vfs_pread(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset);

@@ -382,6 +382,50 @@ int vfs_pwrite(int fd, void *buf, u64 count, u64 offset) {
   return rc;
 }
 
+// FIXME: These should be in a shared header file with libc
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
+int vfs_lseek(int fd, int offset, int whence) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+  if (!fd_ptr) {
+    return -EBADF;
+  }
+
+  off_t ret_offset = fd_ptr->offset;
+  switch (whence) {
+  case SEEK_SET:
+    ret_offset = offset;
+    break;
+  case SEEK_CUR:
+    ret_offset += offset;
+    break;
+  case SEEK_END:
+    assert(fd_ptr->inode);
+    ret_offset = fd_ptr->inode->file_size + offset;
+    break;
+  default:
+    return -EINVAL;
+    break;
+  }
+  fd_ptr->offset = ret_offset;
+  return ret_offset;
+}
+
+int vfs_write(int fd, const char *buf, u64 count) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+  if (!fd_ptr) {
+    return -EBADF;
+  }
+  if (fd_ptr->mode & O_APPEND) {
+    vfs_lseek(fd, 0, SEEK_END);
+  }
+  int rc = vfs_pwrite(fd, (char *)buf, count, fd_ptr->offset);
+  fd_ptr->offset += rc;
+  return rc;
+}
+
 vfs_vm_object_t *vfs_get_vm_object(int fd, u64 length, u64 offset) {
   vfs_fd_t *vfs_fd = get_vfs_fd(fd, NULL);
   if (!vfs_fd) {

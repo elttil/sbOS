@@ -185,35 +185,8 @@ int syscall_kill(int fd, int sig) {
   return process_signal(fd_ptr, sig);
 }
 
-// FIXME: These should be in a shared header file with libc
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
-
 int syscall_lseek(int fd, int offset, int whence) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
-  if (!fd_ptr) {
-    return -EBADF;
-  }
-
-  off_t ret_offset = fd_ptr->offset;
-  switch (whence) {
-  case SEEK_SET:
-    ret_offset = offset;
-    break;
-  case SEEK_CUR:
-    ret_offset += offset;
-    break;
-  case SEEK_END:
-    assert(fd_ptr->inode);
-    ret_offset = fd_ptr->inode->file_size + offset;
-    break;
-  default:
-    return -EINVAL;
-    break;
-  }
-  fd_ptr->offset = ret_offset;
-  return ret_offset;
+  return vfs_lseek(fd, offset, whence);
 }
 
 int syscall_mkdir(const char *path, int mode) {
@@ -384,13 +357,7 @@ u32 syscall_uptime(void) {
 }
 
 int syscall_write(int fd, const char *buf, size_t count) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
-  if (!fd_ptr) {
-    return -EBADF;
-  }
-  int rc = vfs_pwrite(fd, (char *)buf, count, fd_ptr->offset);
-  fd_ptr->offset += rc;
-  return rc;
+  return vfs_write(fd, buf, count);
 }
 
 int syscall_exec(SYS_EXEC_PARAMS *args) {
