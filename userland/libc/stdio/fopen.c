@@ -1,16 +1,10 @@
 #include <fcntl.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
+#include <unistd.h>
 
-// FIXME: All modes not implemented
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/fopen.html
 FILE *fopen(const char *pathname, const char *mode) {
-  uint8_t read = 0;
-  uint8_t write = 0;
-//  uint8_t append = 0;
-  // FIXME: Not parsed correctly
+  int flag = 0;
   for (; *mode; mode++) {
     // r or rb
     // Open file for reading.
@@ -21,41 +15,30 @@ FILE *fopen(const char *pathname, const char *mode) {
     // end-of-file.
     switch (*mode) {
     case 'r':
-      read = 1;
+      flag |= O_READ;
       break;
     case 'w':
-      write = 1;
+      flag |= O_WRITE;
       break;
     case 'a':
-//      append = 1;
+      flag |= O_APPEND;
       break;
     }
   }
-  int flag = 0;
-  if (read)
-    flag |= O_READ;
-  if (write)
-    flag |= O_WRITE;
 
   int fd = open(pathname, flag, 0);
-  if (-1 == fd)
+  if (-1 == fd) {
     return NULL;
+  }
 
-  struct stat s;
-  stat(pathname, &s);
-
-  FILE *r = calloc(1, sizeof(FILE));
-  r->read = read_fd;
-  r->write = write_fd;
-  r->seek = seek_fd;
-  r->has_error = 0;
-  r->is_eof = 0;
-  r->offset_in_file = 0;
-  r->file_size = s.st_size;
-  r->cookie = NULL;
-  r->fd = fd;
-  r->read_buffer = NULL;
-  r->read_buffer_stored = 0;
-  r->fflush = fflush_fd;
+  FILE *r = fdopen(fd, mode);
+  if (!r) {
+    close(fd);
+    return NULL;
+  }
+  if(flag & O_WRITE) {
+    ftruncate(fd, 0);
+  }
+  r->has_control_over_the_fd = 1;
   return r;
 }

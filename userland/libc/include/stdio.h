@@ -33,6 +33,12 @@ struct __IO_FILE {
   int buffered_char;
   int has_buffered_char;
   int fd;
+
+  int has_control_over_the_fd;
+  int can_write;
+  int can_read;
+  int append;
+
   uint8_t is_eof;
   uint8_t has_error;
   uint64_t file_size;
@@ -89,6 +95,7 @@ int getchar(void);
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 FILE *fopen(const char *pathname, const char *mode);
+FILE *fdopen(int fildes, const char *mode);
 int fclose(FILE *stream);
 int fseek(FILE *stream, long offset, int whence);
 int fprintf(FILE *f, const char *fmt, ...);
