@@ -287,7 +287,11 @@ int vfs_open(const char *file, int flags, int mode) {
   }
 
   // FIXME: Maybe it is sometimes a TTY?
-  return vfs_create_fd(flags, mode, 0 /*is_tty*/, inode, NULL);
+  int rc = vfs_create_fd(flags, mode, 0 /*is_tty*/, inode, NULL);
+  if (flags & O_TRUNC) {
+    vfs_ftruncate(rc, 0);
+  }
+  return rc;
 }
 
 int vfs_close_process(process_t *p, int fd) {

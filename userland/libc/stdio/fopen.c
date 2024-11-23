@@ -18,7 +18,7 @@ FILE *fopen(const char *pathname, const char *mode) {
       flag |= O_READ;
       break;
     case 'w':
-      flag |= O_WRITE;
+      flag |= O_WRITE | O_TRUNC;
       break;
     case 'a':
       flag |= O_APPEND;
@@ -35,9 +35,6 @@ FILE *fopen(const char *pathname, const char *mode) {
   if (!r) {
     close(fd);
     return NULL;
-  }
-  if(flag & O_WRITE) {
-    ftruncate(fd, 0);
   }
   r->has_control_over_the_fd = 1;
   return r;
