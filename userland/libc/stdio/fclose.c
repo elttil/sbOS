@@ -9,9 +9,7 @@ int fclose(FILE *stream) {
     if (stream->fflush) {
       stream->fflush(stream);
     }
-    if (stream->has_control_over_the_fd) {
-      close(stream->fd);
-    }
+    close(stream->fd);
     free(stream->cookie);
   }
   free(stream);
