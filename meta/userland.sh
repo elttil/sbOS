@@ -7,7 +7,6 @@ make -j`nproc` -C ./userland/libgui
 make -j`nproc` -C ./userland/libc
 mkdir -p ./sysroot/lib
 make install -C ./userland/libc
-make -j`nproc` -C ./userland/sh
 make -j`nproc` -C ./userland/terminal
 make -j`nproc` -C ./userland/snake
 make -j`nproc` -C ./userland/ante
@@ -21,11 +20,11 @@ make -j`nproc` -C ./userland/irc
 make -j`nproc` -C ./userland/nasm-2.16.01
 make -j`nproc` -C ./userland/dns
 make -j`nproc` -C ./userland/to
+make -j`nproc` -C ./userland/httpd
 
 mkdir sysroot
 sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
 sudo cp ./userland/libppm/ppm ./sysroot/ppm
-sudo cp ./userland/sh/sh ./sysroot/sh
 sudo cp ./userland/terminal/term ./sysroot/term
 sudo cp ./userland/snake/snake ./sysroot/snake
 sudo cp ./userland/ante/ante ./sysroot/ante
@@ -37,6 +36,7 @@ sudo cp ./userland/irc/irc ./sysroot/irc
 sudo cp ./userland/nasm-2.16.01/nasm ./sysroot/nasm
 sudo cp ./userland/dns/dns ./sysroot/dns
 sudo cp ./userland/to/to ./sysroot/to
+sudo cp ./userland/httpd/httpd ./sysroot/httpd
 
 cd ./sysroot
 rm ./init
@@ -52,4 +52,7 @@ ln -s ./minibox ./echo
 ln -s ./minibox ./wc
 ln -s ./minibox ./ls
 ln -s ./minibox ./kill
+ln -s ./minibox ./sha1sum
+ln -s ./minibox ./rdate
+ln -s ./minibox ./sh
 cd ..
