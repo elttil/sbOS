@@ -306,7 +306,6 @@ int main(void) {
   for (int i = 0; i < 250 * 150 * 4 * 4; i++) {
     global_w->bitmap_ptr[i] = TERM_BACKGROUND;
   }
-  //  memset(global_w->bitmap_ptr, 0x0, 50 * 50);
   GUI_UpdateWindow(global_w);
   newtty();
   run();

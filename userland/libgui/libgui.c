@@ -149,6 +149,7 @@ static const unsigned char font8x8_basic[128][8] = {
 // Very temporary
 char *random_string(void) {
   int fd = open("/dev/urandom", O_RDONLY, 0);
+  assert(-1 != fd);
   char *r = malloc(sizeof(char[10]));
   for (int i = 0; i < 10 - 1; i++) {
     char c;
@@ -310,7 +311,7 @@ void GUI_DrawRectangle(GUI_Window *w, uint32_t x, uint32_t y, uint32_t sx,
                        uint32_t sy, uint32_t color) {
   for (u32 l = y; l < y + sy; l++) {
     for (u32 s = x; s < x + sx; s++) {
-      if(l*w->sx + s > w->sx*w->sy) {
+      if (l * w->sx + s > w->sx * w->sy) {
         break;
       }
       w->bitmap_ptr[l * w->sx + s] = color;
@@ -329,7 +330,7 @@ GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
 
   // Connect to the windowserver
   int ws_fd = -1;
-  for (; - 1 == ws_fd;) {
+  for (; -1 == ws_fd;) {
     ws_fd = open("/dev/windowserver", O_RDWR | O_NONBLOCK, 0);
   }
   w->ws_socket = ws_fd;
@@ -342,7 +343,7 @@ GUI_Window *GUI_CreateWindow(uint32_t x, uint32_t y, uint32_t sx, uint32_t sy) {
   e.name_len = (uint8_t)strlen(str) + 1;
 
   // Create bitmap
-  w->bitmap_fd = shm_open(str, O_RDWR, 0);
+  w->bitmap_fd = shm_open(str, O_RDWR | O_CREAT, 0);
   if (!((int)w->bitmap_fd >= 0)) {
     printf("bitmap_fd: %x\n", w->bitmap_fd);
     assert(0);

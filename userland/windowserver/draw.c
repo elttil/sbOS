@@ -5,7 +5,7 @@
 void draw_wallpaper(const DISPLAY *disp) {
   uint32_t *dst = disp->back_buffer;
   uint32_t *src = disp->wallpaper_buffer;
-  const uint32_t n = disp->size / disp->bpp;
+  const uint32_t n = disp->width * disp->height;
   for (int i = 0; i < n; i++) {
     *dst = *src;
     dst++;
@@ -18,7 +18,7 @@ void draw_outline(DISPLAY *disp, int x, int y, int sx, int sy, int border_px,
   // Top
   draw_rectangle(disp, x, y, sx + border_px, border_px, color);
   // Bottom
-  draw_rectangle(disp, x, y + sy+border_px, sx + border_px, border_px, color);
+  draw_rectangle(disp, x, y + sy + border_px, sx + border_px, border_px, color);
   // Left
   draw_rectangle(disp, x, y, border_px, sy + border_px * 2, color);
   // Right

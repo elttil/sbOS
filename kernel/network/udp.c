@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <network/bytes.h>
+#include <network/ethernet.h>
 #include <network/ipv4.h>
 #include <network/udp.h>
 #include <socket.h>

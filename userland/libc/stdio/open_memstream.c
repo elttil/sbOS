@@ -86,6 +86,9 @@ FILE *open_memstream(char **bufp, size_t *sizep) {
   fp->file_size = MEMSTREAM_DEF_SIZE;
   fp->fflush = NULL;
 
+  fp->can_write = 1;
+  fp->can_read = 1;
+
   fp->write = memstream_write;
   fp->read = memstream_read;
 

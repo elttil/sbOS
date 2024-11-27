@@ -63,10 +63,13 @@ int init_main(void) {
     printf("minibox init must be launched as pid1.\n");
     return 1;
   }
-  if (fork())
-    for (;;)
+  if (fork()) {
+    for (;;) {
       wait(NULL);
+      msleep(10000);
+    }
+  }
   char *a[] = {NULL};
-  execv("/ws", a);
+  execv("/init.sh", a);
   return 1;
 }

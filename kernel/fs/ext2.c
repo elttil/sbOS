@@ -31,7 +31,7 @@ void get_inode_data_size(int inode_num, u64 *file_size) {
   read_inode(inode_num, NULL, 0, 0, file_size);
 }
 
-struct BLOCK_CACHE {
+struct block_cache {
   int is_used;
   u32 last_use;
   u32 block_num;
@@ -39,15 +39,15 @@ struct BLOCK_CACHE {
   u8 has_write;
 };
 
-#define NUM_BLOCK_CACHE 100
-struct BLOCK_CACHE cache[NUM_BLOCK_CACHE];
+size_t num_block_cache = 4;
+struct block_cache *cache;
 
 u32 cold_cache_hits = 0;
 
 void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   assert(offset + size <= block_byte_size);
   int free_found = -1;
-  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+  for (size_t i = 0; i < num_block_cache; i++) {
     if (!cache[i].is_used) {
       free_found = i;
       continue;
@@ -62,7 +62,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
   if (-1 == free_found) {
     u32 min_last_used = U32_MAX;
     int min_index = 0;
-    for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+    for (size_t i = 0; i < num_block_cache; i++) {
       if (cache[i].last_use < min_last_used) {
         min_last_used = cache[i].last_use;
         min_index = i;
@@ -71,7 +71,7 @@ void cached_read_block(u32 block, void *address, size_t size, size_t offset) {
     free_found = min_index;
   }
 
-  struct BLOCK_CACHE *c = &cache[free_found];
+  struct block_cache *c = &cache[free_found];
   if (c->is_used && c->has_write) {
     raw_vfs_pwrite(mount_fd, c->block, block_byte_size,
                    c->block_num * block_byte_size);
@@ -89,7 +89,7 @@ void ext2_read_block(u32 block, void *address, size_t size, size_t offset) {
 }
 
 void ext2_flush_writes(void) {
-  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+  for (size_t i = 0; i < num_block_cache; i++) {
     if (!cache[i].is_used) {
       continue;
     }
@@ -105,7 +105,7 @@ void ext2_flush_writes(void) {
 void ext2_write_block(u32 block, u8 *address, size_t size, size_t offset) {
   assert(offset + size <= block_byte_size);
   int cache_index = -1;
-  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+  for (size_t i = 0; i < num_block_cache; i++) {
     if (!cache[i].is_used) {
       continue;
     }
@@ -949,7 +949,7 @@ vfs_inode_t *ext2_mount(void) {
   relist_remove(&current_task->file_descriptors, fd);
   parse_superblock();
 
-  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+  for (size_t i = 0; i < num_block_cache; i++) {
     cache[i].block = kmalloc(block_byte_size);
     if (!cache[i].block) {
       goto ext2_mount_error;
@@ -967,7 +967,7 @@ vfs_inode_t *ext2_mount(void) {
   return inode;
 ext2_mount_error:
   vfs_close(fd);
-  for (int i = 0; i < NUM_BLOCK_CACHE; i++) {
+  for (size_t i = 0; i < num_block_cache; i++) {
     kfree(cache[i].block);
   }
   return NULL;
@@ -991,4 +991,6 @@ void parse_superblock(void) {
   }
 
   inodes_per_block = block_byte_size / inode_size;
+
+  cache = kcalloc(num_block_cache, sizeof(struct block_cache));
 }

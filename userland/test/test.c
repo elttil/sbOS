@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tb/sha1.h>
+#include <time.h>
 
 #if 1
 void dbgln(const char *fmt) {
@@ -380,7 +381,7 @@ void strtol_test(void) {
   dbgln("strtol TEST");
   {
     {
-      char *s = "1234";
+      char *s = "1234abc";
       char *e;
       long r;
       assert(1234 == strtol(s, &e, 10));
@@ -749,7 +750,7 @@ void dirname_test(void) {
 
 void getline_test(void) {
   dbgln("getline TEST");
-  {
+  do {
     char *buffer;
     size_t size;
     FILE *fp = open_memstream(&buffer, &size);
@@ -776,7 +777,7 @@ void getline_test(void) {
       assert(0 == strcmp("bar", line_buffer));
     }
     free(buffer);
-  }
+  } while (0);
   dbgln("getline TEST PASSED");
 }
 
@@ -873,7 +874,7 @@ void fs_test() {
   dbgln("filesystem TEST PASSED");
 }
 
-int main(void) {
+int main(int argc, char **argv) {
   dbgln("START");
   malloc_test();
   // json_test();

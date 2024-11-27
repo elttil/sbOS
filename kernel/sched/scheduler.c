@@ -660,6 +660,7 @@ int munmap(void *addr, size_t length) {
       continue;
     }
     if (addr == m->u_address) {
+      assert(m->underlying_object);
       assert(m->underlying_object->num_of_references > 0);
       m->underlying_object->num_of_references--;
       mmu_remove_virtual_physical_address_mapping(m->u_address, m->length);

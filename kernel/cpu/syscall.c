@@ -146,8 +146,7 @@ int syscall_clock_gettime(clockid_t clock_id, struct timespec *tp) {
 
 int syscall_fstat(int fd, struct stat *buf) {
   if (!mmu_is_valid_userpointer(buf, sizeof(struct stat))) {
-    return -EPERM; // TODO: Is this correct? The spec says nothing about
-                   // this case.
+    return -EFAULT;
   }
   return vfs_fstat(fd, buf);
 }
@@ -210,15 +209,18 @@ int syscall_munmap(void *addr, size_t length) {
 }
 
 int syscall_open(const char *file, int flags, mode_t mode) {
-  const char *_file = copy_and_allocate_user_string(file);
-  if (!_file) {
+  size_t len;
+  if (!mmu_is_valid_user_c_string(file, &len)) {
     return -EFAULT;
   }
+  if (len > 256 - 1) {
+    return -ENAMETOOLONG;
+  }
+  char _file[256];
+  strlcpy(_file, file, 256);
   int _flags = flags;
   int _mode = mode;
-  int rc = vfs_open(_file, _flags, _mode);
-  kfree((void *)_file);
-  return rc;
+  return vfs_open(_file, _flags, _mode);
 }
 
 int syscall_open_process(int pid) {

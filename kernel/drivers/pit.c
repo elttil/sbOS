@@ -47,6 +47,7 @@ u64 last_tsc = 0;
 
 extern u64 timer_current_uptime;
 extern int is_switching_tasks;
+void handle_packet();
 void int_clock(reg_t *regs) {
   kmalloc_scan();
   u64 current_tsc = tsc_get();

@@ -123,11 +123,7 @@ void kmalloc_scan(void) {
 }
 
 static MallocHeader *next_close_header(MallocHeader *a) {
-  if (!a) {
-    kprintf("next close header fail\n");
-    for (;;)
-      ;
-  }
+  assert(a);
   if (a->flags & IS_FINAL) {
     return NULL;
   }

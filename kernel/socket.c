@@ -297,6 +297,9 @@ int tcp_has_data(vfs_inode_t *inode) {
   if (TCP_STATE_ESTABLISHED != con->state) {
     inode->is_open = 0;
   }
+  if (TCP_STATE_ESTABLISHED != con->state) {
+    return 1;
+  }
   return !(ringbuffer_isempty(&con->incoming_buffer));
 }
 
@@ -308,6 +311,9 @@ int tcp_can_write(vfs_inode_t *inode) {
   }
   if (con->no_delay) {
     return (0 != tcp_can_send(con));
+  }
+  if (TCP_STATE_ESTABLISHED != con->state) {
+    return 1;
   }
   return (ringbuffer_unused(&con->outgoing_buffer) > 0) ||
          (0 != tcp_can_send(con));

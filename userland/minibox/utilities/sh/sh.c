@@ -162,7 +162,7 @@ int sh_main(int argc, char **argv) {
     int fd = open(argv[1], O_RDONLY, 0);
     char buffer[8192];
     struct sb file;
-    sb_init(&file, 256);
+    sb_init(&file);
 
     for (;;) {
       int rc = read(fd, buffer, 8192);
@@ -186,7 +186,7 @@ int sh_main(int argc, char **argv) {
     char buffer[256];
     printf("%s : ", getcwd(buffer, 256));
     struct sb line;
-    sb_init(&line, 256);
+    sb_init(&line);
     get_line(&line);
     {
       struct TOKEN *h = lex(SB_TO_SV(line));

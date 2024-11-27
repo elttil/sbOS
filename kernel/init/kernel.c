@@ -5,6 +5,7 @@
 #include <cpu/spinlock.h>
 #include <cpu/syscall.h>
 #include <crypto/SHA1/sha1.h>
+#include <drivers/ac97.h>
 #include <drivers/ahci.h>
 #include <drivers/ata.h>
 #include <drivers/keyboard.h>
@@ -124,6 +125,11 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   enable_interrupts();
 
   add_vbe_device();
+
+  //  ac97_init();
+  //  for (;;)
+  //    ;
+
   int pid;
   if (0 == (pid = fork())) {
     char *argv[] = {"/init", NULL};

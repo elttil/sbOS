@@ -10,6 +10,7 @@
 typedef struct {
   int fd;
   int bitmap_fd;
+  char bitmap_name[256];
   uint32_t *bitmap_ptr;
   int x;
   int y;

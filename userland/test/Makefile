@@ -1,5 +1,5 @@
 CC="i686-sb-gcc"
-CFLAGS = -O2 -Wall -Wextra -pedantic -Wimplicit-fallthrough -static
+CFLAGS = -g -Wall -Wextra -pedantic -Wimplicit-fallthrough -static
 BINS=test
 all: $(BINS)
 

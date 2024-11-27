@@ -93,9 +93,14 @@ int next_ui_id(void) {
   return r;
 }
 
+struct DISPLAY_INFO {
+  uint32_t width;
+  uint32_t height;
+  uint8_t bpp;
+};
+
 void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   disp->wallpaper_color = 0x3;
-  disp->size = size;
   disp->vga_fd = open(path, O_RDWR, 0);
   if (-1 == disp->vga_fd) {
     perror("open");
@@ -107,23 +112,34 @@ void setup_display(DISPLAY *disp, const char *path, uint64_t size) {
   disp->back_buffer = malloc(size + 0x1000);
   disp->window = window;
 
+  struct DISPLAY_INFO inf;
+  int fd = open("/dev/display_info", O_READ, 0);
+  assert(fd >= 0);
+  assert(sizeof(inf) == read(fd, &inf, sizeof(inf)));
+
   disp->wallpaper_fd = shm_open("wallpaper", O_RDWR, 0);
   assert(disp->wallpaper_fd >= 0);
-  ftruncate(disp->wallpaper_fd, size);
-  void *rc = mmap(NULL, size, 0, 0, disp->wallpaper_fd, 0);
-  assert(rc != (void *)(-1));
-  disp->wallpaper_buffer = rc;
-  for (int i = 0; i < disp->size / disp->bpp; i++) {
-    uint32_t *p = disp->wallpaper_buffer + i * sizeof(uint32_t);
-    *p = 0x9b9b9b;
-  }
-}
 
-struct DISPLAY_INFO {
-  uint32_t width;
-  uint32_t height;
-  uint8_t bpp;
-};
+  // ftruncate(disp->wallpaper_fd, inf.width * inf.height * sizeof(uint32_t));
+
+  //  ftruncate(disp->wallpaper_fd, size);
+  //  void *rc = mmap(NULL, size, 0, 0, disp->wallpaper_fd, 0);
+
+  disp->width = inf.width;
+  disp->height = inf.height;
+
+  disp->size = inf.width * inf.height * sizeof(uint32_t);
+  void *rc = mmap(NULL, inf.width * inf.height * sizeof(uint32_t), 0, 0,
+                  disp->wallpaper_fd, 0);
+  assert(rc != (void *)(-1));
+
+  disp->wallpaper_buffer = rc;
+  //  uint32_t *p = rc;
+  //  for (int i = 0; i < disp->width * disp->height; i++) {
+  //    *p = 0x9b9b9b;
+  //    p++;
+  //  }
+}
 
 void setup(void) {
   struct DISPLAY_INFO disp_info;
@@ -243,6 +259,7 @@ void parse_window_event(WINDOW *w) {
     read(w->fd, bitmap_name, e.name_len);
     bitmap_name[e.name_len] = '\0';
     int bitmap_fd = shm_open(bitmap_name, O_RDWR, O_CREAT);
+    strlcpy(w->bitmap_name, bitmap_name, 256);
     create_window(w, bitmap_fd, e.px, e.py, e.sx, e.sy);
     draw();
     return;
@@ -458,6 +475,13 @@ WINDOW *get_window(int fd) {
 }
 
 void kill_window(WINDOW *w) {
+  if (w == main_display.active_window) {
+    if (w->prev) {
+      main_display.active_window = w->prev;
+    } else {
+      main_display.active_window = w->next;
+    }
+  }
   WINDOW *prev = w->prev;
   if (prev) {
     assert(prev->next == w);
@@ -467,18 +491,19 @@ void kill_window(WINDOW *w) {
       next_window->prev = prev;
     }
   } else {
-    assert(w = main_display.window);
+    assert(w == main_display.window);
     main_display.window = w->next;
     if (main_display.window) {
       main_display.window->prev = NULL;
     }
-    main_display.active_window = NULL;
   }
 
   if (w == main_display.window_tail) {
     assert(NULL == w->next);
     main_display.window_tail = prev;
   }
+  munmap(w->bitmap_ptr, w->buffer_sx * w->buffer_sy);
+  shm_unlink(w->bitmap_name);
   free(w);
 }
 
@@ -686,18 +711,8 @@ void draw(void) {
 }
 
 int main(void) {
-  int serial_fd = open("/dev/serial", O_WRITE, 0);
-  dup2(serial_fd, 1);
-  serial_fd = 1;
   // Start a terminal by default. This is just to make it easier for me
   // to test the system.
-  int pid = fork();
-  if (0 == pid) {
-    close(serial_fd);
-    char *argv[] = {"/term", NULL};
-    execv("/term", argv);
-    assert(0);
-  }
   setup();
   run();
   return 0;
