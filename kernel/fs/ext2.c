@@ -623,16 +623,17 @@ int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size) {
 
   int bytes_read = 0;
   for (int i = block_start; size; i++) {
-    u32 block = get_block(inode, i);
-    if (0 == block) {
-      klog(LOG_WARN, "Filesystem EXT2: Unable to find block");
-      return -1;
-    }
-
     int read_len = ((size + block_offset) > block_byte_size)
                        ? (block_byte_size - block_offset)
                        : size;
-    ext2_read_block(block, data + bytes_read, read_len, block_offset);
+
+    u32 block = get_block(inode, i);
+    if (0 == block) {
+      memset(data + bytes_read, 0, read_len);
+    } else {
+      ext2_read_block(block, data + bytes_read, read_len, block_offset);
+    }
+
     block_offset = 0;
     bytes_read += read_len;
     size -= read_len;
