@@ -384,7 +384,7 @@ int udp_recvfrom(vfs_fd_t *fd, void *buffer, size_t len, int flags,
 
   if (addrlen) {
     if (src_addr) {
-      memcpy(src_addr, &from, min(sizeof(from), *addrlen));
+      memcpy(src_addr, &from, min(sizeof(from), (long unsigned int)*addrlen));
     }
     *addrlen = sizeof(from);
   }

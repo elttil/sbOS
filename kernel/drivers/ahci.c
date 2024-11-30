@@ -430,7 +430,7 @@ int ahci_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     ahci_raw_read(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
 
     int left = 512 - offset;
-    int write = min(left, len);
+    int write = min((u64)left, len);
 
     memcpy(tmp_buffer + offset, buffer, write);
     ahci_raw_write(&hba->ports[port], lba, 0, 1, (u16 *)tmp_buffer);
