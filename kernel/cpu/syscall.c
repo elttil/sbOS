@@ -399,13 +399,7 @@ int syscall_pread(SYS_PREAD_PARAMS *args) {
 }
 
 int syscall_read(int fd, void *buf, size_t count) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
-  if (!fd_ptr) {
-    return -EBADF;
-  }
-  int rc = vfs_pread(fd, buf, count, fd_ptr->offset);
-  fd_ptr->offset += rc;
-  return rc;
+  return vfs_read(fd, buf, count);
 }
 
 int syscall_dup(int fd) {

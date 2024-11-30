@@ -352,6 +352,16 @@ int vfs_pread(int fd, void *buf, u64 count, u64 offset) {
   return rc;
 }
 
+int vfs_read(int fd, void *buf, u64 count) {
+  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
+  if (!fd_ptr) {
+    return -EBADF;
+  }
+  int rc = vfs_pread(fd, buf, count, fd_ptr->offset);
+  fd_ptr->offset += rc;
+  return rc;
+}
+
 int raw_vfs_pwrite(vfs_fd_t *vfs_fd, void *buf, u64 count, u64 offset) {
   assert(vfs_fd);
   assert(vfs_fd->inode);
