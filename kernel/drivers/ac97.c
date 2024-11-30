@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <fs/vfs.h>
 #include <kmalloc.h>
+#include <math.h>
 #include <random.h>
 
 struct PCI_DEVICE ac97;
@@ -19,6 +20,7 @@ u16 *pointer;
 
 struct audio_buffer {
   volatile u8 *data;
+  size_t data_written;
   uintptr_t physical;
   int has_played;
 };
@@ -27,13 +29,15 @@ struct audio_buffer buffers[32];
 
 void add_buffer(void) {
   u16 *pointer = buffer_descriptor_list;
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 32; i++) {
     void *physical_audio_data;
     u8 *audio_data = kmalloc_align(128000, &physical_audio_data);
+    assert(audio_data);
 
     buffers[i].data = audio_data;
     buffers[i].physical = physical_audio_data;
     buffers[i].has_played = 1;
+    buffers[i].data_written = 0;
 
     *((u32 *)pointer) = physical_audio_data;
     pointer += 2;
@@ -64,10 +68,6 @@ void add_to_list(u8 *buffer, size_t size) {
 int entry = 0;
 
 void start(void) {
-  //  // Write number of last valid buffer entry to Last Valid Entry
-  //  // register (NABM register 0x15)
-  //  outb(nabm.address + 0x10 + 0x5, 1);
-
   // Set bit for transfering data (NABM register 0x1B, value 0x1)
   u8 s = inb(nabm.address + 0x10 + 0xB);
   if (s & (1 << 0)) {
@@ -77,34 +77,77 @@ void start(void) {
   outb(nabm.address + 0x10 + 0xB, s);
 }
 
-void play_pcm(u8 *buffer, size_t size) {
-  if (entry >= 3) {
-    outb(nabm.address + 0x10 + 0x5, entry - 1);
-    return;
-  }
+int ac97_can_write(void) {
+  u8 process_num = inb(nabm.address + 0x10 + 0x4);
   if (!buffers[entry].has_played) {
-    for (;;) {
-      u8 process_num = inb(nabm.address + 0x10 + 0x4);
-      kprintf("process_num: %d\n", process_num);
-      if (process_num > entry) {
-        buffers[entry].has_played = 1;
-        break;
-      }
+    if (31 == process_num) {
+      outb(nabm.address + 0x10 + 0x5, entry);
+      buffers[31].has_played = 1;
+    }
+    for (int i = 0; i < process_num; i++) {
+      buffers[i].has_played = 1;
     }
   }
-  memcpy((u8 *)buffers[entry].data, buffer, size);
-  outb(nabm.address + 0x10 + 0x5, entry);
+  u8 delta = abs((int)process_num - (int)entry);
+  if (delta > 3) {
+    return 0;
+  }
+  return buffers[entry].has_played;
+}
+
+static int write_buffer(u8 *buffer, size_t size) {
+  u8 process_num = inb(nabm.address + 0x10 + 0x4);
+  if (!buffers[entry].has_played && 128000 == buffers[entry].data_written) {
+    if (31 == process_num) {
+      outb(nabm.address + 0x10 + 0x5, entry);
+      buffers[31].has_played = 1;
+    }
+    for (int i = 0; i < process_num; i++) {
+      buffers[i].has_played = 1;
+    }
+    if (!buffers[entry].has_played) {
+      return 0;
+    }
+  }
+
+  u8 delta = abs((int)process_num - (int)entry);
+  if (delta > 3) {
+    return 0;
+  }
+
+  size_t offset = buffers[entry].data_written;
+  memset((u8 *)buffers[entry].data + offset, 0, 128000 - offset);
+  size_t wl = min(size, 128000 - offset);
+  memcpy((u8 *)buffers[entry].data + offset, buffer, wl);
+  buffers[entry].data_written += wl;
   buffers[entry].has_played = 0;
 
-  entry++;
+  if (128000 == buffers[entry].data_written) {
+    u8 current_valid = inb(nabm.address + 0x10 + 0x5);
+    if (current_valid <= entry) {
+      outb(nabm.address + 0x10 + 0x5, entry);
+    }
+    entry++;
+    if (entry > 31) {
+      entry = 0;
+    }
+  }
 
-  /*
-  u8 process_num = inb(nabm.address + 0x10 + 0x4);
-  kprintf("process_num: %d\n", process_num);
+  start();
+  return 1;
+}
 
-  if (0 == process_num)
-    return;
-    */
+int ac97_add_pcm(u8 *buffer, size_t len) {
+  size_t rc = 0;
+  for (; len > 0;) {
+    size_t wl = min(len, 128000);
+    if (!write_buffer(buffer + rc, wl)) {
+      break;
+    }
+    rc += wl;
+    len -= wl;
+  }
+  return rc;
 }
 
 void ac97_init(void) {
@@ -112,6 +155,7 @@ void ac97_init(void) {
     assert(0);
     return;
   }
+
   pointer = buffer_descriptor_list =
       kmalloc_align(0x1000, &physical_buffer_descriptor_list);
 
@@ -151,24 +195,10 @@ void ac97_init(void) {
   card support headhone output.
   */
 
-  // 0x30 	Global Status Register 	dword
-  u32 status = inl(nabm.address + 0x30);
-
-  u8 channel_capabilities = (status >> 20) & 0x3;
-  u8 sample_capabilities = (status >> 22) & 0x3;
-  kprintf("channel: %d\n", channel_capabilities);
-  kprintf("sample: %d\n", sample_capabilities);
-
-  //  outw(nam.address + 0x2C, 16000 / 2);
-  outw(nam.address + 0x2C, 48000 / 2);
-  u16 sample_rate = inw(nam.address + 0x2C);
-  kprintf("sample_rate: %d\n", sample_rate);
-  sample_rate = inw(nam.address + 0x2E);
-  kprintf("sample_rate: %d\n", sample_rate);
-  sample_rate = inw(nam.address + 0x30);
-  kprintf("sample_rate: %d\n", sample_rate);
-  sample_rate = inw(nam.address + 0x32);
-  kprintf("sample_rate: %d\n", sample_rate);
+  outw(nam.address + 0x2C, 32000);
+  outw(nam.address + 0x2E, 32000);
+  outw(nam.address + 0x30, 32000);
+  outw(nam.address + 0x32, 32000);
 
   /*
   As last thing, set maximal volume for
@@ -189,45 +219,18 @@ void ac97_init(void) {
   outw(nam.address + 0x02, 0);
   outw(nam.address + 0x04, 0);
 
-  // SETUP?
-
   // Set reset bit of output channel (NABM register 0x1B, value 0x2) and
   // wait for card to clear it
   u8 s = inb(nabm.address + 0x10 + 0xB);
   s |= (1 << 1);
   outb(nabm.address + 0x10 + 0xB, s);
 
-  kprintf("wait for clear\n");
   for (; inb(nabm.address + 0x10 + 0xB) & (1 << 1);)
     ;
-  kprintf("cleared\n");
 
   add_buffer();
 
   // Write physical position of BDL to Buffer Descriptor Base Address
   // register (NABM register 0x10)
   outl(nabm.address + 0x10 + 0x0, physical_buffer_descriptor_list);
-
-  // END SETUP?
-
-  int fd = vfs_open("/hq.pcm", O_RDONLY, 0);
-  assert(0 >= fd);
-  size_t offset = 0;
-  size_t capacity = 128000;
-  char *data = kmalloc(capacity);
-  for (;;) {
-    int rc = vfs_pread(fd, data, capacity, offset);
-    if (0 == rc) {
-      break;
-    }
-    if (rc < 0) {
-      kprintf("rc: %d\n", rc);
-      assert(0);
-    }
-    play_pcm(data, rc);
-    start();
-    offset += rc;
-  }
-  for (;;)
-    ;
 }

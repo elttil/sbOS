@@ -1,11 +1,11 @@
 #include <assert.h>
+#include <audio.h>
 #include <cpu/arch_inst.h>
 #include <cpu/gdt.h>
 #include <cpu/idt.h>
 #include <cpu/spinlock.h>
 #include <cpu/syscall.h>
 #include <crypto/SHA1/sha1.h>
-#include <drivers/ac97.h>
 #include <drivers/ahci.h>
 #include <drivers/ata.h>
 #include <drivers/keyboard.h>
@@ -124,11 +124,9 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
   gen_ipv4(&ip_address, 10, 0, 2, 15);
   enable_interrupts();
 
-  add_vbe_device();
+  audio_init();
 
-  //  ac97_init();
-  //  for (;;)
-  //    ;
+  add_vbe_device();
 
   int pid;
   if (0 == (pid = fork())) {
