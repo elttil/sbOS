@@ -43,7 +43,7 @@ void add_buffer(void) {
     pointer += 2;
     *pointer = 128000 / 2;
     pointer++;
-    *pointer = (1 << 14);
+    *pointer = 0;
     pointer++;
   }
 }
@@ -78,76 +78,62 @@ void start(void) {
 }
 
 int ac97_can_write(void) {
-  u8 process_num = inb(nabm.address + 0x10 + 0x4);
-  if (!buffers[entry].has_played) {
-    if (31 == process_num) {
-      outb(nabm.address + 0x10 + 0x5, entry);
-      buffers[31].has_played = 1;
+  u8 read_ptr = inb(nabm.address + 0x10 + 0x4);
+
+  u8 buffer_left;
+  if (entry >= read_ptr) {
+    buffer_left = 32 - entry;
+    if (0 == read_ptr && buffer_left > 0) {
+      buffer_left--;
     }
-    for (int i = 0; i < process_num; i++) {
-      buffers[i].has_played = 1;
-    }
+  } else {
+    buffer_left = read_ptr - entry - 1;
   }
-  u8 delta = abs((int)process_num - (int)entry);
-  if (delta > 3) {
-    return 0;
-  }
-  return buffers[entry].has_played;
+
+  return (buffer_left > 0);
 }
 
 static int write_buffer(u8 *buffer, size_t size) {
-  u8 process_num = inb(nabm.address + 0x10 + 0x4);
-  if (!buffers[entry].has_played && 128000 == buffers[entry].data_written) {
-    if (31 == process_num) {
-      outb(nabm.address + 0x10 + 0x5, entry);
-      buffers[31].has_played = 1;
+  assert(size <= 128000);
+  u8 read_ptr = inb(nabm.address + 0x10 + 0x4);
+
+  u8 buffer_left;
+  if (entry >= read_ptr) {
+    buffer_left = 32 - entry;
+    if (0 == read_ptr && buffer_left > 0) {
+      buffer_left--;
     }
-    for (int i = 0; i < process_num; i++) {
-      buffers[i].has_played = 1;
-    }
-    if (!buffers[entry].has_played) {
-      return 0;
-    }
+  } else {
+    buffer_left = read_ptr - entry - 1;
   }
 
-  u8 delta = abs((int)process_num - (int)entry);
-  if (delta > 3) {
+  if (0 == buffer_left) {
     return 0;
   }
 
-  size_t offset = buffers[entry].data_written;
-  memset((u8 *)buffers[entry].data + offset, 0, 128000 - offset);
-  size_t wl = min(size, 128000 - offset);
-  memcpy((u8 *)buffers[entry].data + offset, buffer, wl);
-  buffers[entry].data_written += wl;
-  buffers[entry].has_played = 0;
+  memset((u8 *)buffers[entry].data, 0, 128000);
+  memcpy((u8 *)buffers[entry].data, buffer, size);
 
-  if (128000 == buffers[entry].data_written) {
-    u8 current_valid = inb(nabm.address + 0x10 + 0x5);
-    if (current_valid <= entry) {
-      outb(nabm.address + 0x10 + 0x5, entry);
-    }
-    entry++;
-    if (entry > 31) {
-      entry = 0;
-    }
-  }
-
+  outb(nabm.address + 0x10 + 0x5, entry);
+  entry = (entry + 1) % 32;
   start();
   return 1;
 }
 
+char tmp_buffer[128000];
+size_t tmp_buffer_count = 0;
 int ac97_add_pcm(u8 *buffer, size_t len) {
-  size_t rc = 0;
-  for (; len > 0;) {
-    size_t wl = min(len, 128000);
-    if (!write_buffer(buffer + rc, wl)) {
-      break;
-    }
-    rc += wl;
-    len -= wl;
+  size_t wl = min(len, 128000 - tmp_buffer_count);
+  memcpy(tmp_buffer + tmp_buffer_count, buffer, wl);
+  tmp_buffer_count += wl;
+  if (tmp_buffer_count < 128000) {
+    return wl;
   }
-  return rc;
+  if (!write_buffer(tmp_buffer, 128000)) {
+    return wl;
+  }
+  tmp_buffer_count = 0;
+  return wl;
 }
 
 void ac97_init(void) {
