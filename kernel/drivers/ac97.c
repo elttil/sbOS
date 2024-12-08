@@ -136,6 +136,28 @@ int ac97_add_pcm(u8 *buffer, size_t len) {
   return wl;
 }
 
+int ac97_current_volume = 100;
+int ac97_get_volume(void) {
+  return ac97_current_volume;
+}
+
+void ac97_set_volume(int volume) {
+  assert(volume <= 100);
+  ac97_current_volume = volume;
+  int s;
+  if (0 == volume) {
+    s = 31;
+  } else {
+    s = (31 * volume) / 100;
+  }
+
+  u8 right_channel = 31 - s;
+  u8 left_channel = 31 - s;
+
+  // Set PCM Output Volume
+  outw(nam.address + 0x18, right_channel | (left_channel << 8));
+}
+
 void ac97_init(void) {
   if (!pci_populate_device_struct(0x8086, 0x2415, &ac97)) {
     assert(0);
@@ -181,19 +203,17 @@ void ac97_init(void) {
   card support headhone output.
   */
 
-  outw(nam.address + 0x2C, 32000);
-  outw(nam.address + 0x2E, 32000);
-  outw(nam.address + 0x30, 32000);
-  outw(nam.address + 0x32, 32000);
+  outw(nam.address + 0x2C, 48000);
+  outw(nam.address + 0x2E, 48000);
+  outw(nam.address + 0x30, 48000);
+  outw(nam.address + 0x32, 48000);
 
   /*
   As last thing, set maximal volume for
   PCM Output by writing value 0 to this register. Now sound card is
   ready to use.
   */
-
-  // Set PCM Output Volume
-  outw(nam.address + 0x18, 0);
+  ac97_set_volume(100);
 
   // Playing sound
   /*
