@@ -86,7 +86,7 @@ vfs_inode_t *vfs_internal_open(const char *file);
 int vfs_mkdir(const char *path, int mode);
 int vfs_create_fd(int flags, int mode, int is_tty, vfs_inode_t *inode,
                   vfs_fd_t **fd);
-int vfs_ftruncate(int fd, size_t length);
+int vfs_ftruncate(int fd, size_t length, int force_truncate);
 int vfs_chdir(const char *path);
 int vfs_fstat(int fd, struct stat *buf);
 vfs_inode_t *vfs_create_inode(

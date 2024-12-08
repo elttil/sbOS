@@ -289,7 +289,7 @@ int vfs_open(const char *file, int flags, int mode) {
   // FIXME: Maybe it is sometimes a TTY?
   int rc = vfs_create_fd(flags, mode, 0 /*is_tty*/, inode, NULL);
   if (flags & O_TRUNC) {
-    vfs_ftruncate(rc, 0);
+    vfs_ftruncate(rc, 0, 1);
   }
   return rc;
 }
@@ -488,12 +488,12 @@ int vfs_dup2(int org_fd, int new_fd) {
   return 1;
 }
 
-int vfs_ftruncate(int fd, size_t length) {
+int vfs_ftruncate(int fd, size_t length, int force_truncate) {
   vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;
   }
-  if (!(fd_ptr->flags & O_READ)) {
+  if (!(fd_ptr->flags & O_WRITE) && !force_truncate) {
     return -EINVAL;
   }
   vfs_inode_t *inode = fd_ptr->inode;

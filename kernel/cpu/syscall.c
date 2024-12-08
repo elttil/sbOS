@@ -152,7 +152,7 @@ int syscall_fstat(int fd, struct stat *buf) {
 }
 
 int syscall_ftruncate(int fd, size_t length) {
-  return vfs_ftruncate(fd, length);
+  return vfs_ftruncate(fd, length, 0);
 }
 
 char *syscall_getcwd(char *buf, size_t size) {
