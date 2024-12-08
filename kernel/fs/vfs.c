@@ -432,7 +432,7 @@ int vfs_write(int fd, const char *buf, u64 count) {
   if (!fd_ptr) {
     return -EBADF;
   }
-  if (fd_ptr->mode & O_APPEND) {
+  if (fd_ptr->flags & O_APPEND) {
     vfs_lseek(fd, 0, SEEK_END);
   }
   int rc = vfs_pwrite(fd, (char *)buf, count, fd_ptr->offset);
