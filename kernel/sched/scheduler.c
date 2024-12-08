@@ -374,7 +374,7 @@ int exec(const char *filename, char **argv, int dealloc_argv,
     if (!exec_shebang(filename, argv, dealloc_argv, dealloc_filename)) {
       return 0;
     }
-    ASSERT_NOT_REACHED;
+    return -ENOEXEC;
   }
 
   strlcpy(current_task->program_name, filename,
