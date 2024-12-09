@@ -1,5 +1,6 @@
 #include "ast.h"
 #include "lexer.h"
+#include <assert.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -105,6 +106,22 @@ int execute_command(struct AST *ast, int input_fd) {
       perror("cd");
       return 1;
     }
+    return 0;
+  } else if (sv_eq(program, C_TO_SV("exit"))) {
+    uint64_t rc = 0;
+    struct AST *child = ast->children;
+    if (child) {
+      struct sv rest;
+      rc = sv_parse_unsigned_number(child->val.string, &rest);
+      if (rc > 255) {
+        rc = 2;
+      }
+      if (!sv_isempty(rest)) {
+        rc = 2;
+      }
+    }
+    exit(rc);
+    assert(0);
     return 0;
   }
   return execute_binary(ast, input_fd);
