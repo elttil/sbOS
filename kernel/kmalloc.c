@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <interrupts.h>
 #include <kmalloc.h>
-#include <ksbrk.h>
 #include <log.h>
 #include <math.h>
 #include <mmu.h>
@@ -62,7 +61,7 @@ MallocHeader *final = NULL;
 u32 total_heap_size = 0;
 
 int init_heap(void) {
-  head = (MallocHeader *)ksbrk(NEW_ALLOC_SIZE);
+  head = (MallocHeader *)ksbrk(NEW_ALLOC_SIZE, 0);
   if (!head) {
     return 0;
   }
@@ -80,7 +79,7 @@ int add_heap_memory(size_t min_desired) {
   size_t allocation_size = max(min_desired, NEW_ALLOC_SIZE);
   allocation_size += delta_page(allocation_size);
   void *p;
-  if (!(p = (void *)ksbrk(allocation_size))) {
+  if (!(p = (void *)ksbrk(allocation_size, 0))) {
     return 0;
   }
   total_heap_size += allocation_size - sizeof(MallocHeader);

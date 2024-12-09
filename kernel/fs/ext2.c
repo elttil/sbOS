@@ -382,7 +382,6 @@ int get_free_blocks(int allocate, int entries[], u32 num_entries) {
   u32 current_entry = 0;
   bgdt_t block_group;
   if (num_entries > superblock->num_blocks_unallocated) {
-    kprintf("greater than\n");
     return 0;
   }
   assert(0 == superblock->num_blocks_in_group % 8);
@@ -975,7 +974,7 @@ ext2_mount_error:
 }
 
 void parse_superblock(void) {
-  superblock = ksbrk(2 * SECTOR_SIZE);
+  superblock = kmalloc(2 * SECTOR_SIZE);
   raw_vfs_pread(mount_fd, superblock, 2 * SECTOR_SIZE,
                 EXT2_SUPERBLOCK_SECTOR * SECTOR_SIZE);
 

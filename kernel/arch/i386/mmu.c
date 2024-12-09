@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <cpu/arch_inst.h>
-#include <ksbrk.h>
 #include <log.h>
 #include <math.h>
 #include <mmu.h>
@@ -26,8 +25,9 @@ u32 *tmp_small_frames = tmp_array;
 extern uintptr_t data_end;
 
 void change_frame(u32 frame, int on);
-int get_free_frame(u32 *frame);
+int get_free_frames(u32 *frame, size_t num_frames);
 int allocate_frame(Page *page, int rw, int is_kernel);
+int mmu_allocate_kernel_linear_virtual_to_physical_mapping(void *rc, size_t n);
 
 static int create_kernel_table(int table_index) {
   u32 physical;
@@ -53,7 +53,7 @@ static int create_kernel_table(int table_index) {
   return 1;
 }
 
-void *ksbrk(size_t s) {
+void *ksbrk(size_t s, int enforce_linear) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
   data_end += s;
   data_end = (uintptr_t)align_page((void *)data_end);
@@ -70,11 +70,18 @@ void *ksbrk(size_t s) {
     if (!create_kernel_table(table_index)) {
       return NULL;
     }
-    return ksbrk(s);
+    return ksbrk(s, enforce_linear);
   }
-  if (!mmu_allocate_shared_kernel_region((void *)rc,
-                                         (data_end - (uintptr_t)rc))) {
-    return NULL;
+  if (enforce_linear) {
+    if (!mmu_allocate_kernel_linear_virtual_to_physical_mapping(
+            (void *)rc, (data_end - (uintptr_t)rc))) {
+      return NULL;
+    }
+  } else {
+    if (!mmu_allocate_shared_kernel_region((void *)rc,
+                                           (data_end - (uintptr_t)rc))) {
+      return NULL;
+    }
   }
   get_fast_insecure_random(rc, s);
   assert(((uintptr_t)rc % PAGE_SIZE) == 0);
@@ -82,7 +89,7 @@ void *ksbrk(size_t s) {
 }
 
 void *ksbrk_physical(size_t s, void **physical) {
-  void *r = ksbrk(s);
+  void *r = ksbrk(s, 1);
   if (!r) {
     return NULL;
   }
@@ -147,7 +154,8 @@ void mmu_free_pages(void *a, u32 n) {
 }
 
 u32 start_frame_search = 1;
-int get_free_frame(u32 *frame) {
+int get_free_frames(u32 *frame, size_t num_frames) {
+  size_t counter = num_frames;
   u32 i = start_frame_search;
   for (; i < INDEX_FROM_BIT(num_array_frames * 32); i++) {
     if (tmp_small_frames[i] == 0xFFFFFFFF) {
@@ -155,9 +163,15 @@ int get_free_frame(u32 *frame) {
     }
 
     for (u32 c = 0; c < 32; c++) {
-      if (!(tmp_small_frames[i] & ((u32)1 << c))) {
-        start_frame_search = i;
-        *frame = i * 32 + c;
+      if ((tmp_small_frames[i] & ((u32)1 << c))) {
+        counter = num_frames;
+        continue;
+      }
+      start_frame_search = min(start_frame_search, i);
+
+      counter--;
+      if (0 == counter) {
+        *frame = i * 32 + c - (num_frames - 1);
         return 1;
       }
     }
@@ -211,7 +225,7 @@ PageTable *clone_table(u32 src_index, PageDirectory *src_directory,
       continue;
     }
     u32 frame_address;
-    if (!get_free_frame(&frame_address)) {
+    if (!get_free_frames(&frame_address, 1)) {
       kmalloc_align_free(new_table, sizeof(PageTable));
       return NULL;
     }
@@ -277,6 +291,9 @@ PageDirectory *clone_directory(PageDirectory *original) {
   }
   u32 offset = (u32)new_directory->physical_tables - (u32)new_directory;
   new_directory->physical_address = physical_address + offset;
+  assert(
+      new_directory->physical_address ==
+      (uintptr_t)virtual_to_physical((uintptr_t)new_directory + offset, NULL));
 
   for (int i = 0; i < 1024; i++) {
     if (!original->tables[i] && !kernel_directory->tables[i]) {
@@ -318,6 +335,33 @@ PageDirectory *clone_directory(PageDirectory *original) {
   }
 
   return new_directory;
+}
+
+int mmu_allocate_kernel_linear_virtual_to_physical_mapping(void *rc, size_t n) {
+  size_t num_pages = align_page(n) / PAGE_SIZE;
+
+  u32 start_frame;
+  if (!get_free_frames(&start_frame, num_pages)) {
+    goto mmu_allocate_shared_kernel_region_error;
+  }
+
+  for (size_t i = 0; i < num_pages; i++) {
+    Page *p = get_page((void *)(rc + i * 0x1000), NULL, PAGE_ALLOCATE, 0);
+    if (!p) {
+      goto mmu_allocate_shared_kernel_region_error;
+    }
+    assert(!p->present);
+    p->present = 1;
+    p->rw = 1;
+    p->user = 0;
+    p->frame = start_frame + i;
+    assert(write_to_frame(p->frame * 0x1000, 1));
+  }
+  flush_tlb();
+  return 1;
+mmu_allocate_shared_kernel_region_error:
+  mmu_free_address_range(rc, n, NULL);
+  return 0;
 }
 
 int mmu_allocate_shared_kernel_region(void *rc, size_t n) {
@@ -436,7 +480,7 @@ int allocate_frame(Page *page, int rw, int is_kernel) {
     return 0;
   }
   u32 frame_address;
-  if (!get_free_frame(&frame_address)) {
+  if (!get_free_frames(&frame_address, 1)) {
     return 0;
   }
   assert(write_to_frame(frame_address * 0x1000, 1));

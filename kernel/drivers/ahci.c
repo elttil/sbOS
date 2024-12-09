@@ -267,9 +267,9 @@ void ahci_sata_setup(volatile struct HBA_PORT *port) {
   // clb_address: size has to be 1024 and byte aligned to 1024
   // fb_address: size has to be 256 and byte aligned to 256
   // command_table_array: size has to be 256*32
-  u32 clb_address = (u32)ksbrk(1024);
-  u32 fb_address = (u32)ksbrk(256);
-  u32 command_table_array = (u32)ksbrk(256 * 32);
+  u32 clb_address = (u32)kmalloc_align(1024, 0);
+  u32 fb_address = (u32)kmalloc_align(256, 0);
+  u32 command_table_array = (u32)kmalloc_align(256 * 32, 0);
   create_physical_to_virtual_mapping(
       virtual_to_physical((void *)clb_address, NULL), (void *)clb_address,
       1024);

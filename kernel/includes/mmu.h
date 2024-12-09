@@ -42,6 +42,7 @@ int mmu_allocate_region(void *ptr, size_t n, mmu_flags flags,
                         PageDirectory *pd);
 void mmu_free_pagedirectory(PageDirectory *pd);
 int mmu_allocate_shared_kernel_region(void *rc, size_t n);
+int mmu_allocate_kernel_linear_virtual_to_physical_mapping(void *rc, size_t n);
 void *mmu_find_unallocated_virtual_range(void *addr, size_t length);
 void mmu_remove_virtual_physical_address_mapping(void *ptr, size_t length);
 void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd);
@@ -60,7 +61,7 @@ PageDirectory *get_active_pagedirectory(void);
 void switch_page_directory(PageDirectory *directory);
 PageDirectory *clone_directory(PageDirectory *original);
 void *virtual_to_physical(void *address, PageDirectory *directory);
-void *ksbrk(size_t s);
+void *ksbrk(size_t s, int enforce_linear);
 void *ksbrk_physical(size_t s, void **physical);
 int write_to_frame(u32 frame_address, u8 on);
 
