@@ -185,7 +185,7 @@ static i64 cmos_get_time(void) {
 }
 
 static void cmos_set_time(i64 time) {
-  assert(time > 0); // TODO: Add support for time travelers
+  assert(time >= 0); // TODO: Add support for time travelers
   u8 reg_b = cmos_get_register(0x0B);
 
   u8 seconds = 0;

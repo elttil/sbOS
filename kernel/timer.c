@@ -46,21 +46,35 @@ u64 timer_get_ms(void) {
 }
 
 int clock_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  (void)offset;
+  if (0 != offset) {
+    return 0;
+  }
+  // Currently don't have snprintf without NULL termination...
+  char tmp[4096];
   u64 r = timer_get_ms();
-  u64 l = min(len, sizeof(u64));
-  memcpy(buffer, &r, l);
+
+  u64 l = ksnprintf(tmp, 4096, "%llu", r);
+  l = min(len, l);
+  memcpy(buffer, tmp, l);
   return l;
 }
 
 int clock_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  (void)offset;
-  if (len != sizeof(i64)) {
+  if (0 != offset) {
+    return 0;
+  }
+  // TODO: Move sv to kernel or something to just avoid this. I hate null
+  // termination
+  char tmp[4096];
+  memcpy(tmp, buffer, len);
+  tmp[len] = '\0';
+
+  int err;
+  u64 new_value_ms = parse_u64(tmp, NULL, 10, &err);
+  if (err) {
     return 0;
   }
 
-  i64 new_value_ms;
-  memcpy(&new_value_ms, buffer, sizeof(i64));
   i64 new_value_seconds = new_value_ms / 1000;
 
   u64 offset_tsc = tsc_get() - start_tsc_time;
@@ -82,6 +96,6 @@ int always_can_write(vfs_inode_t *inode);
 
 int timer_add_clock(void) {
   devfs_add_file("/clock", clock_read, clock_write, NULL, always_has_data,
-                 always_can_write, FS_TYPE_CHAR_DEVICE);
+                 always_can_write, FS_TYPE_BLOCK_DEVICE);
   return 1;
 }
