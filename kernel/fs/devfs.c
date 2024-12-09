@@ -64,7 +64,7 @@ int stdout_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   int rc = len;
   for (; len--;) {
-    putc(*buffer++);
+    write_serial(*buffer++);
   }
   return rc;
 }
