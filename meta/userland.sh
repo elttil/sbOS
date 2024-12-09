@@ -21,6 +21,7 @@ make -j`nproc` -C ./userland/nasm-2.16.01
 make -j`nproc` -C ./userland/dns
 make -j`nproc` -C ./userland/to
 make -j`nproc` -C ./userland/httpd
+make -j`nproc` -C ./userland/tcpserver
 
 mkdir sysroot
 sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
@@ -37,6 +38,7 @@ sudo cp ./userland/nasm-2.16.01/nasm ./sysroot/nasm
 sudo cp ./userland/dns/dns ./sysroot/dns
 sudo cp ./userland/to/to ./sysroot/to
 sudo cp ./userland/httpd/httpd ./sysroot/httpd
+sudo cp ./userland/tcpserver/tcpserver ./sysroot/tcpserver
 
 cd ./sysroot
 rm ./init
