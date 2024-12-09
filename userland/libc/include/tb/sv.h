@@ -36,4 +36,5 @@ struct sv sv_trim_left(struct sv s, size_t n);
 struct sv sv_clone(struct sv s);
 struct sv sv_clone_from_c(const char *s);
 char *sv_copy_to_c(struct sv s, char *out, size_t buffer_length);
+uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest);
 #endif

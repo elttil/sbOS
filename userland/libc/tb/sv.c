@@ -49,6 +49,24 @@ struct sv sv_skip_chars(const struct sv input, const char *chars) {
   return r;
 }
 
+uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest) {
+  uint64_t r = 0;
+  size_t i = 0;
+  for (; i < input.length; i++) {
+    if (!isdigit(input.s[i])) {
+      break;
+    }
+    r *= 10;
+    r += input.s[i] - '0';
+  }
+  input.length -= i;
+  input.s += i;
+  if (rest) {
+    *rest = input;
+  }
+  return r;
+}
+
 struct sv sv_split_function(const struct sv input, struct sv *rest,
                             int (*function)(int)) {
   struct sv r = {
