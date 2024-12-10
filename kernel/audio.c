@@ -5,6 +5,7 @@
 #include <drivers/ac97.h>
 #include <errno.h>
 #include <fs/devfs.h>
+#include <lib/sv.h>
 #include <math.h>
 
 int audio_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -25,24 +26,18 @@ int audio_can_write(vfs_inode_t *inode) {
 int volume_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)offset;
   (void)fd;
-  int volume = 0;
-
-  size_t i = 0;
-  for (; i < len; i++) {
-    u8 c = buffer[i];
-    if (!isdigit(c)) {
-      break;
-    }
-    volume *= 10;
-    volume += c - '0';
-    if (volume > 100) {
-      volume = 100;
-      break;
-    }
-  }
+  struct sv string_view = sv_init(buffer, len);
+  struct sv rest;
+  u64 volume = sv_parse_unsigned_number(string_view, &rest);
+  int i = sv_length(string_view) - sv_length(rest);
   if (0 == i) {
     return 0;
   }
+
+  if (volume > 100) {
+    volume = 0;
+  }
+
   ac97_set_volume(volume);
   return i;
 }
@@ -52,18 +47,8 @@ int volume_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     return 0;
   }
   (void)fd;
-  if (len < 3) {
-    return 0;
-  }
   int volume = ac97_get_volume();
-  assert(volume <= 100);
-  if (volume == 100) {
-    memcpy(buffer, "100", 3);
-    return 3;
-  }
-  buffer[1] = (volume % 10) + '0';
-  buffer[0] = ((volume - (volume % 10)) / 10) + '0';
-  return 2;
+  return min(len, (u64)kbnprintf(buffer, len, "%d", volume));
 }
 
 static int add_files(void) {

@@ -2,6 +2,7 @@
 #include <drivers/cmos.h>
 #include <fs/devfs.h>
 #include <interrupts.h>
+#include <lib/sv.h>
 #include <math.h>
 #include <random.h>
 #include <time.h>
@@ -49,31 +50,18 @@ int clock_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   if (0 != offset) {
     return 0;
   }
-  // Currently don't have snprintf without NULL termination...
-  char tmp[4096];
   u64 r = timer_get_ms();
-
-  u64 l = ksnprintf(tmp, 4096, "%llu", r);
-  l = min(len, l);
-  memcpy(buffer, tmp, l);
-  return l;
+  return min(len, (u64)kbnprintf(buffer, len, "%llu", r));
 }
 
 int clock_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   if (0 != offset) {
     return 0;
   }
-  // TODO: Move sv to kernel or something to just avoid this. I hate null
-  // termination
-  char tmp[4096];
-  memcpy(tmp, buffer, len);
-  tmp[len] = '\0';
 
-  int err;
-  u64 new_value_ms = parse_u64(tmp, NULL, 10, &err);
-  if (err) {
-    return 0;
-  }
+  struct sv string_view = sv_init(buffer, len);
+
+  u64 new_value_ms = sv_parse_unsigned_number(string_view, &string_view);
 
   i64 new_value_seconds = new_value_ms / 1000;
 
