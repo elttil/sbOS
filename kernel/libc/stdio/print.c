@@ -286,6 +286,36 @@ int vkcprintf(struct print_context *ctx, const char *fmt, va_list ap) {
   return rc;
 }
 
+struct bn_context {
+  char *out;
+  int size;
+};
+
+void bn_write(struct print_context *_ctx, const char *s, int l) {
+  struct bn_context *ctx = (struct bn_context *)_ctx->data;
+  assert(ctx);
+  size_t k = min(l, ctx->size);
+  memcpy(ctx->out, s, k);
+  ctx->out += k;
+  ctx->size -= k;
+}
+
+int kbnprintf(char *out, size_t size, const char *format, ...) {
+  struct print_context context;
+
+  struct bn_context ctx;
+  context.data = &ctx;
+  ctx.out = out;
+  ctx.size = size;
+  context.write = bn_write;
+
+  va_list list;
+  va_start(list, format);
+  int rc = vkcprintf(&context, format, list);
+  va_end(list);
+  return rc;
+}
+
 struct sn_context {
   char *out;
   int size;
@@ -304,19 +334,16 @@ void sn_write(struct print_context *_ctx, const char *s, int l) {
 int ksnprintf(char *out, size_t size, const char *format, ...) {
   struct print_context context;
 
-  struct sn_context *ctx = context.data = kmalloc(sizeof(struct sn_context));
-  if (!ctx) {
-    return -1;
-  }
-  ctx->out = out;
-  ctx->size = size;
+  struct sn_context ctx;
+  context.data = &ctx;
+  ctx.out = out;
+  ctx.size = size;
   context.write = sn_write;
 
   va_list list;
   va_start(list, format);
   int rc = vkcprintf(&context, format, list);
   va_end(list);
-  kfree(ctx);
   return rc;
 }
 

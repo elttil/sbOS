@@ -8,5 +8,6 @@ void delete_characther(void);
 int kprintf(const char *format, ...);
 int vkprintf(const char *format, va_list list);
 int ksnprintf(char *out, size_t size, const char *format, ...);
+int kbnprintf(char *out, size_t size, const char *format, ...);
 
 #endif
