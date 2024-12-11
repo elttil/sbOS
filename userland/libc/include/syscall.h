@@ -34,26 +34,24 @@
 #define SYS_MKDIR 26
 #define SYS_RECVFROM 27
 #define SYS_SENDTO 28
-#define SYS_KILL 29
-#define SYS_SIGACTION 30
-#define SYS_CHDIR 31
-#define SYS_GETCWD 32
-#define SYS_ISATTY 33
-#define SYS_RANDOMFILL 34
-#define SYS_MUNMAP 35
-#define SYS_OPEN_PROCESS 36
-#define SYS_LSEEK 37
-#define SYS_CONNECT 38
-#define SYS_SETSOCKOPT 39
-#define SYS_GETPEERNAME 40
-#define SYS_FCNTL 41
-#define SYS_CLOCK_GETTIME 42
-#define SYS_QUEUE_CREATE 43
-#define SYS_QUEUE_MOD_ENTRIES 44
-#define SYS_QUEUE_WAIT 45
-#define SYS_SENDFILE 46
-#define SYS_SHM_UNLINK 47
-#define SYS_DUP 48
+#define SYS_SIGACTION 29
+#define SYS_CHDIR 30
+#define SYS_GETCWD 31
+#define SYS_ISATTY 32
+#define SYS_RANDOMFILL 33
+#define SYS_MUNMAP 34
+#define SYS_LSEEK 35
+#define SYS_CONNECT 36
+#define SYS_SETSOCKOPT 37
+#define SYS_GETPEERNAME 38
+#define SYS_FCNTL 39
+#define SYS_CLOCK_GETTIME 40
+#define SYS_QUEUE_CREATE 41
+#define SYS_QUEUE_MOD_ENTRIES 42
+#define SYS_QUEUE_WAIT 43
+#define SYS_SENDFILE 44
+#define SYS_SHM_UNLINK 45
+#define SYS_DUP 46
 
 int syscall(uint32_t eax, uint32_t ebx, uint32_t ecx, uint32_t edx,
             uint32_t esi, uint32_t edi);

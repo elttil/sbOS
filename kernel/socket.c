@@ -634,7 +634,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
         OBJECT_TCP, connection, 0 /*file_size*/, NULL /*open*/,
         NULL /*create_file*/, tcp_read, tcp_write, tcp_close /*close*/,
         NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-        NULL /*stat*/, NULL /*send_signal*/, NULL /*connect*/);
+        NULL /*stat*/, NULL /*connect*/);
     inode->_is_open = tcp_is_open;
     assert(inode);
     return vfs_create_fd(O_RDWR, 0, 0 /*is_tty*/, inode, NULL);
@@ -782,8 +782,7 @@ int tcp_create_fd(int is_nonblock) {
       0 /*inode_num*/, FS_TYPE_UNIX_SOCKET, NULL, always_can_write, 1,
       OBJECT_TCP, con, 0 /*file_size*/, NULL /*open*/, NULL /*create_file*/,
       tcp_read, tcp_write, NULL /*close*/, NULL /*create_directory*/,
-      NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-      NULL /*send_signal*/, tcp_connect);
+      NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/, tcp_connect);
   if (!inode) {
     kfree(con);
     return -ENOMEM;
@@ -825,7 +824,7 @@ int socket(int domain, int type, int protocol) {
         0 /*file_size*/, NULL /*open*/, NULL /*create_file*/, socket_read,
         socket_write, socket_close, NULL /*create_directory*/,
         NULL /*get_vm_object*/, NULL /*truncate*/, NULL /*stat*/,
-        NULL /*send_signal*/, NULL /*connect*/);
+        NULL /*connect*/);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;
@@ -855,7 +854,7 @@ int socket(int domain, int type, int protocol) {
         OBJECT_UNIX, new_socket, 0 /*file_size*/, NULL /*open*/,
         NULL /*create_file*/, NULL, NULL, NULL /*close*/,
         NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-        NULL /*stat*/, NULL /*send_signal*/, udp_connect);
+        NULL /*stat*/, udp_connect);
     if (!inode) {
       rc = -ENOMEM;
       goto socket_error;

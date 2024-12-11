@@ -173,17 +173,6 @@ int syscall_isatty(int fd) {
   return 1;
 }
 
-int syscall_kill(int fd, int sig) {
-  vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
-  if (!fd_ptr) {
-    return -EBADF;
-  }
-  if (!fd_ptr->inode->send_signal) {
-    return -EBADF;
-  }
-  return process_signal(fd_ptr, sig);
-}
-
 int syscall_lseek(int fd, int offset, int whence) {
   return vfs_lseek(fd, offset, whence);
 }
@@ -221,29 +210,6 @@ int syscall_open(const char *file, int flags, mode_t mode) {
   int _flags = flags;
   int _mode = mode;
   return vfs_open(_file, _flags, _mode);
-}
-
-int syscall_open_process(int pid) {
-  // TODO: Permission check
-  process_t *process = (process_t *)ready_queue;
-  for (; process; process = process->next) {
-    if (pid == process->pid) {
-      break;
-    }
-  }
-  if (!process) {
-    return -ESRCH;
-  }
-
-  vfs_inode_t *inode = vfs_create_inode(
-      process->pid, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/, 1 /*is_open*/,
-      0, process /*internal_object*/, 0 /*file_size*/, NULL /*open*/,
-      NULL /*create_file*/, NULL /*read*/, NULL /*write*/, NULL /*close*/,
-      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-      NULL /*stat*/, process_signal, NULL /*connect*/);
-  int rc = vfs_create_fd(0, 0, 0, inode, NULL);
-  assert(rc >= 0);
-  return rc;
 }
 
 int syscall_poll(SYS_POLL_PARAMS *args) {
@@ -654,14 +620,12 @@ int (*syscall_functions[])() = {
     (void(*))syscall_mkdir,
     (void(*))syscall_recvfrom,
     (void(*))syscall_sendto,
-    (void(*))syscall_kill,
     (void(*))syscall_sigaction,
     (void(*))syscall_chdir,
     (void(*))syscall_getcwd,
     (void(*))syscall_isatty,
     (void(*))syscall_randomfill,
     (void(*))syscall_munmap,
-    (void(*))syscall_open_process,
     (void(*))syscall_lseek,
     (void(*))syscall_connect,
     (void(*))syscall_setsockopt,

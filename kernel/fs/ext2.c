@@ -745,7 +745,7 @@ vfs_inode_t *ext2_open(const char *path) {
       inode_num, type, NULL, NULL, 1 /*is_open*/, 0, NULL /*internal_object*/,
       file_size, ext2_open, ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
-      ext2_stat, NULL /*send_signal*/, NULL /*connect*/);
+      ext2_stat, NULL /*connect*/);
 }
 
 u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
@@ -960,7 +960,7 @@ vfs_inode_t *ext2_mount(void) {
       0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/, ext2_open,
       ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
-      ext2_stat, NULL /*send_signal*/, NULL /*connect*/);
+      ext2_stat, NULL /*connect*/);
   if (!inode) {
     goto ext2_mount_error;
   }

@@ -42,9 +42,7 @@ int rdate_main(int argc, char **argv) {
   int64_t unix_time = (t - 2208988800) * 1000;
   int clock_fd = open("/dev/clock", O_RDWR);
   int64_t current;
-  read(clock_fd, &current, sizeof(int64_t));
-  write(clock_fd, &unix_time, sizeof(int64_t));
-  int64_t delta = (current / 1000) - (unix_time / 1000);
-  printf("delta: %d\n", delta);
+  dprintf(clock_fd, "%lld", unix_time);
+  close(clock_fd);
   return 0;
 }

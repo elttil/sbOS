@@ -20,10 +20,16 @@ int ls_main(int argc, char **argv) {
                           newline = 1;
                           break;
                   }*/
+  char *path = argv[1];
+  char path_buffer[256];
+
+  if (!path) {
+    (void)getcwd(path_buffer, 256);
+    path = path_buffer;
+  }
+
   struct dirent **namelist;
   int n;
-  char path[256];
-  (void)getcwd(path, 256);
   COND_PERROR_EXP(-1 == (n = scandir(path, &namelist, 0, 0)), "scandir",
                   return 1);
 

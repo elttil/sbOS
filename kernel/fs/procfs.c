@@ -134,7 +134,7 @@ vfs_inode_t *open_process(u64 pid, int id) {
       0 /*is_open*/, 0, process /*internal_object*/, 0 /*file_size*/,
       procfs_open, NULL /*create_file*/, process_read, process_write,
       process_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/, NULL /*connect*/);
+      NULL /*truncate*/, NULL /*stat*/, NULL /*connect*/);
   if (!inode) {
     return NULL;
   }
@@ -152,8 +152,7 @@ vfs_inode_t *procfs_open(const char *p) {
         0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/,
         procfs_open, NULL /*create_file*/, procfs_read, NULL /* write */,
         procfs_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*send_signal*/,
-        NULL /*connect*/);
+        NULL /*truncate*/, NULL /*stat*/, NULL /*connect*/);
   }
 
   int got_num;
@@ -180,6 +179,6 @@ vfs_inode_t *procfs_mount(void) {
       0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/, procfs_open,
       NULL /*create_file*/, procfs_read, NULL /* write */, procfs_close,
       NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-      NULL /*stat*/, NULL /*send_signal*/, NULL /*connect*/);
+      NULL /*stat*/, NULL /*connect*/);
   return inode;
 }
