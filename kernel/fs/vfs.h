@@ -63,7 +63,6 @@ struct vfs_inode {
   vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd);
   int (*truncate)(vfs_fd_t *fd, size_t length);
   int (*stat)(vfs_fd_t *fd, struct stat *buf);
-  int (*send_signal)(vfs_fd_t *fd, int signal);
   int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen);
 };
 
@@ -102,7 +101,6 @@ vfs_inode_t *vfs_create_inode(
     vfs_vm_object_t *(*get_vm_object)(u64 length, u64 offset, vfs_fd_t *fd),
     int (*truncate)(vfs_fd_t *fd, size_t length),
     int (*stat)(vfs_fd_t *fd, struct stat *buf),
-    int (*send_signal)(vfs_fd_t *fd, int signal),
     int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr,
                    socklen_t addrlen));
 #endif

@@ -1,15 +1,20 @@
+#include <assert.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <signal.h>
+#include <stdio.h>
 #include <syscall.h>
-
-int kill_fd(int fd, int sig) {
-  RC_ERRNO(syscall(SYS_KILL, fd, sig, 0, 0, 0))
-}
+#include <unistd.h>
 
 int kill(int pid, int sig) {
-  int fd = open_process(pid);
-  int rc = kill_fd(fd, sig);
-  close(fd);
-  return rc;
+  char buffer[4096];
+  snprintf(buffer, sizeof(buffer), "/proc/%d/signal", pid);
+  int fd = open(buffer, O_WRITE);
+  if (-1 == fd) {
+    return -1;
+  }
+  if (-1 == dprintf(fd, "%d", sig)) {
+    return -1;
+  }
+  assert(-1 != close(fd));
+  return 0;
 }

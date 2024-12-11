@@ -73,11 +73,10 @@ int queue_create(void) {
   relist_init(&list->entries);
   list->process = current_task;
 
-  vfs_inode_t *inode =
-      vfs_create_inode(0, 0, queue_has_data, NULL, 1 /*is_open*/, OBJECT_QUEUE,
-                       list /*internal_object*/, 0, NULL, NULL, NULL, NULL,
-                       queue_close, NULL, NULL /*get_vm_object*/, NULL, NULL,
-                       NULL /*send_signal*/, NULL /*connect*/);
+  vfs_inode_t *inode = vfs_create_inode(
+      0, 0, queue_has_data, NULL, 1 /*is_open*/, OBJECT_QUEUE,
+      list /*internal_object*/, 0, NULL, NULL, NULL, NULL, queue_close, NULL,
+      NULL /*get_vm_object*/, NULL, NULL, NULL /*connect*/);
   assert(inode);
   return vfs_create_fd(0, 0, 0, inode, NULL);
 }
