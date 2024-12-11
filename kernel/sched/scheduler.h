@@ -69,6 +69,8 @@ struct Process {
   struct list write_list;
   struct list disconnect_list;
 
+  int reference_count;
+
   struct list event_queue;
 
   struct stack restore_context_stack;
@@ -98,4 +100,5 @@ int get_task_from_pid(pid_t pid, process_t **out);
 void free_process(process_t *p);
 void *get_free_virtual_memory(size_t length);
 void signal_process(process_t *p, int sig);
+void process_remove_reference(process_t *p);
 #endif

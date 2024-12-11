@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <fs/devfs.h>
 #include <fs/ext2.h>
+#include <fs/procfs.h>
 #include <fs/shm.h>
 #include <fs/vfs.h>
 #include <interrupts.h>
@@ -95,6 +96,7 @@ void kernel_main(u32 kernel_end, unsigned long magic, unsigned long addr,
 
   global_socket_init();
 
+  vfs_mount("/proc", procfs_mount());
   vfs_mount("/dev", devfs_mount());
   assert(ahci_init());
   vfs_inode_t *ext2_mount_point = ext2_mount();
