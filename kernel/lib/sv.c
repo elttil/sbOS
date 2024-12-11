@@ -54,7 +54,11 @@ struct sv sv_skip_chars(const struct sv input, const char *chars) {
   return r;
 }
 
-uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest) {
+uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest,
+                                  int *got_num) {
+  if (got_num) {
+    *got_num = 0;
+  }
   uint64_t r = 0;
   size_t i = 0;
   for (; i < input.length; i++) {
@@ -63,6 +67,11 @@ uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest) {
     }
     r *= 10;
     r += input.s[i] - '0';
+  }
+  if (i > 0) {
+    if (got_num) {
+      *got_num = 1;
+    }
   }
   input.length -= i;
   input.s += i;
@@ -227,6 +236,23 @@ struct sv sv_clone(struct sv s) {
   memcpy(new_string, s.s, s.length);
   new_sv.s = new_string;
   return new_sv;
+}
+
+int sv_try_eat(struct sv input, struct sv *rest, struct sv b) {
+  if (input.length < b.length) {
+    return 0;
+  }
+  for (size_t i = 0; i < b.length; i++) {
+    if (input.s[i] != b.s[i]) {
+      return 0;
+    }
+  }
+  input.s += b.length;
+  input.length -= b.length;
+  if (rest) {
+    *rest = input;
+  }
+  return 1;
 }
 
 char *sv_copy_to_c(struct sv s, char *out, size_t buffer_length) {

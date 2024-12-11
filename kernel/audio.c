@@ -28,9 +28,10 @@ int volume_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   (void)fd;
   struct sv string_view = sv_init(buffer, len);
   struct sv rest;
-  u64 volume = sv_parse_unsigned_number(string_view, &rest);
+  int got_num;
+  u64 volume = sv_parse_unsigned_number(string_view, &rest, &got_num);
   int i = sv_length(string_view) - sv_length(rest);
-  if (0 == i) {
+  if (!got_num) {
     return 0;
   }
 

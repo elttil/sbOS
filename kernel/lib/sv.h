@@ -28,6 +28,7 @@ struct sv sv_split_space(const struct sv input, struct sv *rest);
 struct sv sv_skip_chars(const struct sv input, const char *chars);
 struct sv sv_split_function(const struct sv input, struct sv *rest,
                             int (*function)(int));
+int sv_try_eat(struct sv input, struct sv *rest, struct sv b);
 struct sv sv_take(struct sv s, struct sv *rest, size_t n);
 struct sv sv_take_end(struct sv s, struct sv *rest, size_t n);
 struct sv sv_next(struct sv s);
@@ -39,5 +40,5 @@ struct sv sv_trim_left(struct sv s, size_t n);
 struct sv sv_clone(struct sv s);
 struct sv sv_clone_from_c(const char *s);
 char *sv_copy_to_c(struct sv s, char *out, size_t buffer_length);
-uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest);
+uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest, int *got_num);
 #endif

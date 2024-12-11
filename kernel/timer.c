@@ -61,7 +61,7 @@ int clock_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   struct sv string_view = sv_init(buffer, len);
 
-  u64 new_value_ms = sv_parse_unsigned_number(string_view, &string_view);
+  u64 new_value_ms = sv_parse_unsigned_number(string_view, &string_view, NULL);
 
   i64 new_value_seconds = new_value_ms / 1000;
 
