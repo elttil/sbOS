@@ -98,6 +98,7 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
   if (!r) {
     return NULL;
   }
+  r->reference_count = 1;
   r->tcb = kcalloc(1, sizeof(struct TCB));
   if (!r->tcb) {
     kfree(r);
@@ -147,6 +148,9 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     r->cr3 = get_active_pagedirectory();
   }
   r->parent = p;
+  if (p) {
+    p->reference_count++;
+  }
 
   r->tcb->CR3 = r->cr3->physical_address;
 
@@ -203,6 +207,14 @@ void free_process(process_t *p) {
   kfree(p->tcb);
 
   mmu_free_pagedirectory(p->cr3);
+}
+
+void process_remove_reference(process_t *p) {
+  assert(0 != p->reference_count);
+  p->reference_count--;
+  if (0 == p->reference_count) {
+    kfree(p);
+  }
 }
 
 void exit_process(process_t *p, int status) {

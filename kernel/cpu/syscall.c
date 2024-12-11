@@ -427,6 +427,8 @@ void syscall_wait(int *status) {
     if (status) {
       *status = current_task->child_rc;
     }
+    process_remove_reference(current_task->child);
+    current_task->child = NULL;
     return;
   }
   do {
@@ -444,6 +446,8 @@ void syscall_wait(int *status) {
   if (status) {
     *status = current_task->child_rc;
   }
+  process_remove_reference(current_task->child);
+  current_task->child = NULL;
 }
 
 int syscall_fork(void) {
