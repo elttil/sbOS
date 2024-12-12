@@ -21,8 +21,9 @@ int ed_getline(char *buffer, size_t s) {
     assert(rc > 0);
     printf("%c", c);
     buffer[i] = c;
-    if ('\n' == c)
+    if ('\n' == c) {
       break;
+    }
   }
   buffer[i] = '\0';
   return i;
@@ -35,10 +36,12 @@ void goto_line(void) {
   if (1 != line_number) {
     // Goto line
     for (; fread(&c, 1, 1, mem_fp);) {
-      if ('\n' == c)
+      if ('\n' == c) {
         line++;
-      if (line == line_number)
+      }
+      if (line == line_number) {
         return;
+      }
     }
     printf("got to line: %d\n", line);
     assert(0);
@@ -49,8 +52,9 @@ void read_line(void) {
   char c;
   goto_line();
   for (; fread(&c, 1, 1, mem_fp);) {
-    if ('\n' == c)
+    if ('\n' == c) {
       break;
+    }
     printf("%c", c);
   }
   printf("\n");
@@ -59,8 +63,9 @@ void read_line(void) {
 void goto_end_of_line(void) {
   char c;
   for (; fread(&c, 1, 1, mem_fp);) {
-    if ('\n' == c)
+    if ('\n' == c) {
       break;
+    }
   }
 }
 
@@ -74,8 +79,9 @@ void delete_line(void) {
   for (char buffer[4096];;) {
     int rc = fread(buffer, 1, 100, mem_fp);
     long reset = ftell(mem_fp);
-    if (0 == rc)
+    if (0 == rc) {
       break;
+    }
     fseek(mem_fp, s, SEEK_SET);
     fwrite(buffer, 1, rc, mem_fp);
     s += rc;
@@ -120,8 +126,9 @@ void read_input(void) {
 }
 
 int ed_main(char argc, char **argv) {
-  if (argc < 2)
+  if (argc < 2) {
     return 1;
+  }
   char *buffer;
   size_t size;
   mem_fp = open_memstream(&buffer, &size);
@@ -134,10 +141,11 @@ int ed_main(char argc, char **argv) {
   }
 
   for (;;) {
-    if (COMMAND_MODE == mode)
+    if (COMMAND_MODE == mode) {
       read_command();
-    else
+    } else {
       read_input();
+    }
   }
   fclose(fp);
   fclose(mem_fp);

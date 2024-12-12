@@ -1,6 +1,6 @@
 #include <assert.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/abort.html
 void abort(void) {

@@ -15,5 +15,6 @@ void draw_line(DISPLAY *disp, int sx, int sy, int dx, int dy, uint32_t color);
 void draw_wallpaper(const DISPLAY *disp);
 void draw_rectangle(DISPLAY *disp, int x, int y, int sx, int sy,
                     uint32_t color);
-void draw_outline(DISPLAY *disp, int x, int y, int sx, int sy, int border_px, uint32_t color);
+void draw_outline(DISPLAY *disp, int x, int y, int sx, int sy, int border_px,
+                  uint32_t color);
 #endif

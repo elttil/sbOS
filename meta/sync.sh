@@ -7,6 +7,6 @@ cd "$scriptdir"
 # Sync the sysroot with the bootable image
 mkdir ./mount
 sudo mount ext2.img mount
-sudo cp -r ../sysroot/* ./mount/
+sudo rsync ../sysroot/ ./mount/
 sudo umount mount
 rmdir ./mount

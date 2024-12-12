@@ -32,8 +32,9 @@ int fprint_num(FILE *f, long long n, int base, char *char_set, int prefix,
     str[i] = char_set[0];
     i++;
   } else {
-    for (; n != 0 && i < 32; i++, n /= base)
+    for (; n != 0 && i < 32; i++, n /= base) {
       str[i] = char_set[(n % base)];
+    }
   }
 
   if (is_signed) {
@@ -45,16 +46,19 @@ int fprint_num(FILE *f, long long n, int base, char *char_set, int prefix,
   int orig_i = i;
 
   if (!right_padding) {
-    for (; prefix - orig_i > 0; prefix--)
+    for (; prefix - orig_i > 0; prefix--) {
       FILE_WRITE(f, &t, 1, &c);
+    }
   }
 
-  for (i--; i >= 0; i--)
+  for (i--; i >= 0; i--) {
     FILE_WRITE(f, &(str[i]), 1, &c);
+  }
 
   if (right_padding) {
-    for (; prefix - orig_i > 0; prefix--)
+    for (; prefix - orig_i > 0; prefix--) {
       FILE_WRITE(f, &t, 1, &c);
+    }
   }
   return c;
 }
@@ -82,16 +86,19 @@ int print_string(FILE *f, const char *s, int *rc, int prefix, int right_padding,
   char t = ' ';
   int c = 0;
   if (!right_padding) {
-    if (prefix)
+    if (prefix) {
       assert(-1 == precision); // FIXME: Is this correct?
-    for (; prefix - l > 0; prefix--)
+    }
+    for (; prefix - l > 0; prefix--) {
       FILE_WRITE(f, &t, 1, &c);
+    }
   }
   int bl = precision;
   for (; *s; s++, (*rc)++) {
     if (precision != -1) {
-      if (0 == bl)
+      if (0 == bl) {
         break;
+      }
       bl--;
     }
     int r = 0;
@@ -99,8 +106,9 @@ int print_string(FILE *f, const char *s, int *rc, int prefix, int right_padding,
   }
   if (right_padding) {
     assert(-1 == precision); // FIXME: Is this correct?
-    for (; prefix - l > 0; prefix--)
+    for (; prefix - l > 0; prefix--) {
       FILE_WRITE(f, &t, 1, &c);
+    }
   }
   (*rc) += c;
   return 0;
@@ -110,8 +118,9 @@ int parse_precision(const char **fmt) {
   const char *s = *fmt;
   int rc = 0;
   for (int i = 0;; i++, s++) {
-    if ('\0' == *s)
+    if ('\0' == *s) {
       break;
+    }
     const char c = *s;
     if ('*' == c) {
       assert(i == 0);
@@ -149,8 +158,9 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       continue;
     }
 
-    if ('\0' == *s)
+    if ('\0' == *s) {
       break;
+    }
 
     switch (*s) {
     case '.':
@@ -158,14 +168,16 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       assert('\0' != *s);
       precision = parse_precision(&s);
       assert('\0' != *s);
-      if (-1 == precision)
+      if (-1 == precision) {
         precision = va_arg(ap, int);
+      }
       cont = 1;
       break;
     case '0':
       prefix *= 10;
-      if (0 == prefix)
+      if (0 == prefix) {
         zero_padding = 1;
+      }
       cont = 1;
       break;
     case '-':
@@ -221,13 +233,15 @@ int vfprintf(FILE *f, const char *fmt, va_list ap) {
       char *a = va_arg(ap, char *);
       if (!a) {
         if (-1 ==
-            print_string(f, "(NULL)", &rc, prefix, right_padding, precision))
+            print_string(f, "(NULL)", &rc, prefix, right_padding, precision)) {
           return -1;
+        }
         cont = 0;
         break;
       }
-      if (-1 == print_string(f, a, &rc, prefix, right_padding, precision))
+      if (-1 == print_string(f, a, &rc, prefix, right_padding, precision)) {
         return -1;
+      }
       cont = 0;
       break;
     }

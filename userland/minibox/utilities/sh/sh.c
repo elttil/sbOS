@@ -68,8 +68,9 @@ int execute_binary(struct AST *ast, int input_fd) {
   }
 
   if (ast->pipe_rhs) {
-    if (out >= 0)
+    if (out >= 0) {
       close(out);
+    }
     return execute_command(ast->pipe_rhs, slave_input);
   }
 
@@ -135,14 +136,16 @@ void execute_ast(struct AST *ast) {
     } else if (AST_CONDITIONAL_AND == ast->type) {
       if (0 != rc) {
         ast = ast->next;
-        if (!ast)
+        if (!ast) {
           break;
+        }
       }
     } else if (AST_CONDITIONAL_NOT == ast->type) {
       if (0 == rc) {
         ast = ast->next;
-        if (!ast)
+        if (!ast) {
           break;
+        }
       }
     }
     ast = ast->next;

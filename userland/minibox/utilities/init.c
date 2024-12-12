@@ -45,8 +45,9 @@ void shell() {
       char c[4096];
       int rc = read(fds[0].fd, c, 4096);
       assert(rc > 0);
-      for (int i = 0; i < rc; i++)
+      for (int i = 0; i < rc; i++) {
         putchar(c[i]);
+      }
     }
     if (fds[1].revents & POLLIN) {
       char c;

@@ -21,5 +21,4 @@
   }
 
 void aFailed(char *f, int l);
-#define ASSERT_NOT_REACHED                                                     \
-  { assert(0) }
+#define ASSERT_NOT_REACHED {assert(0)}

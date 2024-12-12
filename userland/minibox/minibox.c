@@ -22,13 +22,16 @@ Command utilities[] = {COMMAND(minibox), COMMAND(ascii), COMMAND(echo),
                        COMMAND(cat),     COMMAND(yes),   COMMAND(wc),
                        COMMAND(init),    COMMAND(ls),    COMMAND(touch),
                        COMMAND(ed),      COMMAND(sh),    COMMAND(kill),
-                       COMMAND(sha1sum), COMMAND(rdate), COMMAND(true), COMMAND(false), COMMAND(lock)};
+                       COMMAND(sha1sum), COMMAND(rdate), COMMAND(true),
+                       COMMAND(false),   COMMAND(lock)};
 
 char *parse_filename(char *str) {
   char *tmp = NULL, *is = str;
-  for (; *is++;)
-    if ('/' == *is)
+  for (; *is++;) {
+    if ('/' == *is) {
       tmp = is;
+    }
+  }
   return tmp ? tmp + 1 : str;
 }
 
@@ -40,8 +43,9 @@ void usage(void) {
 }
 
 int main(int argc, char **argv) {
-  if (argc < 1)
+  if (argc < 1) {
     return 1;
+  }
 #ifdef SINGLE_MAIN
   return utilities[0].function(argc, argv);
 #endif
@@ -54,11 +58,14 @@ int main(int argc, char **argv) {
   //       to be ran like "minibox <utility> <arguments>" or
   //       even "minibox minibox <utility> <arguments>"
   const char *utility_name = parse_filename(argv[0]);
-  if (*utility_name == '/')
+  if (*utility_name == '/') {
     utility_name++;
-  for (int i = 0; i < ARRAY_LENGTH(utilities); i++)
-    if (0 == strcmp(utility_name, utilities[i].name))
+  }
+  for (int i = 0; i < ARRAY_LENGTH(utilities); i++) {
+    if (0 == strcmp(utility_name, utilities[i].name)) {
       return utilities[i].function(argc, argv);
+    }
+  }
 
   usage();
   return 0;

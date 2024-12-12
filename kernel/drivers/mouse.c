@@ -102,18 +102,22 @@ void int_mouse(reg_t *r) {
     int16_t y = mouse_u8[2];
     uint8_t xs = mouse_u8[0] & (1 << 4);
     uint8_t ys = mouse_u8[0] & (1 << 5);
-    if (xs)
+    if (xs) {
       x |= 0xFF00;
-    if (ys)
+    }
+    if (ys) {
       y |= 0xFF00;
+    }
 
     mouse_x += x;
     mouse_y -= y;
 
-    if (mouse_x < 0)
+    if (mouse_x < 0) {
       mouse_x = 0;
-    if (mouse_y < 0)
+    }
+    if (mouse_y < 0) {
       mouse_y = 0;
+    }
 
     mouse_middle_button = mouse_u8[0] & (1 << 2);
     mouse_right_button = mouse_u8[0] & (1 << 1);

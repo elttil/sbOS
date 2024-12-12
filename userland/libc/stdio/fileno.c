@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <errno.h>
+#include <stdio.h>
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/fileno.html
 // The fileno() function shall return the integer file descriptor associated

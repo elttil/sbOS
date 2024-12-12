@@ -1,8 +1,10 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <assert.h>
 
-int ctoi(char c) { return c - '0'; }
+int ctoi(char c) {
+  return c - '0';
+}
 
 double strtod(const char *restrict nptr, char **restrict endptr) {
   double r = 0;

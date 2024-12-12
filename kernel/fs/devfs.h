@@ -22,7 +22,6 @@ vfs_inode_t *devfs_add_file(
     int (*has_data)(vfs_inode_t *inode), int (*can_write)(vfs_inode_t *inode),
     int type);
 
-
 int always_has_data(vfs_inode_t *inode);
 int always_can_write(vfs_inode_t *inode);
 #endif

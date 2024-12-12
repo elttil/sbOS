@@ -213,7 +213,7 @@ void ac97_init(void) {
   PCM Output by writing value 0 to this register. Now sound card is
   ready to use.
   */
-  ac97_set_volume(100);
+  ac97_set_volume(5);
 
   // Playing sound
   /*

@@ -6,9 +6,10 @@ void qsort(void *base, size_t nel, size_t width,
            int (*compar)(const void *, const void *)) {
   // If the nel argument has the value zero, the comparison function pointed to
   // by compar shall not be called and no rearrangement shall take place.
-  if (0 == nel)
+  if (0 == nel) {
     return;
-  
+  }
+
   // AB
   // Results in negative
   // BA

@@ -35,8 +35,9 @@ size_t memstream_write(FILE *fp, const unsigned char *buf, size_t n) {
 
   memcpy(c->buffer + fp->offset_in_file, buf, n);
   fp->offset_in_file += n;
-  if (fp->offset_in_file > (long)c->buffer_usage)
+  if (fp->offset_in_file > (long)c->buffer_usage) {
     c->buffer_usage = fp->offset_in_file;
+  }
   return n;
 }
 
@@ -46,8 +47,9 @@ size_t memstream_read(FILE *fp, unsigned char *buf, size_t n) {
   n = min(length_left, n);
   memcpy(buf, c->buffer + fp->offset_in_file, n);
   fp->offset_in_file += n;
-  if (0 == n)
+  if (0 == n) {
     fp->is_eof = 1;
+  }
   return n;
 }
 
@@ -73,8 +75,9 @@ int memstream_seek(FILE *stream, long offset, int whence) {
 FILE *open_memstream(char **bufp, size_t *sizep) {
   struct Memstream *c = NULL;
   FILE *fp = malloc(sizeof(FILE));
-  if (!fp)
+  if (!fp) {
     return NULL;
+  }
 
   fp->offset_in_file = 0;
   fp->buffered_char = 0;

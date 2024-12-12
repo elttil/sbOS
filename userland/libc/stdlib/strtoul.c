@@ -25,13 +25,15 @@ int get_value(char c, long base) {
 unsigned long strtoul(const char *restrict str, char **restrict endptr,
                       int base) {
   unsigned long ret_value = 0;
-  if (endptr)
+  if (endptr) {
     *endptr = (char *)str;
+  }
   // Ignore inital white-space sequence
   for (; *str && isspace(*str); str++)
     ;
-  if (!*str)
+  if (!*str) {
     return ret_value;
+  }
 
   //  int sign = 0;
   if ('-' == *str) {
@@ -79,7 +81,8 @@ unsigned long strtoul(const char *restrict str, char **restrict endptr,
     errno = EINVAL;
     return 0;
   }
-  if (endptr)
+  if (endptr) {
     *endptr = (char *)str;
+  }
   return ret_value;
 }

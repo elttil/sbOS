@@ -19,18 +19,21 @@ char *basename_slash_return_value = "/";
 char *basename(char *path) {
   // If path is a null pointer or points to an empty string, basename()
   // shall return a pointer to the string ".".
-  if (NULL == path || '\0' == *path)
+  if (NULL == path || '\0' == *path) {
     return basename_empty_return_value;
+  }
 
   char *start = path;
   // Move the string to the end
   for (; *path; path++)
     ;
-  if (start == path)
+  if (start == path) {
     return start;
+  }
   path--;
-  if ('/' == *path) // Trailing slash
+  if ('/' == *path) { // Trailing slash
     *path = '\0';
+  }
   // Loop until next slash is found
   for (; path != start && '/' != *path; path--)
     ;
@@ -39,7 +42,8 @@ char *basename(char *path) {
   // pointed to by path is exactly "//", it is implementation-defined whether
   //'/' or "//" is returned.
   path++;
-  if ('\0' == *path)
+  if ('\0' == *path) {
     return basename_slash_return_value;
+  }
   return path;
 }

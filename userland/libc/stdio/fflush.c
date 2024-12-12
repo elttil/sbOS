@@ -1,6 +1,6 @@
+#include <errno.h>
 #include <stdio.h>
 #include <syscall.h>
-#include <errno.h>
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/fflush.html
 int fflush(FILE *stream) {

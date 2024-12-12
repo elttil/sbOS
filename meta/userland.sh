@@ -59,4 +59,5 @@ ln -s ./minibox ./rdate
 ln -s ./minibox ./sh
 ln -s ./minibox ./true
 ln -s ./minibox ./false
+ln -s ./minibox ./lock
 cd ..

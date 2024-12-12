@@ -6,7 +6,7 @@ size_t strcspn(const char *s1, const char *s2) {
     for (const char *t = s2; *t; t++) {
       if (*s1 == *s2) {
         r++;
-	break;
+        break;
       }
     }
   }

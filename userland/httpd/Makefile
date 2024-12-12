@@ -4,6 +4,7 @@ BINS=httpd
 all: $(BINS)
 
 httpd.o: httpd.c
+	clang-format -i $<
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 httpd: httpd.o

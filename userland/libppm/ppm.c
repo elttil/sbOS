@@ -88,8 +88,9 @@ int load_ppm6_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
   uint8_t *rgb = malloc(3 * n_pixels);
 
   const int rc = fread(rgb, 3, n_pixels, fp);
-  if (0 == rc)
+  if (0 == rc) {
     return 0;
+  }
 
   uint32_t *p = rgb;
   u32 buf_size = buf_height * buf_width;
@@ -149,8 +150,9 @@ int load_ppm3_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
     int green;
     int blue;
     int rc = fscanf(fp, "%d %d %d", &red, &green, &blue);
-    if (0 == rc)
+    if (0 == rc) {
       break;
+    }
     red &= 0xFF;
     green &= 0xFF;
     blue &= 0xFF;
@@ -175,10 +177,11 @@ int load_ppm3_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
 
 int load_ppm_file(FILE *fp, const struct PPM_IMAGE *img, uint32_t buf_width,
                   uint32_t buf_height, uint32_t *buffer) {
-  if (3 == img->version)
+  if (3 == img->version) {
     return load_ppm3_file(fp, img, buf_width, buf_height, buffer);
-  else if (6 == img->version)
+  } else if (6 == img->version) {
     return load_ppm6_file(fp, img, buf_width, buf_height, buffer);
+  }
   return 0;
 }
 

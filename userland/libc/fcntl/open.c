@@ -1,6 +1,6 @@
 #include <fcntl.h>
-#include <syscall.h>
 #include <stdarg.h>
+#include <syscall.h>
 
 int open(const char *file, int flags, ...) {
   mode_t mode = 0;

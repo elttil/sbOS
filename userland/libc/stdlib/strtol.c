@@ -9,13 +9,15 @@ int get_value(char c, long base);
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtol.html
 long strtol(const char *str, char **restrict endptr, int base) {
   long ret_value = 0;
-  if (endptr)
+  if (endptr) {
     *endptr = (char *)str;
+  }
   // Ignore inital white-space sequence
   for (; *str && isspace(*str); str++)
     ;
-  if (!*str)
+  if (!*str) {
     return ret_value;
+  }
 
   //  int sign = 0;
   if ('-' == *str) {
@@ -63,7 +65,8 @@ long strtol(const char *str, char **restrict endptr, int base) {
     errno = EINVAL;
     return 0;
   }
-  if (endptr)
+  if (endptr) {
     *endptr = (char *)str;
+  }
   return ret_value;
 }

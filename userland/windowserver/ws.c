@@ -164,8 +164,9 @@ void setup(void) {
 
   num_fds = 100;
   fds = calloc(num_fds, sizeof(struct pollfd));
-  for (size_t i = 0; i < num_fds; i++)
+  for (size_t i = 0; i < num_fds; i++) {
     fds[i].fd = -1;
+  }
   // Create socket
   int socket_fd = create_socket();
   assert(socket_fd >= 0);
@@ -188,15 +189,18 @@ void setup(void) {
 }
 
 void reset_revents(struct pollfd *fds, size_t s) {
-  for (size_t i = 0; i < s - 1; i++)
+  for (size_t i = 0; i < s - 1; i++) {
     fds[i].revents = 0;
+  }
 }
 
 void add_fd(int fd) {
   int i;
-  for (i = 0; i < num_fds; i++)
-    if (-1 == fds[i].fd)
+  for (i = 0; i < num_fds; i++) {
+    if (-1 == fds[i].fd) {
       break;
+    }
+  }
 
   fds[i].fd = fd;
   fds[i].events = POLLIN | POLLHUP;
@@ -314,10 +318,12 @@ void send_kill_window(WINDOW *w) {
 }
 
 int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
-  if (ev.release)
+  if (ev.release) {
     return 0;
-  if (!(ev.mode & (1 << 1)))
+  }
+  if (!(ev.mode & (1 << 1))) {
     return 0;
+  }
   if ('q' == ev.c) {
     send_kill_window(main_display.active_window);
     return 1;
@@ -333,8 +339,9 @@ int windowserver_key_events(struct KEY_EVENT ev, int *redraw) {
     }
     return 1;
   }
-  if (!main_display.active_window)
+  if (!main_display.active_window) {
     return 0;
+  }
   int x = 0;
   int y = 0;
   switch (ev.c) {
@@ -384,8 +391,9 @@ void parse_mouse_event(int fd) {
   int left_button = 0;
   struct mouse_event e;
   int rc = read(fd, &e, sizeof(e));
-  if (rc <= 0)
+  if (rc <= 0) {
     return;
+  }
 
   uint8_t xs = e.buttons & (1 << 4);
   uint8_t ys = e.buttons & (1 << 5);
@@ -446,8 +454,9 @@ void parse_keyboard_event(int fd) {
   int redraw = 0;
   for (;;) {
     int rc;
-    if (0 > (rc = read(fd, &ev[0], sizeof(ev))))
+    if (0 > (rc = read(fd, &ev[0], sizeof(ev)))) {
       break;
+    }
     int n = rc / sizeof(ev[0]);
     for (int i = 0; i < n; i++) {
       if (windowserver_key_events(ev[i], &redraw)) {
@@ -509,10 +518,12 @@ void kill_window(WINDOW *w) {
 
 void parse_revents(struct pollfd *fds, size_t s) {
   for (size_t i = 0; i < s - 1; i++) {
-    if (!fds[i].revents)
+    if (!fds[i].revents) {
       continue;
-    if (-1 == fds[i].fd)
+    }
+    if (-1 == fds[i].fd) {
       continue;
+    }
     if (socket_fd_poll == i && fds[i].revents & POLLIN) {
       add_window(fds[i].fd);
       continue;
@@ -587,12 +598,14 @@ int draw_window(DISPLAY *disp, WINDOW *w, int id) {
   y += border_px;
 
   for (int i = 0; i < sy; i++) {
-    if ((i + y) * disp->width + x > disp->height * disp->width)
+    if ((i + y) * disp->width + x > disp->height * disp->width) {
       break;
+    }
     uint32_t *ptr =
         disp->back_buffer + disp->bpp * ((i + y) * disp->width) + x * disp->bpp;
-    if (i * sx > disp->height * disp->width)
+    if (i * sx > disp->height * disp->width) {
       break;
+    }
     if (i < b_sy) {
       uint32_t *bm = &w->bitmap_ptr[i * b_sx];
       int j = 0;

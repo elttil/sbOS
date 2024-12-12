@@ -29,8 +29,8 @@ void __ubsan_handle_sub_overflow(struct OverflowData *data, unsigned long lhs,
   ubsan_log("handle_sub_overflow", data->location);
 }
 
-void __ubsan_handle_negate_overflow(struct OverflowData *data, unsigned long lhs,
-                                 unsigned long rhs) {
+void __ubsan_handle_negate_overflow(struct OverflowData *data,
+                                    unsigned long lhs, unsigned long rhs) {
   (void)lhs;
   (void)rhs;
   ubsan_log("handle_negate_overflow", data->location);

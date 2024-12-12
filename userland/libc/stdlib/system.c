@@ -1,10 +1,11 @@
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 int system(const char *command) {
-  if (!command)
+  if (!command) {
     return NULL;
+  }
   int pid = fork();
   if (0 == pid) {
     char *argv[2];

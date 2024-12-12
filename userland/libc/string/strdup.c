@@ -8,8 +8,9 @@
 char *strdup(const char *s) {
   size_t l = strlen(s);
   char *r = malloc(l + 1);
-  if (!r)
+  if (!r) {
     return NULL;
+  }
   strcpy(r, s);
   return r;
 }

@@ -7,8 +7,9 @@ void *memset(void *s, int c, size_t n) {
   // s.
 
   unsigned char *p = s;
-  for (; n > 0; n--, p++)
+  for (; n > 0; n--, p++) {
     *p = (unsigned char)c;
+  }
 
   // The memset() function shall return s
   return s;

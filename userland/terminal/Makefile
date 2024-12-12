@@ -6,6 +6,7 @@ BINS=term
 all: $(BINS)
 
 term.o: term.c
+	clang-format -i $<
 	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ -c $<
 
 term: term.o

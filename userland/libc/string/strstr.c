@@ -2,8 +2,9 @@
 
 char *strstr(const char *s1, const char *s2) {
   // If s2 points to a string with zero length, the function shall return s1.
-  if ('\0' == *s2)
-    return (char*)s1;
+  if ('\0' == *s2) {
+    return (char *)s1;
+  }
   for (; *s1; s1++) {
     const char *t1 = s1;
     const char *t2 = s2;
@@ -14,8 +15,9 @@ char *strstr(const char *s1, const char *s2) {
         break;
       }
     }
-    if (!is_dif)
-      return (char*)s1;
+    if (!is_dif) {
+      return (char *)s1;
+    }
   }
   return NULL;
 }

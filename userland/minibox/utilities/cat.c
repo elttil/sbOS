@@ -13,10 +13,12 @@
 int fd_to_stdout(int fd) {
   int rc;
   for (char buffer[CAT_BUFFER]; (rc = read(fd, &buffer, sizeof(buffer)));) {
-    if (-1 == rc)
+    if (-1 == rc) {
       return 0;
-    if (-1 == write(fd_stdout, buffer, rc))
+    }
+    if (-1 == write(fd_stdout, buffer, rc)) {
       return 0;
+    }
   }
   return 1;
 }
@@ -35,8 +37,9 @@ int cat_main(int argc, char **argv) {
     // If a file is '-', the cat utility shall read from the standard
     // input at that point in the sequence.
     if (0 == strcmp(*argv, "-")) {
-      if (!fd_to_stdout(0))
+      if (!fd_to_stdout(0)) {
         return 1;
+      }
       continue;
     }
 
@@ -46,8 +49,9 @@ int cat_main(int argc, char **argv) {
       perror(*argv);
       return 1;
     }
-    if (!fd_to_stdout(fd))
+    if (!fd_to_stdout(fd)) {
       return 1;
+    }
     close(fd);
   }
   return 0;

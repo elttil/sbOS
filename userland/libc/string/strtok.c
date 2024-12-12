@@ -7,18 +7,20 @@ char *strtok(char *restrict s, const char *restrict sep) {
     strtok_s = s;
     return strtok(NULL, sep);
   }
-	if(!strtok_s)
-		return NULL;
+  if (!strtok_s) {
+    return NULL;
+  }
   char *e = strpbrk(strtok_s, sep);
   if (!e) {
-	  char *r = strtok_s;
-	  strtok_s = NULL;
+    char *r = strtok_s;
+    strtok_s = NULL;
     return r;
   }
   *e = '\0';
   e--;
-  for (; *sep; sep++)
+  for (; *sep; sep++) {
     e++;
+  }
   e++;
   char *r = strtok_s;
   strtok_s = e;

@@ -3,10 +3,10 @@
 //
 // SPDX-License-Identifier: 0BSD
 //
-#include <tb/sha1.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <tb/sha1.h>
 
 #define SHA1_CONSTANT_H0 0x67452301
 #define SHA1_CONSTANT_H1 0xefcdab89
@@ -57,10 +57,11 @@ void pad_sha1_message(uint8_t *M, uint64_t l, uint64_t active_l,
   // solution to the equation 'l + 1 + k \cong 448 mod 512'
   int k;
   uint64_t rest = (active_l + 1) % 512;
-  if (rest < 448)
+  if (rest < 448) {
     k = 448 - rest;
-  else
+  } else {
     k = 512 - rest + 448;
+  }
 
   memset(block + ARRAY_NUM(active_l) + 2, 0x0, k / 8);
 
@@ -90,14 +91,18 @@ uint32_t sha1_f(uint8_t t, uint32_t x, uint32_t y, uint32_t z) {
 }
 
 uint32_t sha1_get_k(uint8_t t) {
-  if (t <= 19)
+  if (t <= 19) {
     return SHA1_CONSTANT_K1;
-  if (t <= 39)
+  }
+  if (t <= 39) {
     return SHA1_CONSTANT_K2;
-  if (t <= 59)
+  }
+  if (t <= 59) {
     return SHA1_CONSTANT_K3;
-  if (t <= 79)
+  }
+  if (t <= 79) {
     return SHA1_CONSTANT_K4;
+  }
   return 0;
 }
 
@@ -109,16 +114,18 @@ uint32_t ROTL(uint32_t value, uint8_t shift) {
 
 void add_block(SHA1_CTX *ctx, uint8_t *_block) {
   uint32_t *block = (uint32_t *)_block;
-  for (size_t i = 0; i < 16; i++)
+  for (size_t i = 0; i < 16; i++) {
     block[i] = reverse_32(block[i]);
+  }
 
   uint32_t W[80];
   uint32_t a, b, c, d, e;
   uint32_t *M = block;
 
   // 1. Prepare the message schedule, {Wt}:
-  for (size_t t = 0; t < 16; t++)
+  for (size_t t = 0; t < 16; t++) {
     W[t] = M[t];
+  }
 
   for (size_t t = 16; t < 80; t++) {
     // ROTL(1)(W(t-3) ^ W(t-8) ^ W(t-16))
@@ -157,14 +164,17 @@ void SHA1_Final(SHA1_CTX *ctx, unsigned char *message_digest) {
 
   add_block(ctx, block);
 
-  if (((ctx->active_len * 8 + 1) % 512) >= 448)
+  if (((ctx->active_len * 8 + 1) % 512) >= 448) {
     add_block(ctx, block + BLOCK_BYTES);
+  }
 
-  for (size_t i = 0; i < 5; i++)
+  for (size_t i = 0; i < 5; i++) {
     ctx->h[i] = reverse_32(ctx->h[i]);
+  }
 
-  for (size_t i = 0; i < 5; i++)
+  for (size_t i = 0; i < 5; i++) {
     memcpy(message_digest + sizeof(uint32_t) * i, &ctx->h[i], sizeof(uint32_t));
+  }
 }
 
 void SHA1_Update(SHA1_CTX *ctx, const void *data, uint64_t len) {
@@ -176,8 +186,9 @@ void SHA1_Update(SHA1_CTX *ctx, const void *data, uint64_t len) {
     memcpy(ctx->block + ctx->active_len, data, write_len);
     ctx->len += write_len;
     ctx->active_len += write_len;
-    if (BLOCK_BYTES != ctx->active_len)
+    if (BLOCK_BYTES != ctx->active_len) {
       return;
+    }
 
     add_block(ctx, ctx->block);
     memset(ctx->block, 0, BLOCK_BYTES);

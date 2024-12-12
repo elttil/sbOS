@@ -16,12 +16,12 @@ typedef int dev_t;
 typedef unsigned int fsblkcnt_t;
 typedef unsigned int fsfilcnt_t;
 typedef unsigned int ino_t;
-//typedef unsigned int size_t;
+// typedef unsigned int size_t;
 
 typedef int blksize_t;
 typedef int pid_t;
 typedef int ssize_t;
 
-//typedef int clock_t;
+// typedef int clock_t;
 typedef int time_t;
 #endif

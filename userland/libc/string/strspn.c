@@ -10,8 +10,9 @@ size_t strspn(const char *s1, const char *s2) {
         break;
       }
     }
-    if (!e)
+    if (!e) {
       break;
+    }
     r++;
   }
   return r;

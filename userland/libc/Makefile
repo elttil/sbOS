@@ -6,6 +6,7 @@ OBJ=crt0.o libc.o malloc/malloc.o pty.o sys/mman/mmap.o sys/mman/munmap.o memset
 all: libc.a
 
 %.o: %.c
+	clang-format -i $<
 	$(CC) $(CFLAGS) -I. -o $@ -c $<
 
 %.o: %.s

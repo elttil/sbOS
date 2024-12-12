@@ -49,7 +49,7 @@ void mmu_free_address_range(void *ptr, size_t length, PageDirectory *pd);
 u32 mmu_get_number_of_allocated_frames(void);
 void *mmu_map_frames(void *ptr, size_t s);
 int mmu_map_physical(void *dst, PageDirectory *d, void *physical,
-                      size_t length);
+                     size_t length);
 void mmu_free_pages(void *a, u32 n);
 void *mmu_map_user_frames(void *const ptr, size_t s);
 void *mmu_is_valid_userpointer(const void *ptr, size_t s);

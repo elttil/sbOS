@@ -1,8 +1,8 @@
 #include <kmalloc.h>
+#include <lib/sb.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <tb/sb.h>
 
 #define DEFAULT_CAPACITY 256
 

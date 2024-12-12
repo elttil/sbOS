@@ -7,7 +7,7 @@ struct two_args {
 };
 
 size_t sendto(int socket, const void *message, size_t length, int flags,
-               const struct sockaddr *dest_addr, socklen_t dest_len) {
+              const struct sockaddr *dest_addr, socklen_t dest_len) {
   struct two_args extra = {
       .a = dest_addr,
       .b = dest_len,

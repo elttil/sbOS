@@ -38,8 +38,9 @@ long ftnum(FILE *stream, int base, int *error) {
     return 0;
   }
   for (;;) {
-    if (EOF == (c = fgetc(stream)))
+    if (EOF == (c = fgetc(stream))) {
       break;
+    }
     if (c == '\0') {
       ungetc(c, stream);
       break;
@@ -69,13 +70,15 @@ int vfscanf(FILE *stream, const char *format, va_list ap) {
   for (; *format; format++) {
     if (*format != '%' && !cont) {
       char c;
-      if (isspace(*format))
+      if (isspace(*format)) {
         continue;
+      }
       if (EOF == (c = fgetc(stream))) {
         break;
       }
-      if (*format == c) // TODO: Make sure this is the correct behaviour
+      if (*format == c) { // TODO: Make sure this is the correct behaviour
         continue;
+      }
       // TODO: Make sure this is the correct behaviour
       errno = EINVAL;
       assert(0);
@@ -164,8 +167,9 @@ size_t sscanf_read(FILE *f, unsigned char *s, size_t l) {
     s++;
     r++;
   }
-  if (!(*(c->s + c->offset)))
+  if (!(*(c->s + c->offset))) {
     f->is_eof = 1;
+  }
   /*
   memcpy(s, c->s, l);
   c->s += l;*/

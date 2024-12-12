@@ -7,12 +7,14 @@ size_t *strlcpy(char *s1, const char *s2, size_t n) {
   size_t tmp_n = n;
   const char *os2 = s2;
   for (; tmp_n; tmp_n--) {
-    if ((*s1++ = *s2++) == '\0')
+    if ((*s1++ = *s2++) == '\0') {
       break;
+    }
   }
   if (tmp_n == 0) {
-    if (n != 0)
+    if (n != 0) {
       *s1 = '\0'; /* NUL-terminate s1 */
+    }
     while (*s2++)
       ;
   }

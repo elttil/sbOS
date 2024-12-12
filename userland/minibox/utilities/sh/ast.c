@@ -11,8 +11,9 @@ void free_ast_command(struct AST *ast) {
 
 void free_ast(struct AST *ast) {
   for (; ast;) {
-    if (AST_COMMAND == ast->type)
+    if (AST_COMMAND == ast->type) {
       free_ast_command(ast);
+    }
     struct AST *old = ast;
     ast = ast->next;
     free(old);
@@ -27,8 +28,9 @@ struct AST *allocate_ast(void) {
 
 int parse_command(struct TOKEN **token_ptr, struct AST *cur) {
   struct TOKEN *token = *token_ptr;
-  if (TOKEN_CHARS != token->type)
+  if (TOKEN_CHARS != token->type) {
     return 0;
+  }
   cur->type = AST_COMMAND;
   cur->val.type = AST_VALUE_STRING;
   cur->val.string = token->string_rep;
@@ -41,10 +43,12 @@ int parse_command(struct TOKEN **token_ptr, struct AST *cur) {
       child->type = AST_EXPRESSION;
       child->val.type = AST_VALUE_STRING;
       child->val.string = token->string_rep;
-      if (!token->next)
+      if (!token->next) {
         break;
-      if (TOKEN_CHARS != token->next->type)
+      }
+      if (TOKEN_CHARS != token->next->type) {
         break;
+      }
       token = token->next;
       child->next = allocate_ast();
       child = child->next;
@@ -87,8 +91,9 @@ struct AST *generate_ast(struct TOKEN *token) {
   struct AST *prev = NULL;
   for (; token;) {
     struct AST *cur = allocate_ast();
-    if (prev)
+    if (prev) {
       prev->next = cur;
+    }
     if (parse_command(&token, cur)) {
     } else if (TOKEN_AND == token->type) {
       cur->type = AST_CONDITIONAL_AND;
@@ -99,8 +104,9 @@ struct AST *generate_ast(struct TOKEN *token) {
     } else {
       token = token->next;
     }
-    if (!head)
+    if (!head) {
       head = cur;
+    }
     prev = cur;
   }
   return head;

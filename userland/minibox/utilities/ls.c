@@ -35,14 +35,17 @@ int ls_main(int argc, char **argv) {
 
   int prev = 0;
   for (int i = 0; i < n; i++) {
-    if (!list_hidden)
-      if ('.' == *namelist[i]->d_name)
+    if (!list_hidden) {
+      if ('.' == *namelist[i]->d_name) {
         continue;
+      }
+    }
 
-    if (prev)
+    if (prev) {
       putchar(newline ? '\n' : ' ');
-    else
+    } else {
       prev = 1;
+    }
     printf("%s", namelist[i]->d_name);
   }
   putchar('\n');

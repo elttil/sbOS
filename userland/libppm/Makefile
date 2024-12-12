@@ -6,6 +6,7 @@ BINS=ppm
 all: $(BINS)
 
 ppm.o: ppm.c
+	clang-format -i $<
 	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ -c $<
 
 ppm: ppm.o

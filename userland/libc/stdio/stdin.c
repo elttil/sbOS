@@ -36,8 +36,9 @@ size_t write_fd(FILE *f, const unsigned char *s, size_t l) {
 
 size_t non_cache_read_fd(FILE *f, unsigned char *s, size_t l) {
   int rc = read(f->fd, s, l);
-  if (rc == 0)
+  if (rc == 0) {
     f->is_eof = 1;
+  }
   if (rc == -1) {
     f->has_error = 1;
     return 0;
@@ -46,8 +47,9 @@ size_t non_cache_read_fd(FILE *f, unsigned char *s, size_t l) {
 }
 
 size_t read_fd(FILE *f, unsigned char *s, size_t l) {
-  if (0 == l)
+  if (0 == l) {
     return 0;
+  }
 
   // Skip using cache if the length being requested if longer than or
   // equal to the cache block size. This avoids doing a bunch of extra

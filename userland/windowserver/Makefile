@@ -8,6 +8,7 @@ all: $(BIN)
 OBJ=ws.o draw.o
 
 %.o: %.c
+	clang-format -i $<
 	$(CC) $(CFLAGS) $(INC) $(LIB) -o $@ -c $<
 
 clean:

@@ -16,7 +16,7 @@ struct tm gmtime_r = {
 
 // https://pubs.opengroup.org/onlinepubs/9699919799/functions/gmtime.html
 struct tm *gmtime(const time_t *timer) {
-	(void)timer;
+  (void)timer;
   // TODO: Implement
   return &gmtime_r;
 }

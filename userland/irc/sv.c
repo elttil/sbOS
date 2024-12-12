@@ -1,7 +1,7 @@
 #include "sv.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 char *SV_TO_C(struct sv s) {
   char *c_string = malloc(s.length + 1);

@@ -31,8 +31,9 @@ void draw_line(DISPLAY *disp, int sx, int sy, int dx, int dy, uint32_t color) {
   int y = sy;
   for (;;) {
     // Bounds checking
-    if (y * disp->width + x > disp->height * disp->width)
+    if (y * disp->width + x > disp->height * disp->width) {
       break;
+    }
 
     if (x >= dx - 1 && y >= dy - 1) {
       break;

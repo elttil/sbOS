@@ -70,12 +70,14 @@ void scandir_sane_free(struct dirent **namelist) {
 int scandir(const char *dir, struct dirent ***namelist,
             int (*sel)(const struct dirent *),
             int (*compar)(const struct dirent **, const struct dirent **)) {
-  if (!compar)
+  if (!compar) {
     compar = nop_compar;
+  }
 
   DIR *d = opendir(dir);
-  if (!d)
+  if (!d) {
     return -1;
+  }
   struct dirent **list = NULL;
   struct dirent *e;
   int rc = 0;

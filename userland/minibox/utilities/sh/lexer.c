@@ -15,19 +15,23 @@ void free_tokens(struct TOKEN *token) {
 }
 
 int is_special_char(char c) {
-  if (!isprint(c))
+  if (!isprint(c)) {
     return 1;
-  if (isspace(c))
+  }
+  if (isspace(c)) {
     return 1;
-  if (isalnum(c))
+  }
+  if (isalnum(c)) {
     return 0;
+  }
   return !(('>' != c && '|' != c && '&' != c));
 }
 
 int parse_chars(struct sv *code_ptr, struct TOKEN *cur) {
   struct sv code = *code_ptr;
-  if (is_special_char(sv_peek(code)))
+  if (is_special_char(sv_peek(code))) {
     return 0;
+  }
   cur->type = TOKEN_CHARS;
   cur->string_rep = sv_split_function(code, &code, is_special_char);
   *code_ptr = code;
@@ -83,16 +87,18 @@ struct TOKEN *lex(struct sv code) {
 
     struct TOKEN *cur = malloc(sizeof(struct TOKEN));
     cur->next = NULL;
-    if (prev)
+    if (prev) {
       prev->next = cur;
+    }
     if (parse_chars(&code, cur)) {
     } else if (parse_operand(&code, cur)) {
     } else {
       free(cur);
       assert(0 && "Unknown token");
     }
-    if (!head)
+    if (!head) {
       head = cur;
+    }
     prev = cur;
   }
   return head;
