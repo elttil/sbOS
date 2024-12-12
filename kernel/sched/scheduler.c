@@ -99,6 +99,9 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
     return NULL;
   }
   r->reference_count = 1;
+  if (p) {
+    r->reference_count++;
+  }
   r->tcb = kcalloc(1, sizeof(struct TCB));
   if (!r->tcb) {
     kfree(r);
@@ -213,6 +216,10 @@ void process_remove_reference(process_t *p) {
   assert(0 != p->reference_count);
   p->reference_count--;
   if (0 == p->reference_count) {
+    process_t *t = ready_queue;
+    for (; t; t = t->next) {
+      assert(t != p);
+    }
     kfree(p);
   }
 }
@@ -249,9 +256,21 @@ void exit_process(process_t *p, int status) {
     tmp = tmp->next;
   }
   free_process(p);
-  if (current_task == p) {
-    switch_task();
+  if (current_task != p) {
+    process_remove_reference(p);
+    return;
   }
+  assert(0 != p->reference_count);
+  p->reference_count--;
+  if (0 != p->reference_count) {
+    switch_task();
+    return;
+  }
+  assert(current_task != ready_queue);
+  process_t *tmp = current_task;
+  current_task = ready_queue;
+  kfree(tmp);
+  switch_task();
 }
 
 void exit(int status) {
