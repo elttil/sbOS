@@ -31,6 +31,7 @@ int mmu_allocate_kernel_linear_virtual_to_physical_mapping(void *rc, size_t n);
 
 static int create_kernel_table(int table_index) {
   u32 physical;
+  kernel_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   active_directory->tables[table_index] = (PageTable *)0xDEADBEEF;
   PageTable *new_table =
       (PageTable *)ksbrk_physical(sizeof(PageTable), (void **)&physical);
@@ -55,13 +56,13 @@ static int create_kernel_table(int table_index) {
 
 void *ksbrk(size_t s, int enforce_linear) {
   uintptr_t rc = (uintptr_t)align_page((void *)data_end);
-  data_end += s;
-  data_end = (uintptr_t)align_page((void *)data_end);
 
   if (!get_active_pagedirectory()) {
     // If there is no active pagedirectory we
     // just assume that the memory is
     // already mapped.
+    data_end += s;
+    data_end = (uintptr_t)align_page((void *)data_end);
     return (void *)rc;
   }
   // Determine whether we are approaching a unallocated table
@@ -70,8 +71,10 @@ void *ksbrk(size_t s, int enforce_linear) {
     if (!create_kernel_table(table_index)) {
       return NULL;
     }
-    return ksbrk(s, enforce_linear);
+    rc = (uintptr_t)align_page((void *)data_end);
   }
+  data_end += s;
+  data_end = (uintptr_t)align_page((void *)data_end);
   if (enforce_linear) {
     if (!mmu_allocate_kernel_linear_virtual_to_physical_mapping(
             (void *)rc, (data_end - (uintptr_t)rc))) {
