@@ -8,12 +8,14 @@ struct sb {
   char *string;
   size_t length;
   size_t capacity;
+  size_t to_ignore;
   uint8_t prebuffer;
 };
 
 struct sv;
 
 void sb_init(struct sb *ctx);
+void sb_set_ignore(struct sb *ctx, size_t n);
 int sb_init_capacity(struct sb *ctx, size_t starting_capacity);
 void sb_init_buffer(struct sb *ctx, char *buffer, size_t size);
 void sb_free(struct sb *ctx);

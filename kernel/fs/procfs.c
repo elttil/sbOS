@@ -23,8 +23,7 @@ void process_close(vfs_fd_t *fd) {
 int procfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   struct sb builder;
   sb_init_buffer(&builder, buffer, len);
-
-  size_t read_amount = 0;
+  sb_set_ignore(&builder, offset);
 
   process_t *p = ready_queue;
   for (; p; p = p->next) {
@@ -32,13 +31,11 @@ int procfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     entry.d_ino = p->pid;
     ksnprintf(entry.d_name, sizeof(entry.d_name), "%u", p->pid);
 
-    if (read_amount >= offset) {
-      if (0 == sb_append_buffer(&builder, (u8 *)&entry, sizeof(entry))) {
-        break;
-      }
+    if (0 == sb_append_buffer(&builder, (u8 *)&entry, sizeof(entry))) {
+      break;
     }
-    read_amount += sizeof(struct dirent);
   }
+
   return sv_length(SB_TO_SV(builder));
 }
 
@@ -70,27 +67,23 @@ int process_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
 
   struct sb builder;
   sb_init_buffer(&builder, buffer, len);
+  sb_set_ignore(&builder, offset);
 
   int id = fd->inode->inode_num;
   if (PROCESS_ROOT == id) {
-    size_t read_amount = 0;
     for (size_t i = 0; i < ARRAY_LENGTH(process_entries); i++) {
       if (0 == strlen(process_entries[i].d_name)) {
         continue;
       }
-      if (read_amount >= offset) {
-        if (0 == sb_append_buffer(&builder, (u8 *)&process_entries[i],
-                                  sizeof(struct dirent))) {
-          break;
-        }
+      if (0 == sb_append_buffer(&builder, (u8 *)&process_entries[i],
+                                sizeof(struct dirent))) {
+        break;
       }
-      read_amount += sizeof(struct dirent);
     }
     return sv_length(SB_TO_SV(builder));
   }
   if (PROCESS_NAME == id) {
     struct sv program_name = C_TO_SV(p->program_name);
-    sv_take(program_name, &program_name, offset);
     sb_append_sv(&builder, program_name);
     return sv_length(SB_TO_SV(builder));
   }

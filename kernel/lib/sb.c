@@ -11,6 +11,7 @@ void sb_init(struct sb *ctx) {
 }
 
 int sb_init_capacity(struct sb *ctx, size_t starting_capacity) {
+  ctx->to_ignore = 0;
   ctx->length = 0;
   ctx->prebuffer = 0;
   ctx->string = kmalloc(starting_capacity);
@@ -27,6 +28,7 @@ void sb_init_buffer(struct sb *ctx, char *buffer, size_t size) {
   ctx->capacity = size;
   ctx->length = 0;
   ctx->prebuffer = 1;
+  ctx->to_ignore = 0;
 }
 
 void sb_free(struct sb *ctx) {
@@ -40,8 +42,13 @@ void sb_free(struct sb *ctx) {
   ctx->string = NULL;
 }
 
+void sb_set_ignore(struct sb *ctx, size_t n) {
+  ctx->to_ignore = n;
+}
+
 void sb_reset(struct sb *ctx) {
   ctx->length = 0;
+  ctx->to_ignore = 0;
 }
 
 int sb_isempty(const struct sb *ctx) {
@@ -64,6 +71,10 @@ int sb_increase_buffer(struct sb *ctx, size_t min) {
 }
 
 int sb_append_char(struct sb *ctx, char c) {
+  if (ctx->to_ignore > 0) {
+    ctx->to_ignore--;
+    return 1;
+  }
   if (1 > ctx->capacity - ctx->length) {
     if (!sb_increase_buffer(ctx, 1)) {
       return 0;
@@ -82,6 +93,13 @@ int sb_delete_right(struct sb *ctx, size_t n) {
 
 int sb_append(struct sb *ctx, const char *s) {
   size_t l = strlen(s);
+  if (ctx->to_ignore >= l) {
+    ctx->to_ignore -= l;
+    return 1;
+  }
+  l -= ctx->to_ignore;
+  s += ctx->to_ignore;
+  ctx->to_ignore = 0;
   if (l > ctx->capacity - ctx->length) {
     if (!sb_increase_buffer(ctx, l)) {
       return 0;
@@ -97,6 +115,13 @@ int sb_prepend_sv(struct sb *ctx, struct sv sv) {
 }
 
 int sb_prepend_buffer(struct sb *ctx, const char *buffer, size_t length) {
+  if (ctx->to_ignore >= length) {
+    ctx->to_ignore -= length;
+    return 1;
+  }
+  length -= ctx->to_ignore;
+  buffer += ctx->to_ignore;
+  ctx->to_ignore = 0;
   if (length > ctx->capacity - ctx->length) {
     if (!sb_increase_buffer(ctx, length)) {
       return 0;
@@ -109,6 +134,13 @@ int sb_prepend_buffer(struct sb *ctx, const char *buffer, size_t length) {
 }
 
 int sb_append_buffer(struct sb *ctx, const char *buffer, size_t length) {
+  if (ctx->to_ignore >= length) {
+    ctx->to_ignore -= length;
+    return 1;
+  }
+  length -= ctx->to_ignore;
+  buffer += ctx->to_ignore;
+  ctx->to_ignore = 0;
   if (length > ctx->capacity - ctx->length) {
     if (!sb_increase_buffer(ctx, length)) {
       return 0;
