@@ -47,11 +47,13 @@ u64 timer_get_ms(void) {
 }
 
 int clock_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
-  if (0 != offset) {
-    return 0;
-  }
+  struct sb ctx;
+  sb_init_buffer(&ctx, buffer, len);
+  sb_set_ignore(&ctx, offset);
+
   u64 r = timer_get_ms();
-  return min(len, (u64)kbnprintf(buffer, len, "%llu", r));
+  (void)ksbprintf(&ctx, "%llu", r);
+  return sv_length(SB_TO_SV(ctx));
 }
 
 int clock_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {

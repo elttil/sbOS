@@ -2,6 +2,7 @@
 #define SV_H
 #include "sb.h"
 #include <stddef.h>
+#include <stdint.h>
 
 #define SB_TO_SV(_sb)                                                          \
   (struct sv) {                                                                \

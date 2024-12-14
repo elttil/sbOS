@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <kmalloc.h>
+#include <lib/sb.h>
 #include <log.h>
 #include <math.h>
 #include <stdio.h>
@@ -286,32 +287,36 @@ int vkcprintf(struct print_context *ctx, const char *fmt, va_list ap) {
   return rc;
 }
 
-struct bn_context {
-  char *out;
-  int size;
-};
-
-void bn_write(struct print_context *_ctx, const char *s, int l) {
-  struct bn_context *ctx = (struct bn_context *)_ctx->data;
+void sb_write(struct print_context *_ctx, const char *s, int l) {
+  struct sb *ctx = (struct sb *)_ctx->data;
   assert(ctx);
-  size_t k = min(l, ctx->size);
-  memcpy(ctx->out, s, k);
-  ctx->out += k;
-  ctx->size -= k;
+  sb_append_buffer(ctx, s, l);
+}
+
+int vksbprintf(struct sb *ctx, const char *format, va_list ap) {
+  struct print_context context;
+
+  context.data = ctx;
+  context.write = sb_write;
+
+  return vkcprintf(&context, format, ap);
+}
+
+int ksbprintf(struct sb *ctx, const char *format, ...) {
+  va_list list;
+  va_start(list, format);
+  int rc = vksbprintf(ctx, format, list);
+  va_end(list);
+  return rc;
 }
 
 int kbnprintf(char *out, size_t size, const char *format, ...) {
-  struct print_context context;
-
-  struct bn_context ctx;
-  context.data = &ctx;
-  ctx.out = out;
-  ctx.size = size;
-  context.write = bn_write;
+  struct sb ctx;
+  sb_init_buffer(&ctx, out, size);
 
   va_list list;
   va_start(list, format);
-  int rc = vkcprintf(&context, format, list);
+  int rc = vksbprintf(&ctx, format, list);
   va_end(list);
   return rc;
 }
