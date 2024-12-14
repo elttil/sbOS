@@ -36,12 +36,21 @@ int procfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     }
   }
 
+  {
+    struct dirent entry;
+    entry.d_ino = current_task->pid;
+    ksnprintf(entry.d_name, sizeof(entry.d_name), "self");
+
+    (void)sb_append_buffer(&builder, (u8 *)&entry, sizeof(entry));
+  }
+
   return sv_length(SB_TO_SV(builder));
 }
 
 #define PROCESS_ROOT 0
-#define PROCESS_SIGNAL 1
-#define PROCESS_NAME 2
+#define PROCESS_ID 1
+#define PROCESS_SIGNAL 2
+#define PROCESS_NAME 3
 
 struct dirent process_entries[] = {
     {
@@ -51,6 +60,10 @@ struct dirent process_entries[] = {
     {
         .d_ino = PROCESS_ROOT,
         .d_name = ".",
+    },
+    {
+        .d_ino = PROCESS_ID,
+        .d_name = "id",
     },
     {
         .d_ino = PROCESS_SIGNAL,
@@ -85,6 +98,13 @@ int process_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   if (PROCESS_NAME == id) {
     struct sv program_name = C_TO_SV(p->program_name);
     sb_append_sv(&builder, program_name);
+    return sv_length(SB_TO_SV(builder));
+  }
+  if (PROCESS_ID == id) {
+    char buffer[256];
+    int rc = kbnprintf(buffer, sizeof(buffer), "%llu", p->pid);
+
+    sb_append_buffer(&builder, buffer, rc);
     return sv_length(SB_TO_SV(builder));
   }
   return -EBADF;
@@ -151,7 +171,11 @@ vfs_inode_t *procfs_open(const char *p) {
   int got_num;
   u64 pid = sv_parse_unsigned_number(path, &path, &got_num);
   if (!got_num) {
-    return NULL;
+    struct sv file = sv_split_delim(path, &path, '/');
+    if (!sv_eq(file, C_TO_SV("self"))) {
+      return NULL;
+    }
+    pid = current_task->pid;
   }
 
   // NOTE: There should only be one '/' since the previous vfs_open will
