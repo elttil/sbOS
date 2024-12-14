@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <fs/procfs.h>
 #include <lib/sb.h>
@@ -18,6 +19,12 @@ void process_close(vfs_fd_t *fd) {
     return;
   }
   process_remove_reference(p);
+}
+
+int procfs_stat(vfs_fd_t *fd, struct stat *buf) {
+  memset(buf, 0, sizeof(struct stat));
+  buf->st_mode = STAT_DIR;
+  return 0;
 }
 
 int procfs_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -75,6 +82,18 @@ struct dirent process_entries[] = {
     },
 };
 
+int process_stat(vfs_fd_t *fd, struct stat *buf) {
+  memset(buf, 0, sizeof(struct stat));
+
+  int id = fd->inode->inode_num;
+  if (PROCESS_ROOT == id) {
+    buf->st_mode = STAT_DIR;
+    return 0;
+  }
+  buf->st_mode = STAT_REG;
+  return 0;
+}
+
 int process_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
   process_t *p = fd->inode->internal_object;
 
@@ -107,6 +126,7 @@ int process_read(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     sb_append_buffer(&builder, buffer, rc);
     return sv_length(SB_TO_SV(builder));
   }
+  assert(0);
   return -EBADF;
 }
 
@@ -126,6 +146,7 @@ int process_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
     // writing the number.
     return 0;
   }
+  assert(0);
   return -EBADF;
 }
 
@@ -147,7 +168,7 @@ vfs_inode_t *open_process(u64 pid, int id) {
       0 /*is_open*/, 0, process /*internal_object*/, 0 /*file_size*/,
       procfs_open, NULL /*create_file*/, process_read, process_write,
       process_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-      NULL /*truncate*/, NULL /*stat*/, NULL /*connect*/);
+      NULL /*truncate*/, process_stat /*stat*/, NULL /*connect*/);
   if (!inode) {
     return NULL;
   }
@@ -165,7 +186,7 @@ vfs_inode_t *procfs_open(const char *p) {
         0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/,
         procfs_open, NULL /*create_file*/, procfs_read, NULL /* write */,
         procfs_close, NULL /*create_directory*/, NULL /*get_vm_object*/,
-        NULL /*truncate*/, NULL /*stat*/, NULL /*connect*/);
+        NULL /*truncate*/, procfs_stat /*stat*/, NULL /*connect*/);
   }
 
   int got_num;
@@ -191,11 +212,5 @@ vfs_inode_t *procfs_open(const char *p) {
 }
 
 vfs_inode_t *procfs_mount(void) {
-  vfs_inode_t *inode = vfs_create_inode(
-      0 /*inode_num*/, 0 /*type*/, 0 /*has_data*/, 0 /*can_write*/,
-      0 /*is_open*/, 0, NULL /*internal_object*/, 0 /*file_size*/, procfs_open,
-      NULL /*create_file*/, procfs_read, NULL /* write */, procfs_close,
-      NULL /*create_directory*/, NULL /*get_vm_object*/, NULL /*truncate*/,
-      NULL /*stat*/, NULL /*connect*/);
-  return inode;
+  return procfs_open("");
 }
