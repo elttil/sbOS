@@ -29,6 +29,15 @@ int is_special_char(char c) {
 
 int parse_chars(struct sv *code_ptr, struct TOKEN *cur) {
   struct sv code = *code_ptr;
+
+  if (sv_partial_eq(code, C_TO_SV("\""))) {
+    sv_take(code, &code, 1);
+    cur->type = TOKEN_CHARS;
+    cur->string_rep = sv_split_delim(code, &code, '"');
+    *code_ptr = code;
+    return 1;
+  }
+
   if (is_special_char(sv_peek(code))) {
     return 0;
   }
