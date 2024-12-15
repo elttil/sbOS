@@ -179,11 +179,6 @@ int close(int fd) {
   return syscall(SYS_CLOSE, (u32)fd, 0, 0, 0, 0);
 }
 
-int execv(char *path, char **argv) {
-  struct SYS_EXEC_PARAMS args = {.path = path, .argv = argv};
-  return syscall(SYS_EXEC, (u32)&args, 0, 0, 0, 0);
-}
-
 int s_syscall(int sys);
 
 int wait(int *stat_loc) {

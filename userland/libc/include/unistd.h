@@ -13,7 +13,7 @@ extern char *optarg;
 
 int close(int fildes);
 int ftruncate(int fildes, size_t length);
-int execv(char *path, char **argv);
+int execv(const char *pathname, char *const argv[]);
 int pipe(int fd[2]);
 int dup(int fildes);
 int dup2(int org_fd, int new_fd);

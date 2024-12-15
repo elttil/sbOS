@@ -35,4 +35,5 @@ int atoi(const char *str);
 char *realpath(const char *filename, char *resolvedname);
 long atol(const char *nptr);
 long long atoll(const char *nptr);
+int setenv(const char *name, const char *value, int overwrite);
 #endif

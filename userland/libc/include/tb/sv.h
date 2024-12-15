@@ -11,6 +11,8 @@
 #define C_TO_SV(_c_string)                                                     \
   ((struct sv){.length = strlen(_c_string), .s = (_c_string)})
 
+#define sv_length(a) ((a).length)
+
 struct sv {
   const char *s;
   size_t length;
