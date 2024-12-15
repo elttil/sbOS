@@ -193,29 +193,40 @@ void get_line(struct sb *s) {
   }
 }
 
-int sh_main(int argc, char **argv) {
-  if (argc > 1) {
-    int fd = open(argv[1], O_RDONLY, 0);
-    char buffer[8192];
-    struct sb file;
-    sb_init(&file);
-
-    for (;;) {
-      int rc = read(fd, buffer, 8192);
-      if (0 == rc) {
-        break;
-      }
-      sb_append_buffer(&file, buffer, rc);
-    }
-
-    close(fd);
-    struct TOKEN *h = lex(SB_TO_SV(file));
-    struct AST *ast_h = generate_ast(h);
-    execute_ast(ast_h);
-    free_tokens(h);
-    free_ast(ast_h);
-    sb_free(&file);
+int source_file(const char *path) {
+  int fd = open(path, O_RDONLY, 0);
+  if (-1 == fd) {
     return 0;
+  }
+  char buffer[8192];
+  struct sb file;
+  sb_init(&file);
+
+  for (;;) {
+    int rc = read(fd, buffer, 8192);
+    if (-1 == rc) {
+      break;
+    }
+    if (0 == rc) {
+      break;
+    }
+    sb_append_buffer(&file, buffer, rc);
+  }
+
+  close(fd);
+  struct TOKEN *h = lex(SB_TO_SV(file));
+  struct AST *ast_h = generate_ast(h);
+  execute_ast(ast_h);
+  free_tokens(h);
+  free_ast(ast_h);
+  sb_free(&file);
+  return 1;
+}
+
+int sh_main(int argc, char **argv) {
+  (void)source_file("/profile");
+  if (argc > 1) {
+    return source_file(argv[1]) ? 0 : 1;
   }
 
   for (;;) {
