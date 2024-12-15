@@ -26,6 +26,60 @@ struct AST *allocate_ast(void) {
   return r;
 }
 
+int token_get(struct TOKEN **token_ptr, token_type_t type) {
+  struct TOKEN *token = *token_ptr;
+  token = token->next;
+  if (!token) {
+    return 0;
+  }
+
+  if (type != token->type) {
+    return 0;
+  }
+  *token_ptr = token;
+  return 1;
+}
+
+int parse_set(struct TOKEN **token_ptr, struct AST *cur) {
+  struct TOKEN *token = *token_ptr;
+  if (TOKEN_CHARS != token->type) {
+    return 0;
+  }
+
+  if (!sv_eq(C_TO_SV("export"), token->string_rep)) {
+    return 0;
+  }
+
+  if (!token_get(&token, TOKEN_CHARS)) {
+    return 0;
+  }
+  struct TOKEN *name = token;
+  if (!token_get(&token, TOKEN_EQUAL)) {
+    return 0;
+  }
+  if (!token_get(&token, TOKEN_CHARS)) {
+    return 0;
+  }
+  struct TOKEN *value = token;
+  if (!token_get(&token, TOKEN_NEWLINE)) {
+    return 0;
+  }
+  token = token->next;
+
+  cur->type = AST_SET;
+  cur->val.type = AST_VALUE_STRING;
+  cur->val.string = name->string_rep;
+
+  cur->children = allocate_ast();
+  struct AST *child = cur->children;
+  child->type = AST_EXPRESSION;
+  child->val.type = AST_VALUE_STRING;
+  child->val.string = value->string_rep;
+
+  *token_ptr = token;
+  return 1;
+}
+
 int parse_command(struct TOKEN **token_ptr, struct AST *cur) {
   struct TOKEN *token = *token_ptr;
   if (TOKEN_CHARS != token->type) {
@@ -94,7 +148,8 @@ struct AST *generate_ast(struct TOKEN *token) {
     if (prev) {
       prev->next = cur;
     }
-    if (parse_command(&token, cur)) {
+    if (parse_set(&token, cur)) {
+    } else if (parse_command(&token, cur)) {
     } else if (TOKEN_AND == token->type) {
       cur->type = AST_CONDITIONAL_AND;
       token = token->next;

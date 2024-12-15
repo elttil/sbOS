@@ -12,6 +12,7 @@ typedef enum {
   TOKEN_STREAM,
   TOKEN_STREAM_APPEND,
   TOKEN_BACKGROUND,
+  TOKEN_EQUAL,
   TOKEN_NEWLINE,
 } token_type_t;
 

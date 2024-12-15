@@ -128,10 +128,26 @@ int execute_command(struct AST *ast, int input_fd) {
   return execute_binary(ast, input_fd);
 }
 
+void set_env_from_ast(struct AST *ast) {
+  assert(AST_VALUE_STRING == ast->val.type);
+  char *name = SV_TO_C(ast->val.string);
+
+  struct AST *child = ast->children;
+  assert(AST_VALUE_STRING == child->val.type);
+  char *value = SV_TO_C(child->val.string);
+
+  setenv(name, value, 1);
+
+  free(value);
+  free(name);
+}
+
 void execute_ast(struct AST *ast) {
   int rc = -1;
   for (; ast;) {
-    if (AST_COMMAND == ast->type) {
+    if (AST_SET == ast->type) {
+      set_env_from_ast(ast);
+    } else if (AST_COMMAND == ast->type) {
       rc = execute_command(ast, STDIN_FILENO);
     } else if (AST_CONDITIONAL_AND == ast->type) {
       if (0 != rc) {

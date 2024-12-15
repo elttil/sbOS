@@ -24,7 +24,7 @@ int is_special_char(char c) {
   if (isalnum(c)) {
     return 0;
   }
-  return !(('>' != c && '|' != c && '&' != c));
+  return !(('>' != c && '|' != c && '&' != c && '=' != c));
 }
 
 int parse_chars(struct sv *code_ptr, struct TOKEN *cur) {
@@ -54,6 +54,7 @@ int parse_operand(struct sv *code_ptr, struct TOKEN *cur) {
   TRY_PARSE_STRING(">", TOKEN_STREAM);
   TRY_PARSE_STRING("|", TOKEN_PIPE);
   TRY_PARSE_STRING("&", TOKEN_BACKGROUND);
+  TRY_PARSE_STRING("=", TOKEN_EQUAL);
   TRY_PARSE_STRING("\n", TOKEN_NEWLINE);
 
   // Failed to parse
