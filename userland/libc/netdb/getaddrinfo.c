@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
+#include <netdb.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,11 +88,6 @@ int connect_dns(void) {
   hints.ai_addr = NULL;
   hints.ai_next = NULL;
 */
-
-#define EAI_AGAIN 1
-#define EAI_FAIL 2
-#define EAI_NONAME 3
-#define EAI_MEMORY 4
 
 u16 service_to_port(const char *service) {
   int is_number = 0;
