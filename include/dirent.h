@@ -17,7 +17,6 @@ struct dirent {
 typedef struct {
   int fd;
   struct dirent internal_direntry;
-  int dir_num;
 } DIR;
 
 #ifndef KERNEL

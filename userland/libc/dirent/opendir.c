@@ -6,7 +6,6 @@ DIR *fdopendir(int fd) {
     return NULL;
   }
   rc->fd = fd;
-  rc->dir_num = 0;
   return rc;
 }
 
@@ -20,6 +19,5 @@ DIR *opendir(const char *dirname) {
     return NULL;
   }
   rc->fd = fd;
-  rc->dir_num = 0;
   return rc;
 }
