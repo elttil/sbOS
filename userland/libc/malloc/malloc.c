@@ -25,8 +25,8 @@ u64 delta_page(u64 a) {
   return 0x1000 - (a % 0x1000);
 }
 
-MallocHeader *head = NULL;
-MallocHeader *final = NULL;
+MallocHeader *malloc_head = NULL;
+MallocHeader *malloc_final = NULL;
 u32 total_heap_size = 0;
 
 // printf without using malloc() so that it can be used internally by
@@ -56,13 +56,13 @@ int debug_printf(const char *fmt, ...) {
 }
 
 int init_heap(void) {
-  head = (MallocHeader *)sbrk(NEW_ALLOC_SIZE);
+  malloc_head = (MallocHeader *)sbrk(NEW_ALLOC_SIZE);
   total_heap_size += NEW_ALLOC_SIZE - sizeof(MallocHeader);
-  head->magic = 0xdde51ab9410268b1;
-  head->size = NEW_ALLOC_SIZE - sizeof(MallocHeader);
-  head->flags = IS_FREE | IS_FINAL;
-  head->n = NULL;
-  final = head;
+  malloc_head->magic = 0xdde51ab9410268b1;
+  malloc_head->size = NEW_ALLOC_SIZE - sizeof(MallocHeader);
+  malloc_head->flags = IS_FREE | IS_FINAL;
+  malloc_head->n = NULL;
+  malloc_final = malloc_head;
   return 1;
 }
 
@@ -75,10 +75,10 @@ int add_heap_memory(size_t min_desired) {
     return 0;
   }
   total_heap_size += allocation_size - sizeof(MallocHeader);
-  void *e = final;
-  e = (void *)((u32)e + final->size);
+  void *e = malloc_final;
+  e = (void *)((u32)e + malloc_final->size);
   if (p == e) {
-    final->size += allocation_size - sizeof(MallocHeader);
+    malloc_final->size += allocation_size - sizeof(MallocHeader);
     return 1;
   }
   MallocHeader *new_entry = p;
@@ -86,8 +86,8 @@ int add_heap_memory(size_t min_desired) {
   new_entry->flags = IS_FREE | IS_FINAL;
   new_entry->n = NULL;
   new_entry->magic = 0xdde51ab9410268b1;
-  final->n = new_entry;
-  final = new_entry;
+  malloc_final->n = new_entry;
+  malloc_final = new_entry;
   return 1;
 }
 
@@ -122,10 +122,10 @@ int merge_headers(MallocHeader *b);
 MallocHeader *find_free_entry(u32 s) {
   // A new header is required as well as the newly allocated chunk
   s += sizeof(MallocHeader);
-  if (!head) {
+  if (!malloc_head) {
     init_heap();
   }
-  MallocHeader *p = head;
+  MallocHeader *p = malloc_head;
   for (; p; p = next_header(p)) {
     assert(p->magic == 0xdde51ab9410268b1);
     if (!(p->flags & IS_FREE)) {
@@ -162,8 +162,8 @@ int merge_headers(MallocHeader *b) {
   b->size += n->size;
   b->flags |= n->flags & IS_FINAL;
   b->n = n->n;
-  if (n == final) {
-    final = b;
+  if (n == malloc_final) {
+    malloc_final = b;
   }
   return 1;
 }
@@ -192,8 +192,8 @@ void *int_malloc(size_t s, int recursion) {
   new_entry->size = free_entry->size - n - sizeof(MallocHeader);
   new_entry->magic = 0xdde51ab9410268b1;
 
-  if (free_entry == final) {
-    final = new_entry;
+  if (free_entry == malloc_final) {
+    malloc_final = new_entry;
   }
   merge_headers(new_entry);
 
