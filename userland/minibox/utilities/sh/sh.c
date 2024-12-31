@@ -113,7 +113,7 @@ int execute_command(struct AST *ast, int input_fd) {
     struct AST *child = ast->children;
     if (child) {
       struct sv rest;
-      rc = sv_parse_unsigned_number(child->val.string, &rest);
+      rc = sv_parse_unsigned_number(child->val.string, &rest, NULL);
       if (rc > 255) {
         rc = 2;
       }

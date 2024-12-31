@@ -1,8 +1,13 @@
 #include <ctype.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tb/sv.h>
+
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+
+struct sv sv_init(const char *s, size_t length) {
+  return (struct sv){.s = s, .length = length};
+}
 
 char *SV_TO_C(struct sv s) {
   char *c_string = malloc(s.length + 1);
@@ -49,7 +54,11 @@ struct sv sv_skip_chars(const struct sv input, const char *chars) {
   return r;
 }
 
-uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest) {
+uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest,
+                                  int *got_num) {
+  if (got_num) {
+    *got_num = 0;
+  }
   uint64_t r = 0;
   size_t i = 0;
   for (; i < input.length; i++) {
@@ -58,6 +67,11 @@ uint64_t sv_parse_unsigned_number(struct sv input, struct sv *rest) {
     }
     r *= 10;
     r += input.s[i] - '0';
+  }
+  if (i > 0) {
+    if (got_num) {
+      *got_num = 1;
+    }
   }
   input.length -= i;
   input.s += i;
@@ -189,6 +203,21 @@ struct sv sv_take(struct sv s, struct sv *rest, size_t n) {
   return s;
 }
 
+int sv_read(struct sv s, struct sv *rest, void *buf, size_t n) {
+  if (s.length < n) {
+    if (rest) {
+      rest->length = 0;
+    }
+    return 0;
+  }
+  memcpy(buf, s.s, n);
+  if (rest) {
+    rest->length -= n;
+    rest->s += n;
+  }
+  return 1;
+}
+
 struct sv sv_take_end(struct sv s, struct sv *rest, size_t n) {
   if (s.length < n) {
     if (rest) {
@@ -222,6 +251,23 @@ struct sv sv_clone(struct sv s) {
   memcpy(new_string, s.s, s.length);
   new_sv.s = new_string;
   return new_sv;
+}
+
+int sv_try_eat(struct sv input, struct sv *rest, struct sv b) {
+  if (input.length < b.length) {
+    return 0;
+  }
+  for (size_t i = 0; i < b.length; i++) {
+    if (input.s[i] != b.s[i]) {
+      return 0;
+    }
+  }
+  input.s += b.length;
+  input.length -= b.length;
+  if (rest) {
+    *rest = input;
+  }
+  return 1;
 }
 
 char *sv_copy_to_c(struct sv s, char *out, size_t buffer_length) {
