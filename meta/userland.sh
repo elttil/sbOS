@@ -22,42 +22,44 @@ make -j`nproc` -C ./userland/dns
 make -j`nproc` -C ./userland/to
 make -j`nproc` -C ./userland/httpd
 make -j`nproc` -C ./userland/tcpserver
+make -j`nproc` -C ./userland/sftp
 
 mkdir sysroot
-sudo cp ./userland/rtl8139/rtl8139 ./sysroot/rtl8139
-sudo cp ./userland/libppm/ppm ./sysroot/ppm
-sudo cp ./userland/terminal/term ./sysroot/term
-sudo cp ./userland/snake/snake ./sysroot/snake
-sudo cp ./userland/ante/ante ./sysroot/ante
-sudo cp ./userland/windowserver/ws ./sysroot/ws
-sudo cp ./userland/test/test ./sysroot/test
-sudo cp ./userland/minibox/minibox ./sysroot/minibox
-sudo cp ./userland/smol_http/smol_http ./sysroot/smol_http
-sudo cp ./userland/irc/irc ./sysroot/irc
-sudo cp ./userland/nasm-2.16.01/nasm ./sysroot/nasm
-sudo cp ./userland/dns/dns ./sysroot/dns
-sudo cp ./userland/to/to ./sysroot/to
-sudo cp ./userland/httpd/httpd ./sysroot/httpd
-sudo cp ./userland/tcpserver/tcpserver ./sysroot/tcpserver
+mkdir ./sysroot/bin
+sudo cp ./userland/libppm/ppm ./sysroot/bin/ppm
+sudo cp ./userland/terminal/term ./sysroot/bin/term
+sudo cp ./userland/snake/snake ./sysroot/bin/snake
+sudo cp ./userland/ante/ante ./sysroot/bin/ante
+sudo cp ./userland/windowserver/ws ./sysroot/bin/ws
+sudo cp ./userland/test/test ./sysroot/bin/test
+sudo cp ./userland/minibox/minibox ./sysroot/bin/minibox
+sudo cp ./userland/smol_http/smol_http ./sysroot/bin/smol_http
+sudo cp ./userland/irc/irc ./sysroot/bin/irc
+sudo cp ./userland/nasm-2.16.01/nasm ./sysroot/bin/nasm
+sudo cp ./userland/dns/dns ./sysroot/bin/dns
+sudo cp ./userland/to/to ./sysroot/bin/to
+sudo cp ./userland/httpd/httpd ./sysroot/bin/httpd
+sudo cp ./userland/tcpserver/tcpserver ./sysroot/bin/tcpserver
+sudo cp ./userland/sftp/sftp ./sysroot/sftp
 
 cd ./sysroot
-rm ./init
-rm ./cat
-rm ./yes
-rm ./echo
-rm ./wc
-rm ./ls
-ln -s ./minibox ./init
-ln -s ./minibox ./cat
-ln -s ./minibox ./yes
-ln -s ./minibox ./echo
-ln -s ./minibox ./wc
-ln -s ./minibox ./ls
-ln -s ./minibox ./kill
-ln -s ./minibox ./sha1sum
-ln -s ./minibox ./rdate
-ln -s ./minibox ./sh
-ln -s ./minibox ./true
-ln -s ./minibox ./false
-ln -s ./minibox ./lock
+rm ./bin/init
+rm ./bin/cat
+rm ./bin/yes
+rm ./bin/echo
+rm ./bin/wc
+rm ./bin/ls
+ln -s ./bin/minibox ./bin/init
+ln -s ./bin/minibox ./bin/cat
+ln -s ./bin/minibox ./bin/yes
+ln -s ./bin/minibox ./bin/echo
+ln -s ./bin/minibox ./bin/wc
+ln -s ./bin/minibox ./bin/ls
+ln -s ./bin/minibox ./bin/kill
+ln -s ./bin/minibox ./bin/sha1sum
+ln -s ./bin/minibox ./bin/rdate
+ln -s ./bin/minibox ./bin/sh
+ln -s ./bin/minibox ./bin/true
+ln -s ./bin/minibox ./bin/false
+ln -s ./bin/minibox ./bin/lock
 cd ..
