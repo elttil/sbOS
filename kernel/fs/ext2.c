@@ -695,9 +695,9 @@ int ext2_stat(vfs_fd_t *fd, struct stat *buf) {
 
   buf->st_size = (u64)inode->low_32size | ((u64)inode->_upper_32size);
   if (DIRECTORY & inode->types_permissions) {
-    buf->st_mode = STAT_DIR;
+    buf->st_mode = S_IFDIR;
   } else {
-    buf->st_mode = STAT_REG;
+    buf->st_mode = S_IFREG;
   }
   return 0;
 }

@@ -23,7 +23,7 @@ void process_close(vfs_fd_t *fd) {
 
 int procfs_stat(vfs_fd_t *fd, struct stat *buf) {
   memset(buf, 0, sizeof(struct stat));
-  buf->st_mode = STAT_DIR;
+  buf->st_mode = S_IFDIR;
   return 0;
 }
 
@@ -87,10 +87,10 @@ int process_stat(vfs_fd_t *fd, struct stat *buf) {
 
   int id = fd->inode->inode_num;
   if (PROCESS_ROOT == id) {
-    buf->st_mode = STAT_DIR;
+    buf->st_mode = S_IFDIR;
     return 0;
   }
-  buf->st_mode = STAT_REG;
+  buf->st_mode = S_IFREG;
   return 0;
 }
 

@@ -223,7 +223,7 @@ int vfs_chdir(const char *path) {
     }
     struct stat stat_result;
     vfs_fstat(tmp_fd, &stat_result);
-    if (STAT_DIR != stat_result.st_mode) {
+    if (!S_ISDIR(stat_result.st_mode)) {
       kprintf("vfs_chdir: -ENOTDIR\n");
       return -ENOTDIR;
     }
