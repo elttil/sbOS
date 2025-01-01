@@ -32,4 +32,5 @@ int fork(void);
 int write(int fd, const char *buf, size_t count);
 int pwrite(int fd, const char *buf, size_t count, size_t offset);
 int lseek(int fildes, int offset, int whence);
+int getentropy(void *buffer, size_t length);
 #endif
