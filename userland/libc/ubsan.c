@@ -47,3 +47,9 @@ void __ubsan_handle_out_of_bounds(struct OutOfBoundsData *data, void *index) {
   (void)index;
   ubsan_log("handle_out_of_bounds", data->location);
 }
+
+void __ubsan_handle_vla_bound_not_positive(struct OutOfBoundsData *data,
+                                           void *index) {
+  (void)index;
+  ubsan_log("handle_out_of_bounds", data->location);
+}
