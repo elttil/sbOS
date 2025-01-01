@@ -14,6 +14,11 @@
 
 #define BLOCKS_REQUIRED(_a, _b) ((_a) / (_b) + (((_a) % (_b)) != 0))
 
+#define ALIGN(value, alignment)                                                \
+  if (0 != (value % alignment)) {                                              \
+    value += (alignment - (value % alignment));                                \
+  }
+
 superblock_t *superblock;
 u32 block_byte_size;
 u32 inode_size;
@@ -748,8 +753,9 @@ vfs_inode_t *ext2_open(const char *path) {
       ext2_stat, NULL /*connect*/);
 }
 
-u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
-                               direntry_header_t *meta) {
+u64 find_free_position(int dir_inode, u64 *entry_offset,
+                       direntry_header_t *meta, size_t entry_size,
+                       size_t *entry_padding) {
   u64 file_size;
   get_inode_data_size(dir_inode, &file_size);
   u8 *data = kmalloc(file_size);
@@ -759,9 +765,24 @@ u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
   u8 *data_p = data;
   u64 pos = 0;
   u64 prev = pos;
+
+  if (entry_padding) {
+    *entry_padding = 0;
+  }
   for (; pos < file_size && (dir = (direntry_header_t *)data_p)->size;
-       data_p += dir->size, prev = pos, pos += dir->size)
-    ;
+       data_p += dir->size, prev = pos, pos += dir->size) {
+    u64 real_size = sizeof(direntry_header_t) + dir->name_length;
+    ALIGN(real_size, 4);
+    u64 padding = dir->size - real_size;
+    if (padding >= entry_size) {
+      prev = pos;
+      if (entry_padding) {
+        *entry_padding = padding;
+      }
+      break;
+    }
+  }
+
   if (entry_offset) {
     *entry_offset = prev;
   }
@@ -774,34 +795,24 @@ u64 end_of_last_entry_position(int dir_inode, u64 *entry_offset,
 
 void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
                        const char *name) {
+  entry_header.size = (sizeof(direntry_header_t) + entry_header.name_length);
+  ALIGN(entry_header.size, 4);
+
   u64 entry_offset = 0;
   direntry_header_t meta;
-  end_of_last_entry_position(directory_inode, &entry_offset, &meta);
-
-  u32 padding_in_use = block_byte_size - entry_offset;
-
-  //  assert(padding_in_use == meta.size);
-  assert(padding_in_use >=
-         (sizeof(direntry_header_t) + entry_header.name_length));
+  size_t entry_padding;
+  find_free_position(directory_inode, &entry_offset, &meta, entry_header.size,
+                     &entry_padding);
+  entry_header.size = entry_padding;
 
   // Modify the entry to have its real size
   meta.size = sizeof(direntry_header_t) + meta.name_length;
-  meta.size += (4 - (meta.size % 4));
+  ALIGN(meta.size, 4);
   write_inode(directory_inode, (u8 *)&meta, sizeof(direntry_header_t),
               entry_offset, NULL, 0);
 
   // Create new entry
   u32 new_entry_offset = entry_offset + meta.size;
-  entry_header.size = (sizeof(direntry_header_t) + entry_header.name_length);
-  entry_header.size += (4 - (entry_header.size % 4));
-
-  u32 length_till_next_block =
-      block_byte_size - (new_entry_offset % block_byte_size);
-  if (0 == length_till_next_block) {
-    length_till_next_block = block_byte_size;
-  }
-  assert(entry_header.size < length_till_next_block);
-  entry_header.size = length_till_next_block;
 
   u8 buffer[entry_header.size];
   memset(buffer, 0, entry_header.size);
