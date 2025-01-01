@@ -43,6 +43,13 @@ void __ubsan_handle_mul_overflow(struct OverflowData *data, unsigned long lhs,
   ubsan_log("handle_mul_overflow", data->location);
 }
 
+void __ubsan_handle_pointer_overflow(struct OverflowData *data, unsigned long lhs,
+                                 unsigned long rhs) {
+  (void)lhs;
+  (void)rhs;
+  ubsan_log("handle_poinetr_overflow", data->location);
+}
+
 void __ubsan_handle_out_of_bounds(struct OutOfBoundsData *data, void *index) {
   (void)index;
   ubsan_log("handle_out_of_bounds", data->location);
@@ -51,5 +58,5 @@ void __ubsan_handle_out_of_bounds(struct OutOfBoundsData *data, void *index) {
 void __ubsan_handle_vla_bound_not_positive(struct OutOfBoundsData *data,
                                            void *index) {
   (void)index;
-  ubsan_log("handle_out_of_bounds", data->location);
+  ubsan_log("handle_vla_bound_not_positive", data->location);
 }
