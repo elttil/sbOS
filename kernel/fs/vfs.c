@@ -106,8 +106,8 @@ int vfs_create_file(const char *file) {
   return file_mount->local_root->create_file(file, 0);
 }
 
-vfs_inode_t *vfs_internal_open(const char *file) {
-  vfs_mounts_t *file_mount = 0;
+vfs_mounts_t *vfs_get_mount(const char *path, const char **file) {
+  vfs_mounts_t *file_mount = NULL;
   int length = 0;
   for (int i = 0; i < num_mounts; i++) {
     int path_len = strlen(mounts[i].path);
@@ -115,15 +115,22 @@ vfs_inode_t *vfs_internal_open(const char *file) {
       continue;
     }
 
-    if (isequal_n(mounts[i].path, file, path_len)) {
+    if (isequal_n(mounts[i].path, path, path_len)) {
       length = path_len;
       file_mount = &mounts[i];
     }
   }
-  if (1 != length) {
-    file += length;
+  if (file) {
+    *file = path;
+    if (1 != length) {
+      *file = path + length;
+    }
   }
+  return file_mount;
+}
 
+vfs_inode_t *vfs_internal_open(const char *file) {
+  vfs_mounts_t *file_mount = vfs_get_mount(file, &file);
   if (!file_mount) {
     kprintf("vfs_internal_open could not find mounted path for file : %s\n",
             file);
@@ -238,23 +245,7 @@ int vfs_chdir(const char *path) {
 }
 
 int vfs_mkdir(const char *path, int mode) {
-  vfs_mounts_t *file_mount = 0;
-  int length = 0;
-  for (int i = 0; i < num_mounts; i++) {
-    int path_len = strlen(mounts[i].path);
-    if (path_len <= length) {
-      continue;
-    }
-
-    if (isequal_n(mounts[i].path, path, path_len)) {
-      length = path_len;
-      file_mount = &mounts[i];
-    }
-  }
-  if (1 != length) {
-    path += length;
-  }
-
+  vfs_mounts_t *file_mount = vfs_get_mount(path, &path);
   if (!file_mount) {
     kprintf("vfs_internal_open could not find mounted path for file : %s\n",
             path);
@@ -290,6 +281,19 @@ int vfs_open(const char *file, int flags, int mode) {
     vfs_ftruncate(rc, 0, 1);
   }
   return rc;
+}
+
+int vfs_unlink(const char *path) {
+  char resolved_path[256] = {0};
+  vfs_resolve_path(path, resolved_path);
+  vfs_mounts_t *mount = vfs_get_mount(resolved_path, &path);
+  if (!mount) {
+    assert(0);
+  }
+  if (!mount->local_root->unlink) {
+    return -EPERM;
+  }
+  return mount->local_root->unlink(path);
 }
 
 int vfs_close_process(process_t *p, int fd) {

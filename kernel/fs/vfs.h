@@ -64,6 +64,7 @@ struct vfs_inode {
   int (*truncate)(vfs_fd_t *fd, size_t length);
   int (*stat)(vfs_fd_t *fd, struct stat *buf);
   int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr, socklen_t addrlen);
+  int (*unlink)(const char *path);
 };
 
 int vfs_close(int fd);
@@ -103,4 +104,5 @@ vfs_inode_t *vfs_create_inode(
     int (*stat)(vfs_fd_t *fd, struct stat *buf),
     int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr,
                    socklen_t addrlen));
+int vfs_unlink(const char *path);
 #endif

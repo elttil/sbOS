@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <drivers/pit.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <fs/ext2.h>
 #include <fs/vfs.h>
@@ -19,14 +20,106 @@
     value += (alignment - (value % alignment));                                \
   }
 
+struct ext2_open_file {
+  u32 inode_num;
+  u32 references;
+  int is_removed;
+  struct ext2_open_file *next;
+  struct ext2_open_file *prev;
+};
+
+void remove_inode(int inode_num);
+int ext2_unlink(const char *path);
+
+struct ext2_open_file *files_head = NULL;
+
+int add_open_inode(u32 inode_num) {
+  struct ext2_open_file *ptr = files_head;
+  for (; ptr; ptr = ptr->next) {
+    if (inode_num == ptr->inode_num) {
+      break;
+    }
+  }
+  if (!ptr) {
+    ptr = kmalloc(sizeof(struct ext2_open_file));
+    if (!ptr) {
+      return 0;
+    }
+    ptr->next = files_head;
+    ptr->prev = NULL;
+    if (ptr->next) {
+      ptr->prev = ptr->next->prev;
+      ptr->next->prev = ptr;
+      if (ptr->prev) {
+        ptr->prev->next = ptr;
+      }
+    }
+    ptr->inode_num = inode_num;
+    ptr->references = 0;
+    ptr->is_removed = 0;
+    files_head = ptr;
+  }
+  ptr->references++;
+  return 1;
+}
+
+void remove_possibly_open_inode(u32 inode_num) {
+  struct ext2_open_file *ptr = files_head;
+  for (; ptr; ptr = ptr->next) {
+    if (inode_num == ptr->inode_num) {
+      break;
+    }
+  }
+  if (!ptr) {
+    remove_inode(inode_num);
+    return;
+  }
+  ptr->is_removed = 1;
+}
+
+int deref_open_inode(u32 inode_num) {
+  struct ext2_open_file *ptr = files_head;
+  for (; ptr; ptr = ptr->next) {
+    if (inode_num == ptr->inode_num) {
+      break;
+    }
+  }
+  if (!ptr) {
+    return 1;
+  }
+  assert(ptr->references > 0);
+  ptr->references--;
+  if (0 != ptr->references) {
+    return 0;
+  }
+
+  if (ptr->prev) {
+    ptr->prev->next = ptr->next;
+  }
+  if (ptr->next) {
+    ptr->next->prev = ptr->prev;
+  }
+  if (files_head == ptr) {
+    assert(!ptr->prev);
+    files_head = ptr->next;
+  }
+  if (ptr->is_removed) {
+    remove_inode(inode_num);
+  }
+  kfree(ptr);
+  return 1;
+}
+
 superblock_t *superblock;
 u32 block_byte_size;
 u32 inode_size;
 u32 inodes_per_block;
+int superblock_changed = 0;
 
 vfs_fd_t *mount_fd = NULL;
 
 void ext2_close(vfs_fd_t *fd) {
+  deref_open_inode(fd->inode->inode_num);
   return; // There is nothing to clear
 }
 
@@ -104,6 +197,10 @@ void ext2_flush_writes(void) {
     raw_vfs_pwrite(mount_fd, cache[i].block, block_byte_size,
                    cache[i].block_num * block_byte_size);
     cache[i].has_write = 0;
+  }
+  if (superblock_changed) {
+    raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
+    superblock_changed = 0;
   }
 }
 
@@ -307,7 +404,7 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
   return rc;
 }
 
-u32 ext2_find_inode(const char *file) {
+u32 ext2_find_inode(const char *file, u32 *parent_directory) {
   int cur_path_inode = EXT2_ROOT_INODE;
 
   if (*file == '/' && *(file + 1) == '\0') {
@@ -330,6 +427,10 @@ u32 ext2_find_inode(const char *file) {
     }
 
     *str = '\0';
+
+    if (parent_directory) {
+      *parent_directory = cur_path_inode;
+    }
 
     direntry_header_t a;
     if (0 == (cur_path_inode =
@@ -358,6 +459,45 @@ u32 get_singly_block_index(u32 singly_block_ptr, u32 i) {
   ext2_read_block(singly_block_ptr, block, block_byte_size, 0);
   u32 index = *(u32 *)(block + (i * (32 / 8)));
   return index;
+}
+
+int get_from_all_blocks(inode_t *inode, u32 i) {
+  if (i < 12) {
+    return inode->block_pointers[i];
+  }
+
+  i -= 12;
+  u32 singly_block_byte_size = block_byte_size / (32 / 8);
+  u32 double_block_byte_size =
+      (singly_block_byte_size * singly_block_byte_size);
+
+  if (0 == i) {
+    return inode->single_indirect_block_pointer;
+  }
+  i--;
+
+  if (i < singly_block_byte_size) {
+    return get_singly_block_index(inode->single_indirect_block_pointer, i);
+  } else if (i < double_block_byte_size) {
+    i -= singly_block_byte_size;
+    if (0 == i) {
+      return inode->double_indirect_block_pointer;
+    }
+    i--;
+
+    u32 singly_entry = get_singly_block_index(
+        inode->double_indirect_block_pointer, i / singly_block_byte_size);
+    u32 offset_in_entry = i % singly_block_byte_size;
+
+    if (0 == offset_in_entry) {
+      return singly_entry;
+    }
+    offset_in_entry--;
+
+    return get_singly_block_index(singly_entry, offset_in_entry);
+  }
+  assert(0);
+  return 0;
 }
 
 int get_block(inode_t *inode, u32 i) {
@@ -427,7 +567,7 @@ int get_free_blocks(int allocate, int entries[], u32 num_entries) {
       block_group.num_unallocated_blocks_in_group--;
       write_group_descriptor(group, &block_group);
       superblock->num_blocks_unallocated--;
-      raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
+      superblock_changed = 1;
     }
   }
   return current_entry;
@@ -439,6 +579,58 @@ int get_free_block(int allocate) {
     return -1;
   }
   return entry[0];
+}
+
+void write_to_inode_bitmap(u32 inode_num, int value) {
+  u32 group_index = inode_num / superblock->num_inodes_in_group;
+  u32 index = inode_num % superblock->num_inodes_in_group;
+
+  bgdt_t block_group;
+  get_group_descriptor(group_index, &block_group);
+
+  u8 bitmap[(superblock->num_inodes_in_group) / 8];
+  ext2_read_block(block_group.inode_usage_bitmap, bitmap,
+                  (superblock->num_inodes_in_group) / 8, 0);
+
+  if (0 == value) {
+    bitmap[index / 8] &= ~(1 << (index % 8));
+    superblock->num_inodes_unallocated++;
+    block_group.num_unallocated_inodes_in_group++;
+  } else {
+    bitmap[index / 8] |= (1 << (index % 8));
+    superblock->num_inodes_unallocated--;
+    block_group.num_unallocated_inodes_in_group--;
+  }
+  superblock_changed = 1;
+  ext2_write_block(block_group.inode_usage_bitmap, bitmap,
+                   superblock->num_inodes_in_group / 8, 0);
+  write_group_descriptor(group_index, &block_group);
+}
+
+void write_to_block_bitmap(u32 block_num, int value) {
+  u32 group_index = block_num / superblock->num_blocks_in_group;
+  u32 index = block_num % superblock->num_blocks_in_group;
+
+  bgdt_t block_group;
+  get_group_descriptor(group_index, &block_group);
+
+  u8 bitmap[(superblock->num_blocks_in_group) / 8];
+  ext2_read_block(block_group.block_usage_bitmap, bitmap,
+                  (superblock->num_blocks_in_group) / 8, 0);
+
+  if (0 == value) {
+    bitmap[index / 8] &= ~(1 << (index % 8));
+    superblock->num_blocks_unallocated++;
+    block_group.num_unallocated_blocks_in_group++;
+  } else {
+    bitmap[index / 8] |= (1 << (index % 8));
+    superblock->num_blocks_unallocated--;
+    block_group.num_unallocated_blocks_in_group--;
+  }
+  ext2_write_block(block_group.block_usage_bitmap, bitmap,
+                   superblock->num_blocks_in_group / 8, 0);
+  write_group_descriptor(group_index, &block_group);
+  superblock_changed = 1;
 }
 
 int get_free_inode(int allocate) {
@@ -475,6 +667,7 @@ int get_free_inode(int allocate) {
           block_group.num_unallocated_inodes_in_group--;
           write_group_descriptor(group, &block_group);
           superblock->num_inodes_unallocated--;
+          superblock_changed = 1;
           raw_vfs_pwrite(mount_fd, superblock, 2 * SECTOR_SIZE, 0);
         }
         return inode_index;
@@ -648,7 +841,7 @@ int read_inode(int inode_num, u8 *data, u64 size, u64 offset, u64 *file_size) {
 size_t ext2_read_file_offset(const char *file, u8 *data, u64 size, u64 offset,
                              u64 *file_size) {
   // TODO: Fail if the file does not exist.
-  u32 inode = ext2_find_inode(file);
+  u32 inode = ext2_find_inode(file, NULL);
   return read_inode(inode, data, size, offset, file_size);
 }
 
@@ -665,7 +858,7 @@ int resolve_link(int inode_num) {
   char *path = (char *)(tmp_inode_buffer + (10 * 4));
   path--;
   *path = '/';
-  return ext2_find_inode(path);
+  return ext2_find_inode(path, NULL);
 }
 
 int ext2_write(u8 *buffer, u64 offset, u64 len, vfs_fd_t *fd) {
@@ -722,7 +915,7 @@ int ext2_truncate(vfs_fd_t *fd, size_t length) {
 }
 
 vfs_inode_t *ext2_open(const char *path) {
-  u32 inode_num = ext2_find_inode(path);
+  u32 inode_num = ext2_find_inode(path, NULL);
   if (0 == inode_num) {
     return NULL;
   }
@@ -746,11 +939,71 @@ vfs_inode_t *ext2_open(const char *path) {
     break;
   }
 
-  return vfs_create_inode(
+  if (!add_open_inode(inode_num)) {
+    return NULL;
+  }
+  vfs_inode_t *inode = vfs_create_inode(
       inode_num, type, NULL, NULL, 1 /*is_open*/, 0, NULL /*internal_object*/,
       file_size, ext2_open, ext2_create_file, ext2_read, ext2_write, ext2_close,
       ext2_create_directory, NULL /*get_vm_object*/, ext2_truncate /*truncate*/,
       ext2_stat, NULL /*connect*/);
+  if (!inode) {
+    (void)deref_open_inode(inode_num);
+    return NULL;
+  }
+  inode->unlink = ext2_unlink;
+  return inode;
+}
+
+direntry_header_t *directory_ptr_next(direntry_header_t *ptr, u64 *left) {
+  assert(left);
+  if (0 == ptr->size) {
+    return NULL;
+  }
+  if (ptr->size > *left) {
+    return NULL;
+  }
+  direntry_header_t *next_entry =
+      (direntry_header_t *)((uintptr_t)ptr + ptr->size);
+  *left -= ptr->size;
+  if (*left < sizeof(direntry_header_t)) {
+    return NULL;
+  }
+  if (0 == next_entry->size) {
+    return NULL;
+  }
+  return next_entry;
+}
+
+void remove_inode(int inode_num) {
+  u8 inode_buffer[inode_size];
+  ext2_get_inode_header(inode_num, inode_buffer);
+  inode_t *inode = (inode_t *)inode_buffer;
+
+  if (0 != inode->num_hard_links) {
+    inode->num_hard_links--;
+  }
+
+  if (0 != inode->num_hard_links) {
+    return;
+  }
+
+  int num_blocks_used =
+      inode->num_disk_sectors / (block_byte_size / SECTOR_SIZE);
+
+  for (int i = 0; i < num_blocks_used; i++) {
+    u32 block = get_from_all_blocks(inode, i);
+    if (0 == block) {
+      continue;
+    }
+    write_to_block_bitmap(block, 0);
+  }
+
+  inode->deletion_time = timer_get_ms() / 1000;
+  inode->num_disk_sectors = 0;
+
+  ext2_write_inode(inode_num, inode);
+  write_to_inode_bitmap(inode_num - 1, 0);
 }
 
 u64 find_free_position(int dir_inode, u64 *entry_offset,
@@ -834,7 +1087,7 @@ int ext2_find_parent(char *path, u32 *parent_inode, char **filename) {
     *parent_inode = EXT2_ROOT_INODE;
     return 1;
   } else {
-    int r = ext2_find_inode(path);
+    int r = ext2_find_inode(path, NULL);
     if (0 == r) {
       return 0;
     }
@@ -847,7 +1100,7 @@ int ext2_find_parent(char *path, u32 *parent_inode, char **filename) {
 int ext2_create_directory(const char *path, int mode) {
   (void)mode;
   // Check if the directory already exists
-  u32 inode_num = ext2_find_inode(path);
+  u32 inode_num = ext2_find_inode(path, NULL);
   if (0 != inode_num) {
     klog(LOG_WARN, "ext2_create_directory: Directory already exists");
     return inode_num;
@@ -907,7 +1160,7 @@ int ext2_create_directory(const char *path, int mode) {
 
 int ext2_create_file(const char *path, int mode) {
   // Check if the file already exists
-  u32 inode_num = ext2_find_inode(path);
+  u32 inode_num = ext2_find_inode(path, NULL);
   if (0 != inode_num) {
     klog(LOG_WARN, "ext2_create_file: File already exists");
     return inode_num;
@@ -947,6 +1200,48 @@ int ext2_create_file(const char *path, int mode) {
   return new_file_inode;
 }
 
+int ext2_unlink(const char *path) {
+  u32 parent_directory;
+  u32 inode_num = ext2_find_inode(path, &parent_directory);
+  if (0 == inode_num) {
+    return -ENOENT;
+  }
+
+  u64 file_size;
+  get_inode_data_size(parent_directory, &file_size);
+  u8 *data = kmalloc(file_size);
+  read_inode(parent_directory, data, file_size, 0, NULL);
+
+  u64 left = file_size;
+  direntry_header_t *current = (direntry_header_t *)data;
+
+  for (;;) {
+    if (inode_num == current->inode) {
+      kfree(data);
+      // This would be "." which can't be removed anyways
+      return -ENOENT;
+    }
+    direntry_header_t *next = directory_ptr_next(current, &left);
+    if (!next) {
+      kfree(data);
+      return -ENOENT;
+    }
+    if (inode_num == next->inode) {
+      current->size += next->size;
+      // Not required but done for testing purposes
+      memset(next, 0, next->size);
+      break;
+    }
+    current = next;
+  }
+  write_inode(parent_directory, data, file_size, 0, NULL, 0);
+  kfree(data);
+
+  remove_possibly_open_inode(inode_num);
+  ext2_flush_writes();
+  return 0;
+}
+
 vfs_inode_t *ext2_mount(void) {
   int fd = vfs_open("/dev/sda", O_RDWR, 0);
   if (0 > fd) {
@@ -975,6 +1270,7 @@ vfs_inode_t *ext2_mount(void) {
   if (!inode) {
     goto ext2_mount_error;
   }
+  inode->unlink = ext2_unlink;
   return inode;
 ext2_mount_error:
   vfs_close(fd);

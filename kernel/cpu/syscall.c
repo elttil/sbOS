@@ -205,11 +205,18 @@ int syscall_open(const char *file, int flags, mode_t mode) {
   if (len > 256 - 1) {
     return -ENAMETOOLONG;
   }
-  char _file[256];
-  strlcpy(_file, file, 256);
-  int _flags = flags;
-  int _mode = mode;
-  return vfs_open(_file, _flags, _mode);
+  return vfs_open(file, flags, mode);
+}
+
+int syscall_unlink(const char *path) {
+  size_t len;
+  if (!mmu_is_valid_user_c_string(path, &len)) {
+    return -EFAULT;
+  }
+  if (len > 256 - 1) {
+    return -ENAMETOOLONG;
+  }
+  return vfs_unlink(path);
 }
 
 int syscall_poll(SYS_POLL_PARAMS *args) {
@@ -638,6 +645,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_sendfile,
     (void(*))syscall_shm_unlink,
     (void(*))syscall_dup,
+    (void(*))syscall_unlink,
 };
 
 void int_syscall(reg_t *r);
