@@ -114,11 +114,11 @@ void tcp_send_empty_payload(struct TcpConnection *con, u8 flags) {
       sizeof(struct TcpHeader) + payload_length);
   u32 send_len = sizeof(struct TcpHeader) + payload_length;
 
-  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
-
   con->snd_nxt += (flags & SYN) ? 1 : 0;
   con->snd_nxt += (flags & FIN) ? 1 : 0;
   con->snd_max = max(con->snd_nxt, con->snd_max);
+
+  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
 }
 
 // When both the client and the server have closed the connection it can
@@ -130,8 +130,8 @@ void tcp_destroy_connection(struct TcpConnection *con) {
 
 void tcp_close_connection(struct TcpConnection *con) {
   if (TCP_STATE_CLOSE_WAIT == con->state) {
-    tcp_send_empty_payload(con, FIN);
     con->state = TCP_STATE_LAST_ACK;
+    tcp_send_empty_payload(con, FIN);
     tcp_destroy_connection(con); // Client does not appear to respond
                                  // with last ack?
     return;
@@ -140,13 +140,13 @@ void tcp_close_connection(struct TcpConnection *con) {
     // FIXME:
     // Book says it should be FIN but observed network traffic says it
     // should be FIN|ACK?
-    tcp_send_empty_payload(con, FIN | ACK);
     con->state = TCP_STATE_FIN_WAIT1;
+    tcp_send_empty_payload(con, FIN | ACK);
     return;
   }
   if (TCP_STATE_SYN_RECIEVED == con->state) {
-    tcp_send_empty_payload(con, FIN);
     con->state = TCP_STATE_FIN_WAIT1;
+    tcp_send_empty_payload(con, FIN);
     return;
   }
   if (TCP_STATE_SYN_SENT == con->state) {
@@ -198,10 +198,10 @@ int send_tcp_packet(struct TcpConnection *con, const u8 *payload,
     con->should_send_ack = 0;
   }
 
-  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
-
   con->snd_nxt += payload_length;
   con->snd_max = max(con->snd_nxt, con->snd_max);
+
+  send_ipv4_packet2((ipv4_t){.d = con->outgoing_ip}, 6, send_len);
   return 1;
 }
 
@@ -271,8 +271,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   switch (con->state) {
   case TCP_STATE_LISTEN: {
     if (SYN & flags) {
-      tcp_send_empty_payload(con, SYN | ACK);
       con->state = TCP_STATE_SYN_RECIEVED;
+      tcp_send_empty_payload(con, SYN | ACK);
       break;
     }
     break;
@@ -286,16 +286,16 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   }
   case TCP_STATE_SYN_SENT: {
     if ((ACK & flags) && (SYN & flags)) {
-      tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_ESTABLISHED;
+      tcp_send_empty_payload(con, ACK);
       break;
     }
     break;
   }
   case TCP_STATE_ESTABLISHED: {
     if (FIN & flags) {
-      tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_CLOSE_WAIT;
+      tcp_send_empty_payload(con, ACK);
       break;
     }
     if (tcp_payload_length > 0) {
@@ -312,8 +312,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   }
   case TCP_STATE_FIN_WAIT1: {
     if ((ACK & flags) && (FIN & flags)) {
-      tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_TIME_WAIT;
+      tcp_send_empty_payload(con, ACK);
       break;
     }
     if (ACK & flags) {
@@ -321,8 +321,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
       break;
     }
     if (FIN & flags) {
-      tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_CLOSING;
+      tcp_send_empty_payload(con, ACK);
       break;
     }
     break;
@@ -336,8 +336,8 @@ void handle_tcp(ipv4_t src_ip, ipv4_t dst_ip, const u8 *payload,
   }
   case TCP_STATE_FIN_WAIT2: {
     if (FIN & flags) {
-      tcp_send_empty_payload(con, ACK);
       con->state = TCP_STATE_CLOSED;
+      tcp_send_empty_payload(con, ACK);
       tcp_destroy_connection(con);
     }
     break;

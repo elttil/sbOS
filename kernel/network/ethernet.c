@@ -79,8 +79,12 @@ void send_ethernet_packet2(u8 mac_dst[6], u16 type, u64 payload_length) {
   *(u32 *)(buffer) =
       htonl(crc32((const char *)nic_get_buffer(), buffer_size - 4));
 
+  if (0 == memcmp(mac_dst, eth_header->mac_src, sizeof(u8[6]))) {
+    handle_ethernet(nic_get_buffer(), buffer_size);
+    return;
+  }
+
   nic_send_buffer(buffer_size);
-  //  rtl8139_send_data(ethernet_buffer, buffer_size);
 }
 
 u8 ethernet_buffer[0x1000];
@@ -102,5 +106,9 @@ void send_ethernet_packet(u8 mac_dst[6], u16 type, u8 *payload,
   *(u32 *)(buffer) =
       htonl(crc32((const char *)ethernet_buffer, buffer_size - 4));
 
+  if (0 == memcmp(mac_dst, eth_header->mac_src, sizeof(u8[6]))) {
+    handle_ethernet(nic_get_buffer(), buffer_size);
+    return;
+  }
   rtl8139_send_data(ethernet_buffer, buffer_size);
 }

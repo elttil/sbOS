@@ -101,6 +101,14 @@ int ip_inside_network(const ipv4_t ip) {
 }
 
 int get_mac_from_ip(const ipv4_t ip, u8 mac[6]) {
+  // FIXME: Ugly
+  u32 p;
+  memcpy(&p, &ip_address, sizeof(u8[4]));
+  if (htonl(2130706433) /*127.0.0.1*/ == ip.d || p == ip.d) {
+    get_mac_address(mac);
+    return 1;
+  }
+
   if (!ip_inside_network(ip)) {
     return get_mac_from_ip(gateway, mac);
   }
