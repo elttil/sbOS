@@ -17,7 +17,7 @@ int execv(const char *pathname, char *const argv[]);
 int pipe(int fd[2]);
 int dup(int fildes);
 int dup2(int org_fd, int new_fd);
-int getopt(int argc, char *const argv[], const char *optstring);
+int getopt(int argc, char *const *argv, const char *optstring);
 pid_t getpid(void);
 int unlink(const char *path);
 int execvp(const char *file, char *const argv[]);
