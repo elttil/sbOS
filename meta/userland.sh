@@ -23,6 +23,7 @@ make -j`nproc` -C ./userland/to
 make -j`nproc` -C ./userland/httpd
 make -j`nproc` -C ./userland/tcpserver
 make -j`nproc` -C ./userland/sftp
+make -j`nproc` -C ./userland/tunneld
 
 mkdir sysroot
 mkdir ./sysroot/bin
@@ -40,7 +41,8 @@ sudo cp ./userland/dns/dns ./sysroot/bin/dns
 sudo cp ./userland/to/to ./sysroot/bin/to
 sudo cp ./userland/httpd/httpd ./sysroot/bin/httpd
 sudo cp ./userland/tcpserver/tcpserver ./sysroot/bin/tcpserver
-sudo cp ./userland/sftp/sftp ./sysroot/sftp
+sudo cp ./userland/sftp/sftp ./sysroot/bin/sftp
+sudo cp ./userland/tunneld/tunneld ./sysroot/bin/tunneld
 
 cd ./sysroot
 rm ./bin/init
