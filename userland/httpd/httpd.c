@@ -28,6 +28,7 @@ struct http_request {
   int socket;
   char buffer[8192];
   struct sb client_buffer;
+  struct sv path;
   int state;
 
   int file_fd;
@@ -118,6 +119,7 @@ void parse_incoming_request(struct http_request *request) {
   struct sv l = SB_TO_SV(request->client_buffer);
   struct sv method = sv_split_delim(l, &l, ' ');
   struct sv path = sv_split_space(l, &l);
+  request->path = path;
 
   request->file_fd = -1;
   request->is_directory = 0;
@@ -227,12 +229,10 @@ The server administrator was too lazy to create a custom error page for this.</h
       // important.
       // TODO: Do this when I am less lazy
       DIR *directory = fdopendir(request->file_fd);
-      char path[256];
-      (void)getcwd(path, 256);
 
       sb_reset(&response);
       sb_append_sv(&response, C_TO_SV("<!DOCTYPE html><html>List of "));
-      sb_append(&response, path);
+      sb_append_sv(&response, request->path);
 
       for (;;) {
         struct dirent entries[128];
@@ -245,7 +245,7 @@ The server administrator was too lazy to create a custom error page for this.</h
         }
         for (int i = 0; i < n; i++) {
           sb_append_sv(&response, C_TO_SV("<br><a href=\""));
-          sb_append(&response, path);
+          sb_append_sv(&response, request->path);
           sb_append(&response, entries[i].d_name);
           sb_append_sv(&response, C_TO_SV("\">"));
           sb_append(&response, entries[i].d_name);
