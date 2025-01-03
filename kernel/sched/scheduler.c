@@ -171,8 +171,10 @@ process_t *create_process(process_t *p, u32 esp, u32 eip) {
 
   if (p) {
     strcpy(r->current_working_directory, p->current_working_directory);
+    strcpy(r->root_path, p->root_path);
   } else {
     strcpy(r->current_working_directory, "/");
+    strcpy(r->root_path, "/");
   }
   r->data_segment_end = (p) ? p->data_segment_end : NULL;
   return r;

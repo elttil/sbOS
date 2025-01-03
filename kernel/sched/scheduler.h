@@ -58,6 +58,7 @@ const signal_t *process_pop_signal(process_t *p);
 struct Process {
   pid_t pid;
   char program_name[100];
+  char root_path[MAX_PATH];
   char current_working_directory[MAX_PATH];
   void *signal_handlers[32];
   void *interrupt_handler;

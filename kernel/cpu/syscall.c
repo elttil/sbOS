@@ -219,6 +219,17 @@ int syscall_unlink(const char *path) {
   return vfs_unlink(path);
 }
 
+int syscall_chroot(const char *path) {
+  size_t len;
+  if (!mmu_is_valid_user_c_string(path, &len)) {
+    return -EFAULT;
+  }
+  if (len > 256 - 1) {
+    return -ENAMETOOLONG;
+  }
+  return vfs_chroot(path);
+}
+
 int syscall_poll(SYS_POLL_PARAMS *args) {
   struct pollfd *fds = args->fds;
   size_t nfds = args->nfds;
@@ -646,6 +657,7 @@ int (*syscall_functions[])() = {
     (void(*))syscall_shm_unlink,
     (void(*))syscall_dup,
     (void(*))syscall_unlink,
+    (void(*))syscall_chroot,
 };
 
 void int_syscall(reg_t *r);

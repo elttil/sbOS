@@ -147,6 +147,9 @@ int vfs_clean_path(const char *path, char *result) {
   if ('/' != *path) {
     return 0;
   }
+  for (; '/' == *path; path++)
+    ;
+  path--;
   const char *result_start = result;
   int start_directory = 0;
   int should_insert_slash = 0;
@@ -196,19 +199,49 @@ int vfs_clean_path(const char *path, char *result) {
 }
 
 char *vfs_resolve_path(const char *file, char *resolved_path) {
-  if ('/' == *file) {
-    assert(vfs_clean_path(file, resolved_path));
-    return resolved_path;
-  }
-  const char *cwd = current_task->current_working_directory;
-  size_t l = strlen(cwd);
-  assert(l > 0);
-  assert('/' == cwd[l - 1]);
   char r[256];
-  strcpy(r, cwd);
-  strcat(r, file);
+  const char *root = current_task->root_path;
+  size_t l1 = strlen(root);
+  assert(l1 > 0);
+  assert('/' == root[l1 - 1]);
+
+  const char *cwd = current_task->current_working_directory;
+  size_t l2 = strlen(cwd);
+  assert(l2 > 0);
+  assert('/' == cwd[l2 - 1]);
+
+  strlcpy(r, root, 256);
+
+  if ('/' != *file) {
+    strlcat(r, cwd, 256);
+  }
+
+  strlcat(r, file, 256);
   assert(vfs_clean_path(r, resolved_path));
+
+  if (0 != memcmp(resolved_path, root, strlen(root))) {
+    strcpy(resolved_path, root);
+  }
   return resolved_path;
+}
+
+int vfs_chroot(const char *path) {
+  char resolved_path[PATH_MAX];
+  vfs_resolve_path(path, resolved_path);
+
+  int fd = vfs_open(resolved_path, 0, 0);
+  if (fd < 0) {
+    return fd;
+  }
+  vfs_close(fd);
+
+  strcpy(current_task->root_path, resolved_path);
+  char *p = resolved_path;
+  if ('/' != p[strlen(p)]) {
+    strcat(resolved_path, "/");
+  }
+  vfs_clean_path(resolved_path, current_task->root_path);
+  return 0;
 }
 
 int vfs_fstat(int fd, struct stat *buf) {

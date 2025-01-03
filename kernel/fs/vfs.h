@@ -105,4 +105,5 @@ vfs_inode_t *vfs_create_inode(
     int (*connect)(vfs_fd_t *fd, const struct sockaddr *addr,
                    socklen_t addrlen));
 int vfs_unlink(const char *path);
+int vfs_chroot(const char *path);
 #endif
