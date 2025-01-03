@@ -1056,6 +1056,9 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   size_t entry_padding;
   find_free_position(directory_inode, &entry_offset, &meta, entry_header.size,
                      &entry_padding);
+  if (0 == entry_padding) {
+    entry_padding = block_byte_size;
+  }
   entry_header.size = entry_padding;
 
   // Modify the entry to have its real size
