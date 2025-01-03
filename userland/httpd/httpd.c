@@ -328,7 +328,31 @@ void httpd_loop(int socket) {
   }
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+  int port = 80;
+  char *root = "/www";
+
+  int opt;
+  for (; -1 != (opt = getopt(argc, argv, "d:p:"));) {
+    switch (opt) {
+    case 'p':
+      port = atoi(optarg);
+      break;
+    case 'd':
+      root = optarg;
+      break;
+    case '?':
+      printf("Unknown option: %c\n", optopt);
+      break;
+    }
+  }
+
+  chdir(root);
+  if (-1 == chroot(root)) {
+    perror("chroot");
+    return 1;
+  }
+
   sb_init(&response);
 
   int sockfd = socket(AF_INET, SOCK_NONBLOCK | SOCK_STREAM, 0);
@@ -342,7 +366,7 @@ int main(void) {
 
   servaddr.sin_family = AF_INET;
   servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  servaddr.sin_port = htons(80);
+  servaddr.sin_port = htons(port);
 
   if (-1 == bind(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr))) {
     perror("bind");
