@@ -132,6 +132,7 @@ void parse_incoming_request(struct http_request *request) {
     if (request->is_directory) {
       strcat(path_buffer, "/index.html");
       request_try_file(request, path_buffer);
+      request->status_code = 200;
       return;
     }
   } else {
