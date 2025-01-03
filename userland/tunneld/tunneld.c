@@ -49,6 +49,7 @@ struct tunnel {
   br_ssl_server_context sc;
   struct queue_entry client_entry;
   struct queue_entry server_entry;
+  int should_close;
 };
 
 void update_socket(int q, struct tunnel *ctx, int type, int state) {
@@ -89,6 +90,7 @@ void handle_incoming(int sockfd, int q, int dst_port) {
     close(connfd);
     return;
   }
+  ctx->should_close = 0;
   ctx->socket = connfd;
 
   br_ssl_server_init_full_ec(&ctx->sc, CHAIN, CHAIN_LEN, BR_KEYTYPE_EC, &SKEY);
@@ -143,12 +145,20 @@ void close_connection(int q, struct tunnel *ctx) {
 
   queue_mod_entries(q, QUEUE_MOD_DELETE, &ctx->server_entry, 1);
   queue_mod_entries(q, QUEUE_MOD_DELETE, &ctx->client_entry, 1);
-
-  free(ctx);
   return;
 }
 
+void mark_for_closing(struct tunnel *ctx) {
+  close(ctx->server_fd);
+  ctx->server_fd = -1;
+  ctx->should_close = 1;
+}
+
 void update_state(int q, struct tunnel *ctx, unsigned state) {
+  if (BR_SSL_CLOSED & state) {
+    mark_for_closing(ctx);
+    return;
+  }
   if (BR_SSL_RECVAPP & state) {
     update_socket(q, ctx, TYPE_LISTEN_SERVER,
                   QUEUE_WAIT_WRITE | QUEUE_WAIT_READ);
@@ -168,10 +178,6 @@ void update_state(int q, struct tunnel *ctx, unsigned state) {
 void handle_server(int q, int fd, struct tunnel *ctx) {
   for (;;) {
     unsigned state = br_ssl_engine_current_state(&ctx->sc.eng);
-    if (BR_SSL_CLOSED & state) {
-      close_connection(q, ctx);
-      return;
-    }
     update_state(q, ctx, state);
     if (!(state & BR_SSL_SENDAPP) && !(state & BR_SSL_RECVAPP)) {
       break;
@@ -185,13 +191,13 @@ void handle_server(int q, int fd, struct tunnel *ctx) {
       int rc = read(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
-          close_connection(q, ctx);
-          continue;
+          br_ssl_engine_close(&ctx->sc.eng);
+          return;
         }
       }
       if (0 == rc) {
-        close_connection(q, ctx);
-        continue;
+        br_ssl_engine_close(&ctx->sc.eng);
+        return;
       }
       if (rc > 0) {
         br_ssl_engine_sendapp_ack(&ctx->sc.eng, rc);
@@ -208,12 +214,12 @@ void handle_server(int q, int fd, struct tunnel *ctx) {
       int rc = write(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
-          close_connection(q, ctx);
+          br_ssl_engine_close(&ctx->sc.eng);
           return;
         }
       }
       if (0 == rc) {
-        close_connection(q, ctx);
+        br_ssl_engine_close(&ctx->sc.eng);
         return;
       }
       if (rc > 0) {
@@ -226,10 +232,6 @@ void handle_server(int q, int fd, struct tunnel *ctx) {
 void handle_client(int q, int fd, struct tunnel *ctx) {
   for (;;) {
     unsigned state = br_ssl_engine_current_state(&ctx->sc.eng);
-    if (BR_SSL_CLOSED & state) {
-      close_connection(q, ctx);
-      return;
-    }
     update_state(q, ctx, state);
     if (!(state & BR_SSL_SENDREC) && !(state & BR_SSL_RECVREC)) {
       break;
@@ -243,7 +245,7 @@ void handle_client(int q, int fd, struct tunnel *ctx) {
       int rc = read(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
-          close_connection(q, ctx);
+          mark_for_closing(ctx);
           return;
         }
         if (!(state & BR_SSL_SENDREC)) {
@@ -251,7 +253,7 @@ void handle_client(int q, int fd, struct tunnel *ctx) {
         }
       }
       if (0 == rc) {
-        close_connection(q, ctx);
+        mark_for_closing(ctx);
         return;
       }
       if (rc > 0) {
@@ -269,9 +271,13 @@ void handle_client(int q, int fd, struct tunnel *ctx) {
       int rc = write(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
-          close_connection(q, ctx);
+          mark_for_closing(ctx);
           return;
         }
+      }
+      if (0 == rc) {
+        mark_for_closing(ctx);
+        return;
       }
       if (rc > 0) {
         len = min(len, rc);
@@ -291,11 +297,14 @@ void tunneld_loop(int sockfd, int dst_port) {
   e.listen = QUEUE_WAIT_READ;
   queue_mod_entries(q, QUEUE_MOD_ADD, &e, 1);
   for (;;) {
-    struct queue_entry events[512];
-    int rc = queue_wait(q, events, 512);
+    struct queue_entry events[40];
+    int rc = queue_wait(q, events, 40);
     if (0 == rc) {
       continue;
     }
+
+    int n = 0;
+    void *to_close[40];
     for (int i = 0; i < rc; i++) {
       switch (events[i].data_type) {
       case TYPE_LISTEN_SOCKET:
@@ -308,6 +317,25 @@ void tunneld_loop(int sockfd, int dst_port) {
         handle_server(q, events[i].fd, events[i].data);
         break;
       }
+      if (TYPE_LISTEN_SOCKET == events[i].data_type) {
+        continue;
+      }
+      int already = 0;
+      for (int j = 0; j < n; j++) {
+        if (to_close[j] == events[i].data) {
+          already = 1;
+          break;
+        }
+      }
+      if (already) {
+        continue;
+      }
+      to_close[n] = events[i].data;
+      n++;
+    }
+    for (int i = 0; i < n; i++) {
+      close_connection(q, to_close[n]);
+      free(to_close[n]);
     }
   }
 }
