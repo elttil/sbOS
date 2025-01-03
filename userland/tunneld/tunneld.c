@@ -58,14 +58,14 @@ void update_socket(int q, struct tunnel *ctx, int type, int state) {
         state) {
       return;
     }
-    ctx->client_entry.listen = state | QUEUE_WAIT_CLOSE;
+    ctx->client_entry.listen = state;
     queue_mod_entries(q, QUEUE_MOD_CHANGE, &ctx->client_entry, 1);
   } else if (TYPE_LISTEN_SERVER == type) {
     if ((ctx->server_entry.listen & (QUEUE_WAIT_READ | QUEUE_WAIT_WRITE)) ==
         state) {
       return;
     }
-    ctx->server_entry.listen = state | QUEUE_WAIT_CLOSE;
+    ctx->server_entry.listen = state;
     queue_mod_entries(q, QUEUE_MOD_CHANGE, &ctx->server_entry, 1);
   }
 }
@@ -140,17 +140,14 @@ void handle_incoming(int sockfd, int q, int dst_port) {
 }
 
 void close_connection(int q, struct tunnel *ctx) {
-  close(ctx->socket);
-  close(ctx->server_fd);
-
   queue_mod_entries(q, QUEUE_MOD_DELETE, &ctx->server_entry, 1);
   queue_mod_entries(q, QUEUE_MOD_DELETE, &ctx->client_entry, 1);
-  return;
+
+  close(ctx->socket);
+  close(ctx->server_fd);
 }
 
 void mark_for_closing(struct tunnel *ctx) {
-  close(ctx->server_fd);
-  ctx->server_fd = -1;
   ctx->should_close = 1;
 }
 
@@ -161,17 +158,19 @@ void update_state(int q, struct tunnel *ctx, unsigned state) {
   }
   if (BR_SSL_RECVAPP & state) {
     update_socket(q, ctx, TYPE_LISTEN_SERVER,
-                  QUEUE_WAIT_WRITE | QUEUE_WAIT_READ);
+                  QUEUE_WAIT_WRITE | QUEUE_WAIT_READ | QUEUE_WAIT_CLOSE);
   }
   if (BR_SSL_SENDREC & state) {
     update_socket(q, ctx, TYPE_LISTEN_CLIENT,
-                  QUEUE_WAIT_WRITE | QUEUE_WAIT_READ);
+                  QUEUE_WAIT_WRITE | QUEUE_WAIT_READ | QUEUE_WAIT_CLOSE);
   }
   if (!(state & BR_SSL_RECVAPP)) {
-    update_socket(q, ctx, TYPE_LISTEN_SERVER, QUEUE_WAIT_READ);
+    update_socket(q, ctx, TYPE_LISTEN_SERVER,
+                  QUEUE_WAIT_READ | QUEUE_WAIT_CLOSE);
   }
   if (!(state & BR_SSL_SENDREC)) {
-    update_socket(q, ctx, TYPE_LISTEN_CLIENT, QUEUE_WAIT_READ);
+    update_socket(q, ctx, TYPE_LISTEN_CLIENT,
+                  QUEUE_WAIT_READ | QUEUE_WAIT_CLOSE);
   }
 }
 
@@ -191,11 +190,13 @@ void handle_server(int q, int fd, struct tunnel *ctx) {
       int rc = read(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
+          update_socket(q, ctx, TYPE_LISTEN_SERVER, 0);
           br_ssl_engine_close(&ctx->sc.eng);
           return;
         }
       }
       if (0 == rc) {
+        update_socket(q, ctx, TYPE_LISTEN_SERVER, 0);
         br_ssl_engine_close(&ctx->sc.eng);
         return;
       }
@@ -214,11 +215,13 @@ void handle_server(int q, int fd, struct tunnel *ctx) {
       int rc = write(fd, buffer, len);
       if (-1 == rc) {
         if (EWOULDBLOCK != errno) {
+          update_socket(q, ctx, TYPE_LISTEN_SERVER, 0);
           br_ssl_engine_close(&ctx->sc.eng);
           return;
         }
       }
       if (0 == rc) {
+        update_socket(q, ctx, TYPE_LISTEN_SERVER, 0);
         br_ssl_engine_close(&ctx->sc.eng);
         return;
       }
@@ -257,8 +260,8 @@ void handle_client(int q, int fd, struct tunnel *ctx) {
         return;
       }
       if (rc > 0) {
-        len = min(len, rc);
-        br_ssl_engine_recvrec_ack(&ctx->sc.eng, len);
+        br_ssl_engine_recvrec_ack(&ctx->sc.eng, rc);
+        state = br_ssl_engine_current_state(&ctx->sc.eng);
       }
     }
 
@@ -280,8 +283,7 @@ void handle_client(int q, int fd, struct tunnel *ctx) {
         return;
       }
       if (rc > 0) {
-        len = min(len, rc);
-        br_ssl_engine_sendrec_ack(&ctx->sc.eng, len);
+        br_ssl_engine_sendrec_ack(&ctx->sc.eng, rc);
       }
     }
   }
@@ -320,9 +322,15 @@ void tunneld_loop(int sockfd, int dst_port) {
       if (TYPE_LISTEN_SOCKET == events[i].data_type) {
         continue;
       }
+
+      struct tunnel *ctx = events[i].data;
+      if (!ctx->should_close) {
+        continue;
+      }
+
       int already = 0;
       for (int j = 0; j < n; j++) {
-        if (to_close[j] == events[i].data) {
+        if (to_close[j] == ctx) {
           already = 1;
           break;
         }
@@ -330,12 +338,12 @@ void tunneld_loop(int sockfd, int dst_port) {
       if (already) {
         continue;
       }
-      to_close[n] = events[i].data;
+      to_close[n] = ctx;
       n++;
     }
     for (int i = 0; i < n; i++) {
-      close_connection(q, to_close[n]);
-      free(to_close[n]);
+      close_connection(q, to_close[i]);
+      free(to_close[i]);
     }
   }
 }
@@ -349,6 +357,7 @@ void certificate_append(br_x509_certificate *ctx, u8 *buffer, size_t len) {
 int decode_x509(br_x509_decoder_context *c1, const char *path) {
   int fd = open(path, O_RDONLY);
   if (-1 == fd) {
+    perror("open");
     return 0;
   }
 
@@ -382,6 +391,7 @@ int decode_ec(br_skey_decoder_context *c2, const char *path,
               br_ec_private_key *key) {
   int fd = open(path, O_RDONLY);
   if (-1 == fd) {
+    perror("open");
     return 0;
   }
 
@@ -446,8 +456,12 @@ int main(int argc, char **argv) {
 
   br_x509_decoder_context c1;
   br_skey_decoder_context c2;
-  decode_x509(&c1, cert_file);
-  decode_ec(&c2, key_file, &EC);
+  if (!decode_x509(&c1, cert_file)) {
+    return 1;
+  }
+  if (!decode_ec(&c2, key_file, &EC)) {
+    return 1;
+  }
 
   int fd = socket(AF_INET, SOCK_NONBLOCK | SOCK_STREAM, 0);
   if (-1 == fd) {
