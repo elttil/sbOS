@@ -15,5 +15,6 @@ char *copy_and_allocate_string(const char *s);
 char *copy_and_allocate_user_string(const char *s);
 size_t strlcpy(char *dst, const char *src, size_t dsize);
 char *strcat(char *s1, const char *s2);
+size_t strlcat(char *dst, const char *src, size_t dsize);
 void *memmove(void *s1, const void *s2, size_t n);
 #endif
