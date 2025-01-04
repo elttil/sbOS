@@ -245,6 +245,7 @@ int vfs_chroot(const char *path) {
 }
 
 int vfs_fstat(int fd, struct stat *buf) {
+  memset(buf, 0, sizeof(struct stat));
   vfs_fd_t *fd_ptr = get_vfs_fd(fd, NULL);
   if (!fd_ptr) {
     return -EBADF;

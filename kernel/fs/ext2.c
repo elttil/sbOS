@@ -891,12 +891,10 @@ int ext2_stat(vfs_fd_t *fd, struct stat *buf) {
   ext2_get_inode_header(fd->inode->inode_num, buffer);
   inode_t *inode = (inode_t *)buffer;
 
+  buf->st_uid = inode->user_id;
+  buf->st_gid = inode->group_id;
   buf->st_size = (u64)inode->low_32size | ((u64)inode->_upper_32size);
-  if (DIRECTORY & inode->types_permissions) {
-    buf->st_mode = S_IFDIR;
-  } else {
-    buf->st_mode = S_IFREG;
-  }
+  buf->st_mode = inode->types_permissions;
   return 0;
 }
 
