@@ -296,9 +296,16 @@ int vfs_open(const char *file, int flags, int mode) {
   vfs_inode_t *inode = vfs_internal_open(resolved_path);
   if (0 == inode) {
     if (flags & O_CREAT) {
-      if (vfs_create_file(resolved_path)) {
-        klog(LOG_NOTE, "VFS: File created");
-        return vfs_open(file, flags, mode);
+      if (flags & O_DIRECTORY) {
+        if (0 == vfs_mkdir(resolved_path, mode)) {
+          klog(LOG_NOTE, "VFS: Directory created");
+          return vfs_open(file, flags, mode);
+        }
+      } else {
+        if (vfs_create_file(resolved_path)) {
+          klog(LOG_NOTE, "VFS: File created");
+          return vfs_open(file, flags, mode);
+        }
       }
       klog(LOG_WARN, "VFS: Could not create file");
     }

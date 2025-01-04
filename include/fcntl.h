@@ -4,6 +4,7 @@
 #define O_CREAT (1 << 3)
 #define O_TRUNC (1 << 4)
 #define O_APPEND (1 << 5)
+#define O_DIRECTORY (1 << 6)
 
 #define O_RDONLY O_READ
 #define O_WRONLY O_WRITE
