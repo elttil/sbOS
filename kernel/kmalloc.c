@@ -78,16 +78,19 @@ int add_heap_memory(size_t min_desired) {
   min_desired += sizeof(MallocHeader);
   size_t allocation_size = max(min_desired, NEW_ALLOC_SIZE);
   allocation_size += delta_page(allocation_size);
+  allocation_size += NEW_ALLOC_SIZE;
   void *p;
   if (!(p = (void *)ksbrk(allocation_size, 0))) {
     return 0;
   }
   total_heap_size += allocation_size - sizeof(MallocHeader);
-  void *e = final;
-  e = (void *)((u32)e + final->size);
-  if (p == e) {
-    final->size += allocation_size - sizeof(MallocHeader);
-    return 1;
+  if (IS_FREE & final->flags) {
+    uintptr_t e = final;
+    e = ((uintptr_t)e + sizeof(MallocHeader) + final->size);
+    if (p == (void *)e) {
+      final->size += allocation_size - sizeof(MallocHeader);
+      return 1;
+    }
   }
   MallocHeader *new_entry = p;
   new_entry->size = allocation_size - sizeof(MallocHeader);
