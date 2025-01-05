@@ -400,6 +400,9 @@ u32 ext2_find_inode(const char *file, u32 *parent_directory) {
   int cur_path_inode = EXT2_ROOT_INODE;
 
   if (*file == '/' && *(file + 1) == '\0') {
+    if (parent_directory) {
+      *parent_directory = EXT2_ROOT_INODE;
+    }
     return cur_path_inode;
   }
 
@@ -1187,6 +1190,9 @@ int ext2_unlink(const char *path) {
   u32 inode_num = ext2_find_inode(path, &parent_directory);
   if (0 == inode_num) {
     return -ENOENT;
+  }
+  if (EXT2_ROOT_INODE == inode_num) {
+    return -EPERM;
   }
 
   u64 file_size;
