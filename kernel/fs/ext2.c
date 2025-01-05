@@ -317,23 +317,22 @@ void ext2_write_inode(int inode_index, inode_t *data) {
   ext2_write_block(block_index, mem_block, inode_size, block_offset);
 }
 
-int ext2_get_inode_in_directory(int dir_inode, char *file,
+int ext2_get_inode_in_directory(int dir_inode, struct sv file,
                                 direntry_header_t *entry) {
-  if ('\0' == *file) {
+  if (sv_isempty(file)) {
     return dir_inode;
   }
   u64 file_size;
   ASSERT_BUT_FIXME_PROPOGATE(-1 !=
                              read_inode(dir_inode, NULL, 0, 0, &file_size));
   u64 allocation_size = file_size;
-  u8 *data = kmalloc(allocation_size);
+  u8 data[allocation_size];
   ASSERT_BUT_FIXME_PROPOGATE(
       -1 != read_inode(dir_inode, data, allocation_size, 0, NULL));
 
   direntry_header_t *dir;
   u8 *data_p = data;
   u8 *data_end = data + allocation_size;
-  int file_len = strlen(file);
   for (; data_p <= (data_end - sizeof(direntry_header_t)) &&
          (dir = (direntry_header_t *)data_p)->inode;
        data_p += dir->size) {
@@ -343,31 +342,25 @@ int ext2_get_inode_in_directory(int dir_inode, char *file,
     if (0 == dir->name_length) {
       continue;
     }
-    if (file_len < dir->name_length) {
+    if (sv_length(file) != dir->name_length) {
       continue;
     }
     assert(data_p + sizeof(direntry_header_t) + dir->name_length <= data_end);
-    if (0 ==
-        memcmp(data_p + sizeof(direntry_header_t), file, dir->name_length)) {
-      if (strlen(file) > dir->name_length) {
-        continue;
-      }
+    if (0 == memcmp(data_p + sizeof(direntry_header_t), sv_buffer(file),
+                    dir->name_length)) {
       if (entry) {
         memcpy(entry, data_p, sizeof(direntry_header_t));
       }
-      int r = dir->inode;
-      kfree(data);
-      return r;
+      return dir->inode;
     }
   }
-  kfree(data);
   return 0;
 }
 
 int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
   u64 file_size;
   get_inode_data_size(dir_inode, &file_size);
-  u8 *data = kmalloc(file_size);
+  u8 data[file_size];
   read_inode(dir_inode, data, file_size, 0, NULL);
 
   direntry_header_t *dir;
@@ -400,7 +393,6 @@ int ext2_read_dir(int dir_inode, u8 *buffer, size_t len, size_t offset) {
     len -= l;
     rc += l;
   }
-  kfree(data);
   return rc;
 }
 
@@ -411,22 +403,14 @@ u32 ext2_find_inode(const char *file, u32 *parent_directory) {
     return cur_path_inode;
   }
 
-  char *str = copy_and_allocate_string(file);
-  char *orig_str = str;
-
-  char *start;
+  struct sv p = C_TO_SV(file);
+  sv_try_eat(p, &p, C_TO_SV("/"));
   for (;;) {
     int final = 0;
-    start = str + 1;
-    str++;
-
-    for (; '/' != *str && '\0' != *str; str++)
-      ;
-    if ('\0' == *str) {
+    struct sv start = sv_split_delim(p, &p, '/');
+    if (sv_isempty(p)) {
       final = 1;
     }
-
-    *str = '\0';
 
     if (parent_directory) {
       *parent_directory = cur_path_inode;
@@ -435,7 +419,6 @@ u32 ext2_find_inode(const char *file, u32 *parent_directory) {
     direntry_header_t a;
     if (0 == (cur_path_inode =
                   ext2_get_inode_in_directory(cur_path_inode, start, &a))) {
-      kfree(orig_str);
       return 0;
     }
 
@@ -445,12 +428,10 @@ u32 ext2_find_inode(const char *file, u32 *parent_directory) {
 
     // The expected returned entry is a directory
     if (TYPE_INDICATOR_DIRECTORY != a.type_indicator) {
-      kfree(orig_str);
       klog(LOG_WARN, "ext2: Expected diretory but got: %d", a.type_indicator);
       return 0;
     }
   }
-  kfree(orig_str);
   return cur_path_inode;
 }
 

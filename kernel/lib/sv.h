@@ -13,6 +13,7 @@
   ((struct sv){.length = strlen(_c_string), .s = (_c_string)})
 
 #define sv_length(a) ((a).length)
+#define sv_buffer(a) ((a).s)
 
 struct sv {
   const char *s;
