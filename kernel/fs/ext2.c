@@ -988,7 +988,7 @@ void remove_inode(int inode_num) {
   write_to_inode_bitmap(inode_num - 1, 0);
 }
 
-u64 find_free_position(int dir_inode, u64 *entry_offset,
+int find_free_position(int dir_inode, u64 *entry_offset,
                        direntry_header_t *meta, size_t entry_size,
                        size_t *entry_padding) {
   u64 file_size;
@@ -1014,18 +1014,33 @@ u64 find_free_position(int dir_inode, u64 *entry_offset,
       if (entry_padding) {
         *entry_padding = padding;
       }
-      break;
+      u32 new_entry_offset = pos;
+      if ((new_entry_offset % block_byte_size + entry_size) > block_byte_size) {
+        // The directory structure can not span across multiple blocks.
+        continue;
+      }
+      if (entry_offset) {
+        *entry_offset = prev;
+      }
+      if (meta) {
+        memcpy(meta, ((u8 *)data) + prev, sizeof(direntry_header_t));
+      }
+      kfree(data);
+      return 1;
     }
   }
-
-  if (entry_offset) {
-    *entry_offset = prev;
+  // No entry could be found that would should be modified to fit the
+  // new directory structure(as a result of directory entries being
+  // unable to span across multiple blocks). Instead the caller should
+  // simply append the new structure to the directory.
+  if (entry_padding) {
+    *entry_padding = block_byte_size;
   }
-  if (meta) {
-    memcpy(meta, ((u8 *)data) + prev, sizeof(direntry_header_t));
+  if (entry_offset) {
+    *entry_offset = file_size;
   }
   kfree(data);
-  return pos;
+  return 0;
 }
 
 void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
@@ -1036,21 +1051,22 @@ void ext2_create_entry(int directory_inode, direntry_header_t entry_header,
   u64 entry_offset = 0;
   direntry_header_t meta;
   size_t entry_padding;
-  find_free_position(directory_inode, &entry_offset, &meta, entry_header.size,
-                     &entry_padding);
+  int found = find_free_position(directory_inode, &entry_offset, &meta,
+                                 entry_header.size, &entry_padding);
   if (0 == entry_padding) {
     entry_padding = block_byte_size;
   }
   entry_header.size = entry_padding;
-
-  // Modify the entry to have its real size
-  meta.size = sizeof(direntry_header_t) + meta.name_length;
-  ALIGN(meta.size, 4);
-  write_inode(directory_inode, (u8 *)&meta, sizeof(direntry_header_t),
-              entry_offset, NULL, 0);
-
-  // Create new entry
-  u32 new_entry_offset = entry_offset + meta.size;
+  u32 new_entry_offset;
+  if (found) {
+    meta.size = sizeof(direntry_header_t) + meta.name_length;
+    ALIGN(meta.size, 4);
+    write_inode(directory_inode, (u8 *)&meta, sizeof(direntry_header_t),
+                entry_offset, NULL, 0);
+    new_entry_offset = entry_offset + meta.size;
+  } else {
+    new_entry_offset = entry_offset;
+  }
 
   u8 buffer[entry_header.size];
   memset(buffer, 0, entry_header.size);
