@@ -1140,6 +1140,15 @@ int ext2_create_directory(const char *path, int mode) {
                                  // itself with the "." entry
   ext2_write_inode(new_file_inode, new_inode);
 
+  // Update the group descriptor
+  bgdt_t block_group;
+  u32 group_index = (new_file_inode - 1) / superblock->num_inodes_in_group;
+  get_group_descriptor(group_index, &block_group);
+
+  block_group.num_directories_group++;
+
+  write_group_descriptor(group_index, &block_group);
+
   // Populate the new directory with "." and ".."
   {
     // "."
@@ -1156,6 +1165,13 @@ int ext2_create_directory(const char *path, int mode) {
     child_entry_header.size = sizeof(entry_header) + entry_header.name_length;
     ext2_create_entry(new_file_inode, child_entry_header, "..");
   }
+
+  // Update parent inode references
+  ext2_get_inode_header(parent_inode, inode_buffer);
+  inode_t *parent = (inode_t *)inode_buffer;
+  parent->num_hard_links++;
+  ext2_write_inode(parent_inode, parent);
+  ext2_flush_writes();
   return new_file_inode;
 }
 
