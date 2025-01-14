@@ -534,12 +534,17 @@ process_t *next_task(process_t *s) {
   process_t *c = s;
   u64 ms_time = timer_get_uptime();
   c = c->next;
-  for (;; c = c->next) {
+  for (size_t i = 0;; c = c->next) {
     if (!c) {
       c = ready_queue;
     }
     if (s == c) {
       ms_time = timer_get_uptime();
+      i++;
+    }
+    if (i > 10) {
+      wait_for_interrupt();
+      i = 0;
     }
     if (c->sleep_until > ms_time) {
       continue;
